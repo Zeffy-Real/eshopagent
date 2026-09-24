@@ -21,7 +21,7 @@
 | **GitHub 数据集仓库**（`luminati-io/*`，项目现用源） | **A** | 是 | 是 | **真实**（平台抓取样本） | `200 OK`；**`X-RateLimit-Limit: 60`**（匿名 60 次/小时，响应头可见） | ✅ **主源**（一次性构建快照） |
 | **Best Buy** | **B** | 否 | 免费额度 | 真实 | **`403` +「We were unable to locate your API Key.」** | ❌ 需注册 |
 | **eBay / MercadoLibre** | **B（按官方文档）** | 否 | 免费额度 | 真实 | **未通过实测**（本机 `curl 28` 不可达），无凭证调用按文档为 401 | ❌ 需注册/OAuth |
-| **Shopify 店铺 `/products.json`** | **A（技术）／禁于 ToS** | 是 | 是 | 真实 | **未通过实测**（allbirds / kith 均 `curl 35` TLS 失败）；官方 ToS 明文禁止 | ❌ 合规不可用 |
+| **Shopify 店铺 `/products.json`** | **A（技术）／禁于 ToS** | 是 | 是 | 真实 | **未通过实测**（allbirds / kith 均 `curl 35`：本机 schannel 吊销检查失败，非店铺拒绝，见 §6）；官方 ToS 明文禁止 | ❌ 合规不可用 |
 | **books.toscrape.com** | **A（文档可查）／未通过实测** | 是 | 是 | 真实书名 + 合成价格（沙箱） | **`curl 28` 不可达**（http/https 均超时；robots.txt 请求返回 nginx 404） | ⚠️ 待换网络复测；**不能作为"已可用"写入交付** |
 | **UPCitemdb（trial）** | **未判定** | 声称免注册 | 免费额度 | 真实条码库 | **未通过实测**（`curl 28` 超时） | ❌ 不足以作为依据 |
 | **Hugging Face（datasets / datasets-server）** | **A（文档可查）／未通过实测** | 是 | 是 | 真实（数据转储） | **`curl 28` 不可达**（`huggingface.co` 与 `datasets-server.huggingface.co` 均超时） | ⚠️ 国内网络需镜像 |
@@ -143,7 +143,7 @@ X-RateLimit-Limit: 60 | X-RateLimit-Remaining: 60 | X-RateLimit-Used: 0 | X-Rate
 | books.toscrape.com | 未通过实测（列表页 http/https 均超时；`robots.txt` 返回 nginx 404） | 常被当作"合法沙箱"，但本轮网络下**拿不到数据**；404 的 robots.txt 意味着站点未声明爬取约束 |
 | UPCitemdb（trial） | 未通过实测（超时） | 声称免 Key 试用，实测未通，无法判定 |
 | Hugging Face（`huggingface.co` / `datasets-server`） | 未通过实测（均超时） | 数据转储类的免注册路径；国内网络需镜像，本项目不依赖它 |
-| Shopify `/products.json` | 未通过实测（allbirds、kith 均 `curl 35` TLS 失败） | 技术上无凭证，但**ToS 明文禁止**：见第 5 节 |
+| Shopify `/products.json` | 未通过实测（allbirds、kith 均 `curl 35`：本机 schannel 证书吊销检查连不上 CRL/OCSP，**不是店铺封禁**，详见 §6） | 技术上无凭证，但**ToS 明文禁止**：见第 5 节 |
 
 ---
 
@@ -263,7 +263,7 @@ X-RateLimit-Limit: 60 | X-RateLimit-Remaining: 60 | X-RateLimit-Used: 0 | X-Rate
 - Shopify API 许可条款（最后更新 2026-02-27）：不得使用 Shopify API 进行**任何系统性或自动化的数据采集活动**（scraping、data mining、data extraction、data harvesting），也不得**构建任何商业或商品索引（build any commerce or product index）**。
 - Shopify 通用服务条款：不得使用 robot、spider、scraper 或其他自动化手段访问服务或监控其中任何材料或信息。
 
-**结论**：即便技术上一条 `curl` 就能拿到干净 JSON（含 price/compare_at_price/variants/SKU），**本项目也不采用** —— "构建商品索引"正是本项目要做的事，属于条款明确禁止的用途。本轮实测本机对 allbirds / kith 均为 TLS 失败，进一步说明这条路既不合规也不稳定。
+**结论**：即便技术上一条 `curl` 就能拿到干净 JSON（含 price/compare_at_price/variants/SKU），**本项目也不采用** —— "构建商品索引"正是本项目要做的事，属于条款明确禁止的用途。本轮实测对 allbirds / kith 未取到响应（`curl 35`，经排查为**本机 schannel 证书吊销检查失败**，不是店铺封禁），所以这条路的**技术可用性同样未获证实**。
 
 ### 5.3 若未来确实需要商业源：走正规路径
 
@@ -281,6 +281,7 @@ X-RateLimit-Limit: 60 | X-RateLimit-Remaining: 60 | X-RateLimit-Used: 0 | X-Rate
 
 - 本文所有状态码与响应片段都是 **2026-09-24 单次实测**的结果；OPEN FOOD FACTS 的搜索端点当天正处于官方停机，**换时间需重测**。
 - 本机网络对 `openlibrary.org`、`books.toscrape.com`、`api.ebay.com`、`api.mercadolibre.com`、`huggingface.co`、Shopify 店铺域名**不可达**（分别表现为连接超时或 TLS 失败）。这些源的"免注册"结论**尚未被本机证实**，接入前必须在**部署环境的网络**里重跑一遍本文的 `curl` 命令。
+- **失败原因的补充排查（23:15）**：对 `github.com` 的 TLS 失败已定位为 **Windows schannel 的证书吊销检查无法连到 CRL/OCSP 服务器**（`curl: (35) schannel: next InitializeSecurityContext failed: CRYPT_E_REVOCATION_OFFLINE`）；同一时段 `api.github.com` 从可达转为 20s 超时（此前 200）。这说明上述失败**属于本机网络环境问题，不代表各源自身不可用** —— 但按本次调研的判定标准，未实测通过的一律不写成"可用"。
 - 复测命令（把 URL 换成候选端点即可）：
 
 ```bash
