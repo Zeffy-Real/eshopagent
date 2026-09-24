@@ -43,11 +43,24 @@ interface AgentState {
   resuming: boolean;
   error: string | null;
   llmEnabled: boolean;
+  /**
+   * 持久化状态是否已恢复。
+   *
+   * 为什么需要：初始 state 会先 `createSessionId()` 生成一个新 id，而 `rehydrate()`
+   * 是挂载后异步执行的。用户在恢复完成前发消息，请求会带着**新 id** 出去，
+   * 等于开了一个新 thread（表现为「刚聊过的内容突然不记得了」）。
+   */
+  hasHydrated: boolean;
+  /** 手动触发持久化恢复；恢复失败也要放行，否则门闸永远关着、用户发不出消息 */
+  hydrate: () => Promise<void>;
   sendMessage: (text: string, options?: SendOptions) => Promise<void>;
   /** 商品区「发起对比」：把勾选结果作为图输入提交 */
   compareSelection: () => Promise<void>;
   resumeOrder: (decision: 'confirm' | 'cancel') => Promise<void>;
+  /** 清空当前会话的消息，**不换** sessionId（沿用同一个 thread） */
   clearConversation: () => void;
+  /** 开新会话：清空消息并轮换 sessionId（换一个 thread） */
+  startNewSession: () => void;
   dismissError: () => void;
   dismissInterrupt: () => void;
 }
@@ -147,11 +160,28 @@ export const useAgentStore = create<AgentState>()(
       resuming: false,
       error: null,
       llmEnabled: true,
+      hasHydrated: false,
+
+      async hydrate() {
+        if (get().hasHydrated) return;
+        try {
+          await useAgentStore.persist.rehydrate();
+        } catch (error) {
+          // localStorage 被禁用或数据损坏时不能让门闸永远关着，否则用户永远发不出消息。
+          // 无条件放行：宁可丢掉历史会话，也不能让功能不可用。
+          console.error('[agent-store] 恢复持久化状态失败，按空状态继续：', error);
+        } finally {
+          set({ hasHydrated: true });
+        }
+      },
 
       async sendMessage(text, options) {
         const trimmed = text.trim();
         const imageDataUrl = options?.imageDataUrl;
         if (!trimmed && !imageDataUrl) return;
+        // 持久化还没恢复完就发消息，会带着刚生成的新 sessionId 出去（等于开新 thread）。
+        // 这里等它恢复完再继续，而不是静默丢弃这次发送。
+        if (!get().hasHydrated) await get().hydrate();
         // 同一个 thread_id 上并发跑两个图会让 checkpoint 互相覆盖，这里硬性串行化
         if (get().thinking) return;
 
@@ -235,6 +265,9 @@ export const useAgentStore = create<AgentState>()(
         stopTypewriter();
         activeReplyId = null;
         runFinished = true;
+        // 只清消息，**不换** sessionId：这是「清空对话」而不是「新会话」。
+        // 换 thread 会让服务端那份图状态（筛选条件/购物车/对比结果）一并作废，
+        // 那是另一个动作，见 startNewSession()。
         set({
           messages: [],
           timeline: [],
@@ -243,6 +276,22 @@ export const useAgentStore = create<AgentState>()(
           interruptedOrder: null,
           error: null,
           thinking: false,
+        });
+      },
+
+      startNewSession() {
+        stopTypewriter();
+        activeReplyId = null;
+        runFinished = true;
+        set({
+          messages: [],
+          timeline: [],
+          activeNodes: [],
+          snapshot: null,
+          interruptedOrder: null,
+          error: null,
+          thinking: false,
+          // 轮换 sessionId = 换一个 thread，服务端从空状态重新开始
           sessionId: createSessionId(),
         });
       },

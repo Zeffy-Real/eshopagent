@@ -128,6 +128,9 @@ npm run build      # 生产构建
 | `CATALOG_SOURCE` | 商品目录数据源：`real`（真实数据快照，默认）/ `mock`（内置演示数据） | `real` |
 | `HISTORY_ENABLED` | 是否把最近若干轮对话注入意图解析（默认 true） | `true` |
 | `HISTORY_MAX_CHARS` | 历史注入的字符预算（约 2 字符 ≈ 1 token），默认 2000 | `2000` |
+| `CHECKPOINT_BACKEND` | 会话持久化后端：`sqlite`（默认，落盘）/ `memory`（纯内存）。sqlite 初始化失败会自动回落 `memory` | `sqlite` |
+| `CHECKPOINT_DB_PATH` | SQLite 落盘位置（包含完整对话内容，已在 `.gitignore` 中忽略，不要放进 `public/`） | `.cache/checkpoints.sqlite` |
+| `SESSION_TTL_DAYS` | 超过该天数未活跃的会话会被清理（在新会话创建时惰性触发） | `7` |
 
 > 以图搜商品会把图片作为多模态消息传给模型，需要配置支持视觉的模型（如 `gpt-4o`、`qwen-vl-max`）。
 
@@ -139,6 +142,9 @@ npm run build      # 生产构建
 | --- | --- |
 | 自然语言搜索 | 意图解析 → 提取品类 / 价格区间 / 品牌 / 功能标签 / 排序，右栏以标签形式回显 |
 | 多轮细化 | 「再便宜一点的」下调价格上限 30% 并重新检索；新条件稀疏时自动沿用上一轮条件 |
+| 会话持久化 | checkpoint 落盘到 SQLite（WAL + `busy_timeout=5000`）：**进程重启后同一 sessionId 仍能恢复上下文**。经 `CHECKPOINT_BACKEND` 可切换 `memory`；原生模块加载失败等情况下自动回落到内存态并打印原因，绝不让服务起不来 |
+| 会话语义 | 「清空对话」只清消息、沿用同一个 thread；「新会话」轮换 sessionId、换一个 thread（服务端图状态也从空开始）。两者在对话区标题栏各有一个入口 |
+| 会话清理 | `session_meta` 表只记录「谁多久没活跃」，删除交给官方 `saver.deleteThread()`。清理在**新会话创建时惰性触发**，并加 10 分钟最小间隔闸门（高频对话下不会反复全表扫描） |
 | 指代消解（短期记忆） | 两层：① **上下文指代** —— `parseIntent` 把最近若干轮对话按字符预算裁进 prompt，因此「刚才那个再便宜点」能定位到上一轮的商品；**历史只用于消解指代，不用于推断意图类别**（prompt 里显式约束）；裁剪以「轮次」为单位，装不下就整轮丢弃，不截断单条消息；② **序数指代** —— 「换成第二件」由 `parseIntent` 解析出 `targetIndex`，再由 `searchProducts` 把结果收窄到那一件（`focusProductId` 字段，消费后即清空，避免后续 refine 轮次卡在单件）。回复侧要求 LLM **按数据顺序列举商品**，保证「第 N 件」在回复与商品区是同一个。可用 `HISTORY_ENABLED=false` 关闭历史注入 |
 | 空结果处理 | 检索为空时自动放宽条件（去标签 → 去关键词 → 放大价格 → 去品类），最多 2 轮，超限后给出可行动建议 |
 | 商品对比 | 2 - 4 件商品的参数差异表，差异项标记、各维度最优高亮，并给出量化推荐理由 |

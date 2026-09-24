@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Bot, MessagesSquare, RotateCcw, X } from 'lucide-react';
+import { AlertCircle, Bot, MessageSquarePlus, MessagesSquare, RotateCcw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/common/empty-state';
 import { PanelHeader } from '@/components/common/panel-header';
@@ -28,6 +28,7 @@ export function ChatPanel() {
   const error = useAgentStore((s) => s.error);
   const sendMessage = useAgentStore((s) => s.sendMessage);
   const clearConversation = useAgentStore((s) => s.clearConversation);
+  const startNewSession = useAgentStore((s) => s.startNewSession);
   const dismissError = useAgentStore((s) => s.dismissError);
 
   // 新消息或流式输出时自动滚到底部
@@ -57,20 +58,39 @@ export function ChatPanel() {
           </span>
         }
         actions={
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="清空对话"
-                disabled={messages.length === 0 && !thinking}
-                onClick={clearConversation}
-              >
-                <RotateCcw />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>清空对话（开启新会话）</TooltipContent>
-          </Tooltip>
+          // 两个动作语义不同，必须分开：
+          // 「清空对话」只清消息、沿用同一个 thread；「新会话」换一个 thread，
+          // 服务端那份图状态（筛选条件/购物车/对比结果）也一并从空开始。
+          <div className="flex items-center gap-0.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="清空对话"
+                  disabled={messages.length === 0 && !thinking}
+                  onClick={clearConversation}
+                >
+                  <RotateCcw />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>清空对话（保留当前会话）</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="开启新会话"
+                  disabled={thinking}
+                  onClick={startNewSession}
+                >
+                  <MessageSquarePlus />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>开启新会话（换一个对话线程）</TooltipContent>
+            </Tooltip>
+          </div>
         }
       />
 

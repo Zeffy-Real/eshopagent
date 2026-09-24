@@ -12,7 +12,9 @@ import { useCartStore } from '@/store/use-cart-store';
  */
 export function StoreHydration() {
   useEffect(() => {
-    void useAgentStore.persist.rehydrate();
+    // 走 store 的 hydrate 而不是直接调 persist.rehydrate()：前者会在恢复完成后
+    // 置 hasHydrated（并保证失败也放行），sendMessage 依赖这个标志避免竞态
+    void useAgentStore.getState().hydrate();
     void useCartStore.persist.rehydrate();
   }, []);
 

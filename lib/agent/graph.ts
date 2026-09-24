@@ -90,21 +90,24 @@ export function buildAgentGraph() {
 
 export type AgentGraph = ReturnType<typeof buildAgentGraph>;
 
-function createAgentApp() {
-  return buildAgentGraph().compile({ checkpointer: getCheckpointer() });
+async function createAgentApp() {
+  // getCheckpointer 是异步的：sqlite 后端需要动态 import 原生模块，
+  // 这样「加载失败回落内存态」才捕获得到
+  return buildAgentGraph().compile({ checkpointer: await getCheckpointer() });
 }
 
-export type AgentApp = ReturnType<typeof createAgentApp>;
+export type AgentApp = Awaited<ReturnType<typeof createAgentApp>>;
 
-let compiledApp: AgentApp | undefined;
+let compiledAppPromise: Promise<AgentApp> | undefined;
 
 /**
  * 惰性编译并缓存。挂 globalThis 的 checkpointer 保证热更新后上下文不丢；
  * 图本身可以安全重建（纯声明，无状态）。
+ * 缓存 Promise 而不是实例：并发的首次请求不会各自编译一遍图。
  */
-export function getAgentApp(): AgentApp {
-  if (!compiledApp) {
-    compiledApp = createAgentApp();
+export function getAgentApp(): Promise<AgentApp> {
+  if (!compiledAppPromise) {
+    compiledAppPromise = createAgentApp();
   }
-  return compiledApp;
+  return compiledAppPromise;
 }

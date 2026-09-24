@@ -39,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
   const { sessionId, decision } = parsed.data;
 
   const stream = createAgentEventStream({
-    app: getAgentApp(),
+    app: await getAgentApp(),
     input: new Command({ resume: decision }),
     config: threadConfig(sessionId),
     sessionId,

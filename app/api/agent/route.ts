@@ -4,6 +4,7 @@ import { threadConfig } from '@/lib/agent/checkpointer';
 import { getAgentApp } from '@/lib/agent/graph';
 import { buildUserMessage, createAgentEventStream, sseResponse } from '@/lib/agent/sse';
 import { buildCartItems } from '@/lib/agent/tools/cartTools';
+import { touchSession } from '@/lib/agent/session-store';
 import { getProductsByIds } from '@/lib/catalog/products';
 
 export const runtime = 'nodejs';
@@ -54,10 +55,13 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: '消息与图片不能同时为空' }, { status: 400 });
   }
 
+  // 会话元信息：首次出现的 sessionId 视为新会话，顺带触发一次过期会话清理
+  await touchSession(sessionId);
+
   const compareTargets = compareProductIds ? getProductsByIds(compareProductIds) : [];
 
   const stream = createAgentEventStream({
-    app: getAgentApp(),
+    app: await getAgentApp(),
     input: {
       messages: [buildUserMessage(message.trim(), imageDataUrl)],
       ...(cart ? { cart: buildCartItems(cart) } : {}),

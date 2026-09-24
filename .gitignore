@@ -4,6 +4,11 @@ out/
 build/
 dist/
 .cache/
+# SQLite checkpoint 落盘文件：默认在 .cache/ 下，这里兜底其他自定义路径。
+# 它包含完整对话内容，绝不能进仓库
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 .env
 .env.local
 .env*.local
