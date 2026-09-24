@@ -4,8 +4,8 @@
 >
 > - 数据快照生成时间：2026-09-24 06:30 UTC
 > - 文案本地化时间：2026-09-24 06:31 UTC
-> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `e07ccc4`（阶段 15）
-> - 校验状态：`tsc --noEmit` 0 错误；**150 个单测全绿（14 个文件）**；`next build` 通过
+> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `c0f053c`（阶段 16）
+> - 校验状态：`tsc --noEmit` 0 错误；**159 个单测全绿（16 个文件）**；`next build` 通过
 
 ---
 
@@ -32,10 +32,10 @@
 | Agent 框架 | `@langchain/langgraph` 1.4（StateGraph + SqliteSaver checkpoint + interrupt） |
 | LLM 封装 | `@langchain/openai` 1.5（ChatOpenAI，`baseURL` 兼容 DeepSeek / 通义千问 / OpenAI） |
 | 流式 | LangGraph `streamEvents()` → 后端 SSE → 前端 `fetch` + `ReadableStream` |
-| 源码规模 | **107 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store`） |
+| 源码规模 | **109 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store`） |
 | 页面与接口 | `app` 下 2 个页面（`/`、`/_not-found`）+ 2 个 API 路由 |
 | Agent 节点 | **8 个**（`lib/agent/nodes/`） |
-| 测试 | **150 个单测用例**（Vitest，14 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化与落地校验重试）；无组件/E2E 自动化测试 |
+| 测试 | **159 个单测用例**（Vitest，16 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试与在途请求中止）；无组件/E2E 自动化测试 |
 | 版本控制 | git 仓库，远端 `https://github.com/Zeffy-Real/eshopagent` |
 
 ---
@@ -68,6 +68,7 @@ lib/
   cart-pricing.ts               购物车金额规则（纯函数，前后端共用）
   decision.ts                   决策推荐理由与对比结论（纯函数）
   utils.ts                      cn / 价格格式化 / formatCount / hasRealSales
+  agent-client.ts               SSE 客户端（在途请求的中止入口、AbortError 分类）
 components/
   chat/ product/ visualization/ charts/ order/ layout/ common/ ui/
 data/real-catalog.json          真实商品数据快照（由 scripts 生成）
@@ -246,6 +247,7 @@ confirmOrder   → generateReply → END
 | 跨会话画像（14） | `lib/profile.ts` / `lib/agent/state.ts` / `nodes/{parseIntent,searchProducts,manageCart,confirmOrder,generateReply}.ts` / `lib/agent/prompts.ts` / `app/api/agent/route.ts` / `store/use-agent-store.ts` / `components/visualization/profile-section.tsx` | 三个画像状态字段（`profilePatch` / `profileGeneration` / `profileHint`）；信号只来自真实行为且合并幂等；两条消费路径 + 记忆事件；清除竞态处理；右栏「你的偏好」面板（来源标注 + 一键清空） |
 | 在途中止与窄屏遮挡（14.5） | `store/use-agent-store.ts` / `components/chat/chat-panel.tsx` / `components/layout/workspace.tsx` | 清除画像 / 清空对话 / 开启新会话统一中止在途请求并静默收尾（原先会导致旧 token 写进新会话）；窄屏抽屉不再遮挡对话头部（头部抬 `z-50` + 抽屉让出等高位置） |
 | 落地校验重试（D）+ 分类入口（F，阶段 16） | `lib/agent/nodes/generateReply.ts` / `store/use-agent-store.ts` / `components/product/category-bar.tsx` / `components/product/product-panel.tsx` | ① 落地校验不过先按纠正提示重试一次（点名不符的数字），仍不过才降级模板；② 前端在「终态不是流式候选的续写」时**整体替换**气泡内容（否则会一直显示被否决的候选）；③ 中栏新增「按品类浏览」chip 行，点击走与对话相同的入口（`parseIntent → searchProducts`），不新增并行筛选实现 |
+| 在途中止统一管理 + 验证缺口（17） | `lib/agent-client.ts` / `store/use-agent-store.ts` / `lib/agent-client.test.ts` / `store/use-agent-store.test.ts` / `vitest.config.mts` | `AbortController` 收敛为单一入口 `abortActiveRequest()`（三个调用方不再各自 new）；中止判定改为 `isAbortError()`（`error.name === 'AbortError'`）与网络错误区分；补 9 条单测（事件派发、HTTP 错误、中止、串行化）；vitest 纳入 `store/**/*.test.ts` |
 
 ---
 
@@ -256,7 +258,7 @@ confirmOrder   → generateReply → END
 | 项 | 方法 | 结果 |
 | --- | --- | --- |
 | 类型 | `npx tsc --noEmit` | ✅ 0 错误 |
-| 单测 | `npm test`（Vitest，14 个文件） | ✅ 150 / 150 通过 |
+| 单测 | `npm test`（Vitest，16 个文件） | ✅ 159 / 159 通过 |
 | 跨重启持久化 | 建会话 → 杀进程（确认端口无监听）→ 重启 → 同 sessionId 追问指代 | ✅ 恢复上一轮上下文（时间线显示「历史 366 字」），指代解析为 refine 并收紧价格 |
 | 内存态回落 | `CHECKPOINT_BACKEND=memory` 独立用例 | ✅ 不建连接、会话管理安全跳过、checkpointer 仍可用、不产生 sqlite 文件 |
 | 构建 | `npm run build` | ✅ 通过；首页 327 kB / First Load 464 kB；共享 103 kB |
@@ -278,6 +280,10 @@ confirmOrder   → generateReply → END
 | — 清除竞态 | 请求在途时点「清除画像」 | ✅ `generation` 自增、画像保持为空、在途信号未复活画像、无错误提示 |
 | — 在途中止 | 回复流到一半点「开启新会话」/「清空对话」 | ✅ 消息列表保持为空、无残留 token、无错误提示、`thinking` 正常复位 |
 | — 窄屏抽屉遮挡 | 抽屉打开时点对话头部按钮 | ✅ 「清空对话 / 开启新会话」与抽屉自身「收起面板」均可点击 |
+| 桌面三栏（1440×900） | 当前浏览器运行时**没有 viewport/resize 工具**（`ALL_TOOLS` 中不存在），改用同源 1440×900 iframe 让媒体查询按 `xl` 求值后测量 | ✅ 三栏并排：对话 380px / 商品 700px（自适应）/ 右栏 360px，均在 `h-14` 顶栏之下（y=56，高 844）；右栏 `position: static`（静态列，不是抽屉）；对话头部按钮中心 `elementFromPoint` 命中按钮自身（未被遮挡，窄屏那个问题的桌面侧对照）；中栏 `scrollTop=200` 时另外两栏仍为 0（滚动互相独立）；窄屏标签栏 `display:none`、品类 chip 行可见。**限制**：截图仍受真实 444px 视口限制，桌面证据为测量式（几何 + 计算样式 + 滚动行为），非视觉截图 |
+| 暗色模式 | 应用内主题开关切「深色」→ 在 1440×900 iframe 内读计算样式与对比度 | ✅ 令牌全部命中 `.dark` 分支（surface `#262a2f` / surface-muted `#2b3036` / sidebar `#17191c` / primary-soft `#3a251b` / primary-ink `#ff8a5c` / muted `#9ba1a9` / border `#363b42`）；对比度：气泡正文 15.86、时间线卡片 15.86、次要文字 6.76、价格/链接 6.19、选中 chip 6.19、商品卡 5.11（全部 ≥ WCAG-AA）；图表 canvas 存在且内容像素亮度 0.22 - 0.95（深底浅绘，可读），图表颜色本身从 `documentElement` 读令牌并随 `resolvedTheme` 重算，无硬编码色值 |
+| 在途请求中止（浏览器） | ① 发消息中途点「开启新会话」② 发消息中途切「商品」Tab | ① ✅ `/api/agent` 请求数 1、消息列表 0 条、无错误提示、`thinking` 复位（旧请求静默中止，无跨会话串写）② ✅ 切 Tab 不打断请求（面板是 CSS 隐藏、组件不卸载），切回后回复完整、无错误提示 |
+| 连续快速发两条消息 | 由单测锁住不变量（UI 层运行中所有发送入口已禁用/拒绝，无法构造第二个请求） | ✅ `store/use-agent-store.test.ts`：上一轮未结束时第二次 `sendMessage` 被拒绝（`fetch` 只调用 1 次、第二条不进入消息列表）；上一轮结束后可继续发送。浏览器侧辅证：运行中发送按钮 / 品类 chip / 购物车按钮 / 对比按钮均为 `disabled`，顶栏搜索框由 `handleSubmit` 提前 return，第 14.5 阶段的实测中点击禁用按钮被浏览器拒绝（`pointer-events: none`） |
 | 落地校验重试（浏览器） | 发「前两件加起来一共多少钱」（诱使模型算总价） | ✅ 首次回复算出 **¥2749**（数据里没有的合计）被判未落地 → 按纠正提示重试 → 采用重试结果（只原样引用单价）；时间线显示「落地校验未通过（疑似编造金额 ¥2749），已按纠正提示重试一次并采用重试结果」；气泡内容等于服务端终态，被否决的候选没有残留（全页仅时间线那条诊断文案出现该数字） |
 | 分类浏览入口（浏览器） | 切到「商品」Tab → 点「数码 16」 | ✅ 发送「帮我看看数码的商品」→ 面板标题变为「搜索结果 · 12 件商品 · 数码」，chip 高亮（`aria-pressed`），商品区刷新为数码品类 |
 
@@ -285,16 +291,15 @@ confirmOrder   → generateReply → END
 
 | 项 | 原因 |
 | --- | --- |
-| 桌面三栏并排布局 | 浏览器视口被环境固定为 444×559，只验了窄屏形态（对话/商品分 Tab、右栏为抽屉）；`xl`（≥1280px）三栏布局未实测 |
-| 暗色模式 | 未在本次验收中覆盖 |
+| 桌面 / 暗色的视觉截图 | 运行时**没有 viewport/resize 工具**，桌面三栏与暗色是在同源 1440×900 iframe 内以**测量方式**验证（几何、计算样式、滚动行为、画布像素），截不到桌面宽度的整图；评审若要"看图"，需在 ≥1280px 的窗口里自行打开 |
 | 以图搜商品 | 需要支持视觉的模型，未实测 |
 | 极端时序 | 气泡拆分/计数一致性只验了 3 轮，未做长会话或并发压测 |
 | 画像的跨设备 / 跨用户形态 | 按设计不支持（存 localStorage、无 userId），因此**未实现也未验证**；多浏览器同时使用时的隔离性（各自独立画像）未实测 |
-| 回归保护 | **无自动化测试**，全部依赖手工浏览器验收 |
+| 界面回归保护 | 组件 / E2E **无自动化**：单测覆盖 lib 纯函数与 store 不变量，界面仍依赖手工浏览器验收 |
 
 ### 7.3 已知的控制台噪声
 
-在途 SSE 请求被**页面刷新 / 导航打断**时，浏览器会记一条 `net::ERR_ABORTED`（属浏览器行为，不影响功能）。主动中止的三个场景（清除画像 / 清空对话 / 开启新会话）已不再产生这条噪声 —— store 统一用 `AbortController` 中止，并在 catch 里区分「主动中止」（静默收尾）与网络错误。剩余场景需要在卸载时机上再补一次 abort。
+在途 SSE 请求被**页面刷新 / 导航打断**时，浏览器会记一条 `net::ERR_ABORTED` —— 属浏览器行为，不影响功能，**代码层不处理**（页面卸载时会话与连接一起消失，没有可挽救的动作）。主动中止的三个场景（清除画像 / 清空对话 / 开启新会话）不会产生这条噪声：中止统一走 `lib/agent-client.ts` 的 `abortActiveRequest()`，catch 里用 `error.name === 'AbortError'` 与网络错误区分，前者静默收尾。
 
 ---
 
@@ -318,7 +323,7 @@ confirmOrder   → generateReply → END
 | 12 | **画像随 prompt 出境到 LLM 服务商** | 安全 / 合规 | demo 阶段**刻意不做合规处理**（无用户告知、无数据处理协议、无出境评估），README「隐私边界」已写明；生产必须评估出境合规与告知义务，或改为本地模型 |
 | 13 | **画像无 userId、不随账号迁移** | 能力边界 | 存 localStorage 的必然结果（换浏览器即另一个「用户」）；若要做跨设备需引入账号体系与服务端存储，属另一个量级的改动 |
 | 14 | ~~grounding 校验失败直接降级为模板回复~~ | 质量 | ✅ **已实现（阶段 16）**：先带「哪些数字不在数据里」的纠正提示重试一次（用 `invoke` 非流式，避免两段候选拼进同一气泡），仍不符才降级模板；顺带修掉「气泡显示被否决候选」——终态不是候选续写时前端整体替换气泡内容 |
-| 15 | **页面刷新 / 导航不中止在途请求** | 资源 | 会话身份变更（清除画像 / 清空对话 / 新会话）已中止并静默收尾；刷新与导航仍会把服务端那一轮跑完（无害但浪费 token） |
+| 15 | **页面刷新 / 导航不中止在途请求** | 资源 | 会话身份变更（清除画像 / 清空对话 / 新会话）已中止并静默收尾；刷新与导航**属浏览器行为**，卸载时连接随会话一起消失，代码层没有可挽救的动作，因此不做处理，只作为已知噪声记录 |
 
 ---
 
@@ -328,7 +333,7 @@ confirmOrder   → generateReply → END
 2. **再定取舍**：第八节第 1 条（销量覆盖率 17/112）——它直接决定界面观感与真实性口径。派生库存那条已在阶段 11.5 解决（界面只展示等级）。
 3. **核记忆机制**：按第八节第 11 – 13 条与 README「记忆机制 / 隐私边界」两节，重点核对三件事 —— 画像字段能否逐项追溯到真实行为、规则路径是否真的用上了画像（无 Key 时回复里应能看到提示）、边界表述是否与实际实现一致（同一浏览器、画像出境、可清除）。
 4. **跑一遍主链路**：`npm run dev` → 「推荐几本小说」→「对比前 3 件」→「结算」，重点看右栏各面板与中栏商品区是否一致。
-5. **看收敛度**：记忆机制最集中的四个文件是 `lib/profile.ts`、`lib/agent/nodes/parseIntent.ts`、`store/use-agent-store.ts`、`app/api/agent/route.ts`。
+5. **看收敛度**：本期改动集中的文件是 `lib/agent-client.ts`（中止单一入口）、`store/use-agent-store.ts`、`lib/agent/nodes/parseIntent.ts`、`lib/profile.ts`、`app/api/agent/route.ts`。
 
 ---
 

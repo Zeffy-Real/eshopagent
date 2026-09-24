@@ -5,7 +5,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AgentStateSnapshot, AgentStreamEvent } from '@/lib/agent/events';
 import { applyProfilePatch, clearProfile, createEmptyProfile, type UserProfile } from '@/lib/profile';
 import type { Order, ToolLogEntry } from '@/lib/types';
-import { resumeAgent, streamAgent } from '@/lib/agent-client';
+import { abortActiveRequest, isAbortError, resumeAgent, streamAgent } from '@/lib/agent-client';
 import { useCartStore } from '@/store/use-cart-store';
 import { useUiStore } from '@/store/use-ui-store';
 
@@ -99,27 +99,6 @@ let pendingText = '';
 let activeReplyId: string | null = null;
 /** 本轮是否已结束（收到 done / interrupt）：决定打字机消费完缓冲后要不要收尾 */
 let runFinished = false;
-
-/**
- * 在途请求的取消句柄。
- *
- * 凡是**会话身份或本地状态发生变更**的动作（清除画像 / 清空对话 / 开新会话）
- * 都要中止在途请求：流还在跑的时候换身份，旧 token 会继续写进新的列表 ——
- * 清除画像的方向是「旧 patch 复活已清空的画像」，换会话的方向是「新会话里冒出
- * 旧会话的零散文字」，都属于数据污染，不是 UX 瑕疵。
- */
-let activeAbort: AbortController | null = null;
-
-/**
- * 中止在途请求（主动中止，不是失败）。
- *
- * 收尾由 sendMessage / resumeOrder 的 catch 完成：识别到 signal.aborted 就静默
- * 收尾（thinking 复位、气泡停光标），不弹错误提示。
- */
-function abortInFlight(): void {
-  activeAbort?.abort();
-  activeAbort = null;
-}
 
 function stopTypewriter(): void {
   if (typeTimer) {
@@ -244,8 +223,6 @@ export const useAgentStore = create<AgentState>()(
             quantity: item.quantity,
           }));
 
-        const controller = new AbortController();
-        activeAbort = controller;
         try {
           await streamAgent(
             {
@@ -258,13 +235,13 @@ export const useAgentStore = create<AgentState>()(
               profile: get().userProfile,
               profileGeneration: get().userProfile.generation,
             },
-            { onEvent: (event) => handleEvent(event, set, get), signal: controller.signal },
+            { onEvent: (event) => handleEvent(event, set, get) },
           );
         } catch (error) {
           stopTypewriter();
           runFinished = true;
-          if (controller.signal.aborted) {
-            // 主动中止（清除画像）：静默收尾，不当成请求失败弹出错误
+          if (isAbortError(error)) {
+            // 主动中止（清除画像 / 清空对话 / 新会话）：静默收尾，不当成请求失败
             set({ thinking: false, activeNodes: [] });
             finalizeReply(set, get);
           } else {
@@ -274,8 +251,6 @@ export const useAgentStore = create<AgentState>()(
               error: error instanceof Error ? error.message : '发送失败，请重试',
             });
           }
-        } finally {
-          if (activeAbort === controller) activeAbort = null;
         }
       },
 
@@ -291,8 +266,6 @@ export const useAgentStore = create<AgentState>()(
         stopTypewriter();
         // 保留 interruptedOrder：弹窗需要在 resume 期间继续展示订单明细
         set({ thinking: true, error: null, timeline: [], resuming: true });
-        const controller = new AbortController();
-        activeAbort = controller;
         try {
           await resumeAgent(
             {
@@ -301,11 +274,11 @@ export const useAgentStore = create<AgentState>()(
               // resume 轮的成交信号（权重最高）同样要能被接受，因此 generation 一并上行
               profileGeneration: get().userProfile.generation,
             },
-            { onEvent: (event) => handleEvent(event, set, get), signal: controller.signal },
+            { onEvent: (event) => handleEvent(event, set, get) },
           );
         } catch (error) {
           stopTypewriter();
-          if (controller.signal.aborted) {
+          if (isAbortError(error)) {
             runFinished = true;
             set({ thinking: false, activeNodes: [] });
             finalizeReply(set, get);
@@ -316,14 +289,13 @@ export const useAgentStore = create<AgentState>()(
             });
           }
         } finally {
-          if (activeAbort === controller) activeAbort = null;
           set({ resuming: false, interruptedOrder: null });
         }
       },
 
       clearConversation() {
         // 先中止在途请求：否则这一轮流还在跑，token 会写进刚清空的消息列表
-        abortInFlight();
+        abortActiveRequest();
         stopTypewriter();
         activeReplyId = null;
         runFinished = true;
@@ -343,7 +315,7 @@ export const useAgentStore = create<AgentState>()(
 
       startNewSession() {
         // 同 clearConversation：换了身份还在收旧身份的数据 = 数据污染
-        abortInFlight();
+        abortActiveRequest();
         stopTypewriter();
         activeReplyId = null;
         runFinished = true;
@@ -367,7 +339,7 @@ export const useAgentStore = create<AgentState>()(
       clearUserProfile() {
         // 主防线是 generation 自增（在途 patch 会被 applyProfilePatch 丢掉），
         // 中止在途请求是双保险：让服务端也别再把这一轮跑完。
-        abortInFlight();
+        abortActiveRequest();
         set({ userProfile: clearProfile(get().userProfile) });
       },
 

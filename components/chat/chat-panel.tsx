@@ -87,9 +87,9 @@ export function ChatPanel() {
                   variant="ghost"
                   size="icon-sm"
                   aria-label="开启新会话"
-                  // 运行中也允许点：会话身份变更会先中止在途请求（见 store 的 abortInFlight），
-                  // 不会把旧会话的 token 写进新列表。原先用 disabled 挡住只是回避了这个问题，
-                  // 而「清空对话」并没有挡，污染正是从那一路观察到的。
+                  // 运行中也允许点：会话身份变更会先中止在途请求（见 lib/agent-client.ts 的
+                  // abortActiveRequest），不会把旧会话的 token 写进新列表。原先用 disabled
+                  // 挡住只是回避了这个问题，而「清空对话」并没有挡，污染正是从那一路观察到的。
                   onClick={startNewSession}
                 >
                   <MessageSquarePlus />

@@ -20,7 +20,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['lib/**/*.test.ts'],
+    // lib 是纯函数与节点的家；store 只放了一条不变量测试（并发发送被拒绝），
+    // 它同样不需要 DOM：zustand 的 persist 用注入的内存 storage 即可
+    include: ['lib/**/*.test.ts', 'store/**/*.test.ts'],
     exclude: ['node_modules', '.next'],
   },
 });
