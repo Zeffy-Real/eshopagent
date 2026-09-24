@@ -1,4 +1,3 @@
-import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { summarizeCart } from '@/lib/cart-pricing';
 import { getProductById } from '@/lib/catalog/products';
@@ -11,11 +10,12 @@ import type { CartItem, Order, OrderAddress, PaymentMethod } from '@/lib/types';
    分层约定：
    - 状态变更型操作（加购 / 改数量 / 删除 / 清空）由 manageCart 节点
      调用下面的纯函数，把新数组写回 AgentState.cart；
-   - 对应 tool() 只负责把 LLM 的自然语言解析成结构化指令并做存在性、
-     库存校验，返回指令 JSON，不直接改状态（LangGraph 中状态写入只
-     能发生在节点内）。
-   - 计算型操作（get_cart_summary / create_order）以 cart 为输入，
-     既可由节点直接调用，也可作为工具被 LLM 调用。
+   - 计算型操作（summarizeCart / buildOrderDraft）以 cart 为输入，节点直接调用。
+
+   为什么这里没有 tool() 包装：本项目的节点是 8 个预定义节点、路由是 6 类有限
+   分类，工具与节点几乎一一对应 —— tool calling 要解决的「运行时动态选择未知工具集」
+   这个问题在这里不存在。包一层 tool() 只是在 StateGraph 之上又叠一个隐式 agent 循环，
+   属于多余的间接层。节点直调纯函数，配合 zod schema 做入参校验，是更直接的做法。
    ============================================================ */
 
 export type CartTarget = { productId?: string; index?: number };
@@ -209,12 +209,18 @@ export function buildOrderDraft(
 }
 
 /* ============================================================
-   LLM 工具契约
+   请求 / 输入契约（zod）
    ============================================================ */
 
-/** LLM 侧只传商品 id 与数量，商品实体由服务端解析，避免让模型回显整份商品对象 */
-const cartLineSchema = z.object({
-  productId: z.string().describe('商品 id'),
+/**
+ * 购物车行契约（商品 id + 数量）。
+ *
+ * 导出它是为了让请求层直接复用：/api/agent 的请求体校验也需要同一份约束，
+ * 之前那里是手写重复的（`z.object({ productId, quantity })`），
+ * 同一份契约两处实现，改一处忘一处就会让两层约束悄悄不一致。
+ */
+export const cartLineSchema = z.object({
+  productId: z.string().min(1).describe('商品 id'),
   quantity: z.number().int().min(1).max(99).describe('数量'),
 });
 
@@ -227,121 +233,3 @@ export function buildCartItems(
     return product ? [{ product, quantity: line.quantity }] : [];
   });
 }
-
-const resolveCartLines = buildCartItems;
-
-export const addToCartTool = tool(
-  async ({ productId, quantity }) => {
-    const product = getProductById(productId);
-    if (!product) return JSON.stringify({ ok: false, message: `未找到商品：${productId}` });
-    if (product.stock <= 0) {
-      return JSON.stringify({ ok: false, message: `${product.name} 当前缺货` });
-    }
-    return JSON.stringify({
-      ok: true,
-      action: 'add_to_cart',
-      productId,
-      productName: product.name,
-      quantity,
-      unitPrice: product.price,
-      message: `准备将 ${product.name} × ${quantity} 加入购物车`,
-    });
-  },
-  {
-    name: 'add_to_cart',
-    description: '把指定商品加入购物车。用户说「加入购物车」「买这个」「要这个」时调用。',
-    schema: z.object({
-      productId: z.string().describe('商品 id，例如 p-5001'),
-      quantity: z.number().int().min(1).max(99).optional().describe('数量，默认 1'),
-    }),
-  },
-);
-
-export const updateCartItemTool = tool(
-  async ({ productId, index, quantity }) =>
-    JSON.stringify({
-      ok: true,
-      action: 'update_cart_item',
-      productId,
-      index,
-      quantity,
-      message: `准备把购物车中该商品的数量改为 ${quantity} 件`,
-    }),
-  {
-    name: 'update_cart_item',
-    description: '修改购物车中某件商品的数量。用户说「把数量改成 3」「加一件」时调用。',
-    schema: z.object({
-      productId: z.string().optional().describe('商品 id，与 index 二选一'),
-      index: z.number().int().min(1).optional().describe('购物车中的序号（从 1 开始）'),
-      quantity: z.number().int().min(0).max(99).describe('目标数量，0 表示删除'),
-    }),
-  },
-);
-
-export const removeFromCartTool = tool(
-  async ({ productId, index }) =>
-    JSON.stringify({
-      ok: true,
-      action: 'remove_from_cart',
-      productId,
-      index,
-      message: index
-        ? `准备移除购物车中的第 ${index} 件商品`
-        : '准备移除购物车中该商品',
-    }),
-  {
-    name: 'remove_from_cart',
-    description: '从购物车删除商品。用户说「删掉第 2 个」「不要这个了」时调用。',
-    schema: z.object({
-      productId: z.string().optional().describe('商品 id，与 index 二选一'),
-      index: z.number().int().min(1).optional().describe('购物车中的序号（从 1 开始）'),
-    }),
-  },
-);
-
-export const clearCartTool = tool(
-  async () => JSON.stringify({ ok: true, action: 'clear_cart', message: '准备清空购物车' }),
-  {
-    name: 'clear_cart',
-    description: '清空购物车。用户说「清空购物车」「全部删掉」时调用。',
-    schema: z.object({}),
-  },
-);
-
-export const getCartSummaryTool = tool(
-  async ({ cart }) => JSON.stringify(summarizeCart(resolveCartLines(cart))),
-  {
-    name: 'get_cart_summary',
-    description: '统计购物车商品、优惠券与应付金额。用户询问总价或优惠时调用。',
-    schema: z.object({
-      cart: z.array(cartLineSchema).describe('当前购物车内容（商品 id + 数量）'),
-    }),
-  },
-);
-
-export const createOrderTool = tool(
-  async ({ cart, payment }) => {
-    const result = buildOrderDraft(resolveCartLines(cart), { payment });
-    return JSON.stringify(result);
-  },
-  {
-    name: 'create_order',
-    description: '根据购物车生成待确认订单（含金额明细与收货地址），不会真实支付。',
-    schema: z.object({
-      cart: z.array(cartLineSchema).describe('当前购物车内容（商品 id + 数量）'),
-      payment: z
-        .enum(['alipay', 'wechat', 'card'])
-        .optional()
-        .describe('支付方式，默认支付宝'),
-    }),
-  },
-);
-
-export const cartTools = [
-  addToCartTool,
-  updateCartItemTool,
-  removeFromCartTool,
-  clearCartTool,
-  getCartSummaryTool,
-  createOrderTool,
-];

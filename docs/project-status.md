@@ -60,7 +60,7 @@ lib/
     sse.ts                      streamEvents → SSE
     events.ts                   前后端共用事件协议
     nodes/                      8 个节点，每个节点一个文件
-    tools/                      productTools / cartTools（纯函数 + LLM 工具契约）
+    tools/                      productTools / cartTools（纯函数 + zod 入参契约）
   catalog/products.ts           商品目录唯一入口（real | mock 可切换）
   cart-pricing.ts               购物车金额规则（纯函数，前后端共用）
   decision.ts                   决策推荐理由与对比结论（纯函数）
@@ -263,7 +263,7 @@ confirmOrder   → generateReply → END
 | 2 | ~~库存件数是派生值却展示精确数字~~ | 真实性 | ✅ **已修（阶段 11.5）**：界面一律只展示等级，件数退回内部可用性模型；对比表「库存」行改为按等级判优，「现货可发」只在等级有差异时产出 |
 | 3 | **无鉴权、无限流** | 安全 | 生产前必须加会话鉴权 + 按用户限流 + 单次 token 上限 |
 | 4 | ~~MemorySaver 无上限~~ | 稳定性 | ✅ **已修（阶段 13）**：换 SqliteSaver（WAL + busy_timeout），`session_meta` + 惰性 TTL 清理；初始化失败自动回落内存态 |
-| 5 | **`tool()` 契约未接入 LLM** | 完整性 | 数组与 zod schema 已写好，但节点直调纯函数、未 `bindTools`；属预留扩展路径 |
+| 5 | ~~`tool()` 契约未接入 LLM~~ | 完整性 | ✅ **已决策（方案 b，阶段 13.5）**：评估后判定 tool calling 在本项目是多余的间接层（节点预设 / 路由有限 / 工具与节点一一对应，「动态选择工具集」问题不存在），已删除 `tool()` 包装与未被引用的数组，保留 zod schema；`cartLineSchema` 同时被 `/api/agent` 请求校验复用，消除了原先手写的重复约束 |
 | 6 | **无分类浏览入口** | 功能缺口 | `CATEGORY_COUNTS` 已统计好但界面未使用，当前只能靠对话按品类检索 |
 | 7 | ~~无测试、非 git 仓库~~ | 工程化 | ✅ **已修（阶段 11.5）**：Vitest 单测 + git 仓库（远端 `Zeffy-Real/eshopagent`），现共 116 个用例 |
 | 8 | ~~消息历史不参与 LLM 上下文~~ | 能力边界 | ✅ **已修（阶段 12）**：`parseIntent` 注入最近若干轮历史，可消解「刚才那个」这类指代 |

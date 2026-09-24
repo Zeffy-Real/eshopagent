@@ -1,4 +1,3 @@
-import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { PRODUCTS, getProductById, getProductsByIds } from '@/lib/catalog/products';
 import {
@@ -17,8 +16,9 @@ import { formatCount, hasRealSales } from '@/lib/utils';
 
 /* ============================================================
    商品检索：纯函数实现
-   节点内直接调用这些函数（拿到强类型结果），下面的 tool() 只是
-   暴露给 LLM 的调用契约，两者共享同一份实现，不会出现行为分叉。
+   节点内直接调用这些函数（拿到强类型结果）。不额外包 tool() 包装：
+   本项目的路由由图的条件边决定，tool calling 解决不了这里的任何问题，
+   只会多一层间接（详见文件末尾的说明）。
    ============================================================ */
 
 /** 商品可被检索的文本面（名称 / 品牌 / 品类 / 描述 / 标签） */
@@ -342,101 +342,38 @@ export function compareProducts(ids: string[]): ComparisonResult {
 }
 
 /* ============================================================
-   LLM 工具契约
+   请求 / 输入契约（zod）
+
+   这里只保留 schema，不保留 tool() 包装。
+   为什么不接 tool calling：本项目的节点是 8 个预定义节点、路由是 6 类有限分类，
+   工具与节点几乎一一对应 —— tool calling 要解决的「运行时动态选择未知工具集」
+   这个问题在这里不存在。包一层 tool() 只是在 StateGraph 之上又叠一个隐式 agent
+   循环，属于多余的间接层；节点直调纯函数 + zod 校验入参是更直接的做法。
    ============================================================ */
 
-export const searchProductsTool = tool(
-  async (input) => {
-    const outcome = filterProducts(
-      {
-        keywords: input.keywords,
-        category: input.category,
-        minPrice: input.minPrice,
-        maxPrice: input.maxPrice,
-        minRating: input.minRating,
-        brands: input.brands,
-        tags: input.tags,
-        sort: input.sort,
-      },
-      input.limit ?? 12,
-    );
-    return JSON.stringify({
-      total: outcome.total,
-      returned: outcome.items.length,
-      keywordMode: outcome.keywordMode,
-      items: outcome.items.map((product) => ({
-        id: product.id,
-        name: product.name,
-        brand: product.brand,
-        category: product.category,
-        price: product.price,
-        originalPrice: product.originalPrice,
-        rating: product.rating,
-        sales: product.sales,
-        stock: product.stock,
-        tags: product.tags,
-      })),
-    });
-  },
-  {
-    name: 'search_products',
-    description:
-      '根据关键词、品类、价格区间、评分、品牌与标签检索商品。用户提出购物需求或调整筛选条件时调用。',
-    schema: z.object({
-      keywords: z.array(z.string()).optional().describe('关键词，例如 ["跑鞋", "透气"]'),
-      category: z.enum(CATEGORIES).optional().describe('商品品类'),
-      minPrice: z.number().nonnegative().optional().describe('价格下限（元）'),
-      maxPrice: z.number().nonnegative().optional().describe('价格上限（元）'),
-      minRating: z.number().min(0).max(5).optional().describe('最低评分'),
-      brands: z.array(z.string()).optional().describe('品牌偏好'),
-      tags: z.array(z.string()).optional().describe('功能标签，例如 ["透气", "降噪"]'),
-      sort: z.enum(SORT_KEYS).optional().describe('排序方式'),
-      limit: z.number().int().min(1).max(30).optional().describe('返回条数，默认 12'),
-    }),
-  },
-);
+/** 商品检索入参（对应 filterProducts 的 filters + limit） */
+export const searchProductsSchema = z.object({
+  keywords: z.array(z.string()).optional().describe('关键词，例如 ["跑鞋", "透气"]'),
+  category: z.enum(CATEGORIES).optional().describe('商品品类'),
+  minPrice: z.number().nonnegative().optional().describe('价格下限（元）'),
+  maxPrice: z.number().nonnegative().optional().describe('价格上限（元）'),
+  minRating: z.number().min(0).max(5).optional().describe('最低评分'),
+  brands: z.array(z.string()).optional().describe('品牌偏好'),
+  tags: z.array(z.string()).optional().describe('功能标签，例如 ["透气", "降噪"]'),
+  sort: z.enum(SORT_KEYS).optional().describe('排序方式'),
+  limit: z.number().int().min(1).max(30).optional().describe('返回条数，默认 12'),
+});
 
-export const getProductDetailTool = tool(
-  async ({ productId }) => {
-    const product = getProductDetail(productId);
-    if (!product) return JSON.stringify({ error: `未找到商品：${productId}` });
-    return JSON.stringify(product);
-  },
-  {
-    name: 'get_product_detail',
-    description: '查询单个商品的完整信息，包含规格参数与描述。需要补充商品细节时调用。',
-    schema: z.object({
-      productId: z.string().describe('商品 id，例如 p-5001'),
-    }),
-  },
-);
+/** 商品详情入参 */
+export const getProductDetailSchema = z.object({
+  productId: z.string().min(1).describe('商品 id，例如 amz-B092R6HW7L'),
+});
 
-export const compareProductsTool = tool(
-  async ({ productIds }) => {
-    const result = compareProducts(productIds);
-    return JSON.stringify({
-      products: result.products.map((p) => ({ id: p.id, name: p.name, price: p.price })),
-      rows: result.rows,
-      highlights: result.highlights,
-      valueScores: result.valueScores,
-    });
-  },
-  {
-    name: 'compare_products',
-    description:
-      '对 2 - 4 件商品做多维度参数对比，返回差异项与各维度最优商品。用户要求对比或需要给出推荐理由时调用。',
-    schema: z.object({
-      productIds: z
-        .array(z.string())
-        .min(2)
-        .max(4)
-        .describe('待对比的商品 id 列表（2 - 4 个）'),
-    }),
-  },
-);
-
-export const productTools = [
-  searchProductsTool,
-  getProductDetailTool,
-  compareProductsTool,
-];
+/** 商品对比入参 */
+export const compareProductsSchema = z.object({
+  productIds: z
+    .array(z.string().min(1))
+    .min(2)
+    .max(4)
+    .describe('待对比的商品 id 列表（2 - 4 个）'),
+});

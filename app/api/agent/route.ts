@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { threadConfig } from '@/lib/agent/checkpointer';
 import { getAgentApp } from '@/lib/agent/graph';
 import { buildUserMessage, createAgentEventStream, sseResponse } from '@/lib/agent/sse';
-import { buildCartItems } from '@/lib/agent/tools/cartTools';
+import { buildCartItems, cartLineSchema } from '@/lib/agent/tools/cartTools';
 import { touchSession } from '@/lib/agent/session-store';
 import { getProductsByIds } from '@/lib/catalog/products';
 
@@ -13,15 +13,8 @@ export const dynamic = 'force-dynamic';
 const BodySchema = z.object({
   sessionId: z.string().min(1).max(64),
   message: z.string().max(2000).default(''),
-  cart: z
-    .array(
-      z.object({
-        productId: z.string().min(1),
-        quantity: z.number().int().min(1).max(99),
-      }),
-    )
-    .max(50)
-    .optional(),
+  // 复用工具层的 cartLineSchema，避免同一份契约两处实现（改一处忘一处会让两层约束悄悄不一致）
+  cart: z.array(cartLineSchema).max(50).optional(),
   /** 以图搜商品：data URL，限制约 3MB（base64 后） */
   imageDataUrl: z.string().max(3_000_000).optional(),
   /** 商品区勾选的待对比商品 */

@@ -172,8 +172,8 @@ flowchart LR
   subgraph Server["Next.js API Routes"]
     Route["POST /api/agent"]
     Resume["POST /api/agent/resume"]
-    Graph["LangGraph StateGraph<br/>+ MemorySaver（globalThis 单例）"]
-    Tools["工具层<br/>productTools · cartTools"]
+    Graph["LangGraph StateGraph<br/>+ SqliteSaver（可切 memory）"]
+    Tools["工具层<br/>纯函数 + zod 契约"]
     Catalog["商品目录<br/>real 快照 112 件 / mock 50 件"]
     Route --> Graph
     Resume --> Graph
@@ -282,22 +282,26 @@ generateReply  → END
 - `getAgentApp()` — 惰性编译并缓存 `CompiledStateGraph`，注入 checkpointer
 - `threadConfig(sessionId)` — 传 `thread_id` 做会话隔离
 
-`lib/agent/checkpointer.ts` 把 `MemorySaver` 挂在 `globalThis` 上做单例：Next.js 热更新会重建模块级变量，若把 checkpointer 放在模块作用域，每次热更新都会丢掉全部会话上下文。生产切换 Sqlite / Postgres 只需改这一个文件。
+`lib/agent/checkpointer.ts` 把 checkpointer 挂在 `globalThis` 上做单例：Next.js 热更新会重建模块级变量，若把 checkpointer 放在模块作用域，每次热更新都会丢掉全部会话上下文。默认后端是落盘的 `SqliteSaver`（WAL + `busy_timeout`），经 `CHECKPOINT_BACKEND` 可切 `memory`；初始化失败会自动回落并打印原因，绝不让服务起不来。换 Postgres 只需改这一个文件。
 
 ### 工具层（Tools）
 
-`lib/agent/tools/` 下每个能力都提供**两份实现**，共享同一份底层纯函数，不会出现行为分叉：
+`lib/agent/tools/` 提供**纯函数实现**，节点直接调用（拿到强类型结果），并按需用 zod schema 校验入参：
 
-| 纯函数（节点直接调用） | LLM 工具契约（`tool()`） | 说明 |
-| --- | --- | --- |
-| `filterProducts(filters, limit)` | `search_products` | 关键词优先「全命中」，无结果时降级为「任一命中」 |
-| `getProductDetail(id)` | `get_product_detail` | 商品详情与规格参数 |
-| `compareProducts(ids)` | `compare_products` | 差异行 + 各维度最优 + 性价比得分 |
-| `addToCart / updateCartItem / removeFromCart / clearCart` | `add_to_cart` / `update_cart_item` / `remove_from_cart` / `clear_cart` | 状态变更型 |
-| `summarizeCart(cart)` | `get_cart_summary` | 金额明细、自动选券、库存预警 |
-| `buildOrderDraft(cart, options)` | `create_order` | 生成待确认订单草稿 |
+| 纯函数（节点直接调用） | 说明 |
+| --- | --- |
+| `filterProducts(filters, limit)` | 关键词优先「全命中」，无结果时降级为「任一命中」 |
+| `getProductDetail(id)` | 商品详情与规格参数 |
+| `compareProducts(ids)` | 差异行 + 各维度最优 + 性价比得分 |
+| `addToCart / updateCartItem / removeFromCart / clearCart` | 状态变更型 |
+| `summarizeCart(cart)` | 金额明细、自动选券、库存预警 |
+| `buildOrderDraft(cart, options)` | 生成待确认订单草稿 |
 
-**分层约定**：LangGraph 中状态写入只能发生在节点内，因此「状态变更型」工具只负责把自然语言解析成结构化指令并做存在性 / 库存校验，真正的数组变更由 `manageCart` 节点调用同名纯函数完成，再把新数组写回 `AgentState.cart`。「计算型」工具（`get_cart_summary` / `create_order`）无副作用，节点可直接调用。
+**分层约定**：LangGraph 中状态写入只能发生在节点内，因此纯函数只做存在性 / 库存校验并返回新数组，由 `manageCart` 节点把结果写回 `AgentState.cart`。
+
+**为什么不用 tool calling（评估后刻意不采用）**：tool calling 要解决的是「运行时动态选择未知工具集」。本项目节点是 8 个预定义节点、路由是 6 类有限分类、工具与节点几乎一一对应 —— **这个问题本身不存在**。接进来不解决任何实际问题，只是在 StateGraph 之上又叠一个隐式 agent 循环，属于架床叠屋：StateGraph 的哲学是「图本身就是编排层」，节点直调纯函数正是它的自然延伸。路由依据来自 `parseIntent` 的结构化输出（LLM 决定意图），这也是「让 LLM 参与决策」的正确落点。
+
+> 早期版本曾把 `tool()` 契约（name/description/schema 三元组）一并写好但从未接入，属于一段死代码，现已删除；保留下来的 zod schema 用于入参校验，其中 `cartLineSchema` 还被 `/api/agent` 的请求体校验复用，消除了原先手写的重复约束。
 
 ### 金额与库存规则（mock）
 
@@ -481,6 +485,7 @@ store/
 | 风险 | 处理 |
 | --- | --- |
 | 内部 LLM 调用的 JSON 泄漏到对话区 | `on_chat_model_stream` 原本对**所有**模型调用都转发 token，于是 `parseIntent` / `manageCart` 的结构化 JSON 被当聊天气泡逐字打出来。现按 `event.metadata.langgraph_node` 过滤，只转发 `generateReply`（唯一面向用户的节点）的输出 |
+| **模板回复不显示（reply 恒为空）** | `node_end` 事件触发时节点刚结束，此时 `app.getState()` 读到的可能还是**提交前**的状态 —— 实测 `generateReply` 的快照里 `reply` 恒为空。而 `reply` 是「模板回复」路径唯一的来源（该路径没有 token 事件），于是**一旦 LLM 不可用，回复气泡就完全不出现**，直接打穿「无 Key 也能跑」这条卖点。现改为图收尾时**无条件**补推一次完整终态（此时图已彻底结束，状态必然完整；前端 `applySnapshot` 对同一份状态幂等） |
 | 同一条回复被拆成多个气泡、跨轮文本互相串联 | 快照里的 `reply` 原本取「整个会话里最后一条 AI 消息」，而 `generateReply` 之前的节点也会各推一次快照——那时本轮还没有 AI 消息，于是**上一轮的回复**被当成新回复推给前端。现按「本轮开始前的消息条数」界定本轮，只取本轮新增的 AI 消息 |
 | 回复里的商品总数与商品区不一致 | 上下文只列前 5 件明细，模型把「明细条数」当成了总数（回复写「5 本」而商品区写「8 件商品」）。现显式给出总数并说明明细只是前 N 件 |
 | 回复气泡被 token 分批到达切碎 | 打字机原本「缓冲一空就把气泡标记为结束」，下一批 token 到达时又新建一个（实测一条回复变成 3 - 5 个堆叠气泡）。现用显式的本轮气泡 id 作为唯一依据，直到本轮真正结束（`done` / `interrupt`）才收尾 |
@@ -491,11 +496,11 @@ store/
 ### 尚未解决（生产化前必须处理）
 
 1. **无鉴权、无限流**：`/api/agent` 完全开放，配了 Key 就等于把 token 额度暴露给任何访问者。生产必须加会话鉴权 + 按用户限流 + 单次请求 token 上限。
-2. **MemorySaver 无上限**：每个 `thread_id` 的完整状态常驻内存，既不回收也没有 TTL；构造大量随机 sessionId 即可造成内存增长。生产换 Postgres/Sqlite checkpointer 并加会话清理策略。
-3. **消息历史不参与 LLM 上下文**：当前 LLM 只看到「当前状态 + 本轮输入」，多轮连续性由状态（筛选条件 / 购物车 / 对比结果）保证。好处是不会撞上下文窗口上限，代价是无法解析「刚才那个再便宜点」这类纯指代——需要时应在 `buildReplyContext` 里带上最近 N 轮消息并做 token 预算。
+2. ~~**MemorySaver 无上限**~~：**已修** —— 默认落盘 `SqliteSaver`，并维护 `session_meta` 做惰性 TTL 清理（新会话创建时触发，10 分钟最小间隔）。跨进程重启已验证可恢复上下文。剩余边界：清理依赖进程内的闸门变量，dev 热更新会重置它（只是多扫一次表，无正确性问题）；生产应改为独立定时任务。
+3. ~~**消息历史不参与 LLM 上下文**~~：**已修** —— `parseIntent` 注入最近若干轮历史（按字符预算裁剪），可消解「刚才那个」这类指代。剩余边界：长会话下超出预算的较早轮次会被整体丢弃，此时更早的指代对象不在上下文里。
 4. **前端未中止在途请求**：关页面后服务端仍会把图跑完（无害但浪费 token）。
 5. **数据快照需要手动刷新**：`data/real-catalog.json` 是构建时快照（价格/库存不会自动变化），生产环境应改为定时任务调用 `npm run catalog:build`，或直接替换 `lib/catalog/products.ts` 为实时电商 API 客户端（上层工具、节点、组件无需改动）。
-6. **`tool()` 契约尚未接入 LLM**：`productTools` / `cartTools` 数组已按 LLM 工具契约写好（zod schema + 描述），但当前节点是直接调用底层纯函数，没有 `bindTools`。保留它们是为了「接真实电商 API 时只改工具层实现」这条扩展路径；若要真正走 tool-calling，需要在节点里把工具绑到模型上。
+6. ~~**`tool()` 契约尚未接入 LLM**~~：**已决策（方案 b）** —— 评估后判定 tool calling 在本项目中是多余的间接层（节点预设、路由有限、工具与节点一一对应，「动态选择工具集」这个问题不存在），已删除 `tool()` 包装与未被引用的两个数组，保留 zod schema 用于入参校验。详见上文「工具层」。
 7. **分类浏览入口未实现**：`CATEGORY_COUNTS` 已按品类统计好，但界面上没有分类入口（当前只能通过对话按品类检索）。
 8. **控制台偶发 `net::ERR_ABORTED`**：在途 SSE 请求被页面刷新/导航打断时浏览器会记一条 `net::ERR_ABORTED`（属浏览器行为，不影响功能，实测正常发送 3 轮无新增）。若要彻底消除，需要在 `agent-client.ts` 里显式管理 `AbortController` 并在卸载时区分「主动中止」。此外，销量覆盖率有限（112 件里 17 件有真实销量），若希望卡片普遍显示销量，应接入带销量字段的数据源。
 

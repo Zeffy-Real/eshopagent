@@ -134,7 +134,6 @@ export function createAgentEventStream(options: StreamAgentOptions): ReadableStr
       };
 
       send({ type: 'run_start', sessionId });
-      let stateSent = false;
       // 本轮起点：用于把累积的 toolCallLog 裁剪成「本轮时间线」
       const runStartedAt = Date.now();
       // 本轮开始前的消息条数：toSnapshot 用它把「本轮回复」与历史回复区分开
@@ -179,7 +178,6 @@ export function createAgentEventStream(options: StreamAgentOptions): ReadableStr
               // 节点结束后推送一次完整状态：中栏商品区 / 右栏面板据此刷新
               const snapshot = await app.getState(config);
               if (snapshot.values) {
-                stateSent = true;
                 send({
                   type: 'state',
                   payload: toSnapshot(
@@ -229,7 +227,14 @@ export function createAgentEventStream(options: StreamAgentOptions): ReadableStr
           }
         }
 
-        // 收尾：检测中断；仅在还没推送过状态时补推终态，避免与最后一次 node_end 重复
+        // 收尾：检测中断，并**无条件**补推一次终态。
+        //
+        // 为什么不能沿用「仅在没推过时才推」：node_end 事件触发时节点刚结束，
+        // 此时 app.getState() 读到的可能还是**提交前**的状态 —— 实测
+        // generateReply 的 node_end 快照里 reply 恒为空（AIMessage 还没落进 state），
+        // 而 reply 是「模板回复」路径唯一的来源（该路径没有 token 事件）：
+        // 一旦 LLM 不可用，回复气泡就完全不会出现，直接打穿「无 Key 也能跑」这条卖点。
+        // 收尾时图已彻底结束，这一份状态必然完整；前端 applySnapshot 对同一份状态幂等。
         const finalState = await app.getState(config);
         const values = finalState.values as AgentStateValue | undefined;
         const interruptOrder = findOrderInterrupt(finalState);
@@ -239,7 +244,7 @@ export function createAgentEventStream(options: StreamAgentOptions): ReadableStr
           const fallback = pendingOrderOf(values);
           if (fallback) send({ type: 'interrupt', order: fallback });
         }
-        if (values && !stateSent) {
+        if (values) {
           send({
             type: 'state',
             payload: toSnapshot(values, runStartedAt, runStartMessageCount),

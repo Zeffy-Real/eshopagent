@@ -5,7 +5,8 @@ import { SHIPPING, type CartItem, type Coupon } from '@/lib/types';
  * 购物车金额规则（纯函数，客户端与服务端共用）。
  *
  * 独立成模块的原因：右栏购物车面板需要在本地即时算价，
- * 而 cartTools.ts 引用了 LangChain 的 tool()，不能被打进客户端包。
+ * 而 cartTools.ts 会连带引入商品目录（data/real-catalog.json，体积大），
+ * 不适合打进客户端包。
  */
 
 export interface CartSummary {
