@@ -30,10 +30,16 @@ const BASE_URL = 'https://api.justoneapi.com';
 const TIMEOUT_MS = 120_000;
 const OUT_DIR = resolve(ROOT, '.cache/justoneapi-probe');
 
-/** 只用同步 V1 端点；V2 是异步任务（提交后去 Dashboard 下载），本项目不接 */
+/**
+ * 只用同步 V1 端点；V2 是异步任务（提交后去 Dashboard 下载），本项目不接。
+ *
+ * 注意路径：搜索端点是 `search-item-list/v1`。早期契约里写的 `search-item/v1` 实测返回
+ * HTTP 404 + `code:404 Resource not found`（token 有效，鉴权已通过，是路由没匹配上）——
+ * 以官方文档的实际路径为准。
+ */
 const PLATFORMS = {
-  taobao: { search: '/api/taobao/search-item/v1', detail: '/api/taobao/get-item-detail/v1' },
-  jd: { search: '/api/jd/search-item/v1', detail: '/api/jd/get-item-detail/v1' },
+  taobao: { search: '/api/taobao/search-item-list/v1', detail: '/api/taobao/get-item-detail/v1' },
+  jd: { search: '/api/jd/search-item-list/v1', detail: '/api/jd/get-item-detail/v1' },
 };
 
 /** 搜索响应里可能的「商品数组」字段名，用于从真实响应里找列表 */
@@ -115,6 +121,37 @@ function printFields(label, item) {
   }
 }
 
+/** 收集「字段路径 → 类型」的完整清单（数组展开元素结构），用于核对映射该取哪一层 */
+function collectPaths(value, prefix, depth, out) {
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      out.push(`${prefix}: 数组(空)`);
+      return;
+    }
+    collectPaths(value[0], `${prefix}[]`, depth, out);
+    return;
+  }
+  if (value !== null && typeof value === 'object') {
+    if (depth >= 3) {
+      out.push(`${prefix}: 对象(更深层已省略)`);
+      return;
+    }
+    for (const [key, inner] of Object.entries(value)) {
+      collectPaths(inner, prefix ? `${prefix}.${key}` : key, depth + 1, out);
+    }
+    return;
+  }
+  out.push(`${prefix}: ${value === null ? 'null' : typeof value}`);
+}
+
+function printFieldPaths(label, item) {
+  if (!item || typeof item !== 'object') return;
+  const lines = [];
+  collectPaths(item, '', 0, lines);
+  console.log(`\n  [${label}] 完整字段路径（共 ${lines.length} 条）：`);
+  for (const line of lines) console.log(`    ${line}`);
+}
+
 async function call(endpoint, params, token) {
   const url = new URL(`${BASE_URL}${endpoint}`);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
@@ -175,10 +212,13 @@ function report(result, token) {
     const first = list.items[0];
     printFields('第 1 件商品', first);
     if (list.items[1]) printFields('第 2 件商品（确认字段稳定性）', list.items[1]);
+    printFieldPaths('第 1 件商品', first);
     console.log('\n第 1 件商品完整 JSON（映射与夹具用）：');
     console.log(redact(JSON.stringify(first, null, 2), token));
   } else {
-    console.log('\n未在 data 里找到商品数组，完整 JSON：');
+    console.log('\n未在 data 里找到商品数组，完整字段路径：');
+    printFieldPaths('data', data);
+    console.log('\n完整 JSON：');
     console.log(redact(JSON.stringify(data, null, 2), token));
   }
   return true;

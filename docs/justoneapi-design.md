@@ -11,15 +11,16 @@
 | # | 决策点 | 结论 |
 | --- | --- | --- |
 | 1 | 接入定位 | **两者都有**：构建期 `--source=justoneapi` 可选源 + **运行时做成图内条件触发节点 `enrichLiveData`**（v2 裁定，见 §14） |
-| 2 | 先接平台 | **先接 1 个**：京东或淘宝（用同一次实测在两者间选字段覆盖率高的那个，理由见 §2）；Amazon 明确放第二批 |
-| 3 | sales | **条件映射**：仅当实测确认是上游原生字段（如淘宝「月销」）才映射；否则一律 `sales: 0`（沿用"没有就不显示"） |
-| 4 | stock | **只映射状态，不映射件数**：上游给的是「有货/缺货」信号 → 编码为等级代表值（0 / 10 / 40），界面继续只显示等级 |
-| 5 | 币种 | 复用 `CURRENCY_TO_CNY`；未覆盖币种**按现有策略跳过**（运行时不报错，静默回退快照） |
-| 6 | 缓存 | 服务端内存 `Map`，TTL **300 秒**，键 `${platform}:${id}`，**含单飞去重**；失败不缓存 |
-| 7 | 错误处理 | 13 个业务码逐个定义（§7）；**任何 HTTP 状态下都先解析响应体**（实测：无效 token 返回 HTTP 401 + `code:100`） |
+| 2 | 先接平台 | **京东（jdcom）**——实测选定（字段覆盖更高、且只有它能拿到库存状态，理由见 §2）；Amazon 明确放第二批 |
+| 3 | sales | **一律 `sales: 0`**——实测京东 `sales`/`monthSales` 全为空串、淘宝 `orderPayUV` 是区间文案（`"1万+"`），不映射（§4.1） |
+| 4 | stock | **只映射状态，不映射件数**：京东详情 `stock.StockState` → 等级代表值（0 / 10 / 40），界面继续只显示等级（§4.2） |
+| 5 | 币种 | 复用 `CURRENCY_TO_CNY`；未覆盖币种**按现有策略跳过**（运行时不报错，静默回退快照）。选定的京东是 CNY，本批不触发汇率路径 |
+| 6 | 缓存 | 服务端内存 `Map`，TTL **300 秒**，键 `${platform}:${id}`，**含单飞去重**；失败不缓存；**只缓存映射结果（约 0.5 KB/件），不缓存原始响应（京东详情实测 40 KB/件）** |
+| 7 | 错误处理 | 契约内 9 个错误码逐个定义（§7）+ 未知码/传输层/token 缺失，共 12 类失败；**任何 HTTP 状态下都先解析响应体**（实测：无效 token 返回 HTTP 401 + `code:100`；配额用尽返回 HTTP 429 + `code:303`）。官方 OpenAPI 的 code 枚举实际有 **15 个**（多出 101/202/300/404/503），处理方式见 §15.1 |
 | 8 | Token | 只读 `process.env.JUSTONEAPI_TOKEN`；`.env.example` 加空占位符；`.gitignore` 已核对（`.env` / `.env.local` / `.env*.local` 均被忽略，`.env.example` 保持可提交）；**请在写代码前轮换一次**（§8） |
 | 9 | 与现有源关系 | `CATALOG_SOURCE` 增加 `justoneapi` 分支，**`real` 仍是默认**；三源产物互相独立、互不覆盖 |
 | 10 | 演示安全 | JustOneAPI **不在演示主路径**；未配置 token 时该源完全不可用且**对现有功能零影响** |
+| 11 | 运行时补充的适用商品 | **只在商品 id 可解析为平台 id 时生效**（默认快照是 Amazon ASIN，无法用京东端点查询）——三选一待裁定，见 §15.3 |
 
 **一处必须先纠正的前提**：你要求「必须复用现有的 staging → 校验 → 原子替换流程」——**该流程在当前仓库里不存在**。`scripts/build-real-catalog.mjs` 的实际做法是：逐行归一化 → 按 `skip` 原因丢弃不合格行 → 分品类取 Top N → **直接 `writeFile` 覆盖 `data/real-catalog.json`**（`build-real-catalog.mjs:834`）。现有真正的「校验」有两处可复用：构建期的按行丢弃 + `lib/catalog/products.ts` 的 `isProductLike()`（运行时逐字段校验，`products.ts:48-69`）。因此本设计的处理方式是：**JustOneAPI 源复用 `isProductLike()` 的校验语义（构建期写盘前也跑一遍），产物写独立文件**，从而根本不需要"原子替换"去保护现有快照；若你仍要原子写，那是新增 3 行（`writeFile(tmp)` + `rename`），不是复用。
 
@@ -40,75 +41,101 @@
 
 ---
 
-## 2. 平台选择：先 1 个，用实测决定是京东还是淘宝
+## 2. 平台选择：先 1 个 → **实测结论：京东（jdcom）**（2026-09-25 回填）
 
 | 平台 | 端点（同步 V1） | 币种 | 结论 |
 | --- | --- | --- | --- |
-| 京东 | `/api/jd/search-item/v1`、`/api/jd/get-item-detail/v1` | CNY | **候选 A** |
-| 淘宝/天猫 | `/api/taobao/search-item/v1`、`/api/taobao/get-item-detail/v1`（**不用 V2 异步**） | CNY | **候选 B** |
+| 京东 | 搜索 `/api/jd/search-item-list/v1`、详情 `/api/jd/get-item-detail/v1`、价格 `/api/jd/get-item-price/v1` | CNY | **选定** |
+| 淘宝/天猫 | 搜索 `/api/taobao/search-item-list/v1`、详情 `/api/taobao/get-item-detail/v1`（另有 V3/V6/V7/V9，字段语义各不相同：V3 无价格、V4 有最终价但多数商品不支持、V6 有模糊销量、V7 支持所有商品 ID） | CNY | 本批不接 |
 | Amazon | `/api/amazon/search-products/v1`、`/api/amazon/get-product-detail/v1` | USD/EUR 等 | 第二批 |
-| AliExpress / Shopee / Temu / 抖音 | 各有端点 | 多币种 | 暂不接 |
+| AliExpress / Shopee / Temu / 抖音 / 1688 | 各有端点 | 多币种 | 暂不接 |
 
-**首选在"京东 / 淘宝"之间二选一的理由**：
+**路径修正（实测发现，必须按实测走）**：早期契约里的搜索端点是 `/api/…/search-item/v1`，实测返回 **HTTP 404 + `code:404 Resource not found`**（token 有效、鉴权已通过，是路由没匹配上）；官方文档与实际可用路径是 **`search-item-list/v1`**。详情端点路径与契约一致。
 
-1. **零汇率风险**：两者都返回 CNY，不需要碰 `CURRENCY_TO_CNY`，也不会撞上"未支持币种 → 跳过"（`build-real-catalog.mjs:473`）；
-2. **与现有目录同构**：价格区间校验 `10 ≤ price ≤ 20000`（`build-real-catalog.mjs:65-66`）对国内平台成立，对 Amazon 的部分品类未必；
-3. **字段重合度高**：京东/淘宝的详情都带价格、库存状态、评分、评论数，正好覆盖 `Product` 的核心字段。
+**实测对比（同一 token、同一关键词「耳机」，各 1 次成功调用）**：
 
-**二选一靠实测**：用同一个 token 对两者各跑一次 `search-item/v1` + `get-item-detail/v1`（成本 4 次成功调用），比较「能直接映射的字段数」与「详情里是否真带库存状态/销量」，取高的那个。**Amazon 明确放第二批**：它需要 `country` 参数与 FX 折算，且美国站价格单位与国内目录的可比性更弱。
+| 维度 | 京东 | 淘宝 |
+| --- | --- | --- |
+| 搜索单页件数 | 48 件（`totalCount` 7607，分页元数据齐全） | 10 件（`model.page.totalItems/totalPages`） |
+| 单件字段数 | 85 - 87 | 43 |
+| 现价 | `price` = `"198.00"`（精确字符串，需 `parseFloat`） | `priceYuanDouble` = `15.9`（number） |
+| 划线价 / 活动价 | ❌ 无（`lowestPrice` 实测为 0/1 标记位，不是价格） | ⚠️ `discntPriceYuan` / `priceZKYuanDouble`（实测 124 vs 现价 399，即活动价） |
+| 类目 | ✅ `cid1/cid2/cid3`（实测 `652/828/842`），详情另有 `product.category` | ❌ 搜索无类目 |
+| 评分 / 评论数 | ❌ 搜索 `cc` 是区间文案（`"20万+"`）、`gcp`(99/100) 是好评率百分数；详情无评分字段 | ❌ 搜索 `itemGradeAvg` 实测全为 0、`commentCount` 全为空串（字段在、值没填） |
+| **库存状态** | ✅ 详情 `stock.StockState`（实测 `33`） | ❌ 无（`frontStock` 是「前 N 件」促销名额，实测 20000 / 2974 万，**不是库存**） |
+| 图片 | ⚠️ 搜索相对路径 `jfs/t1/…`（需拼 `https://img30.360buyimg.com/sku/`）；详情 `mainImages[]` 是完整 URL | ✅ `picUrlFull` 完整 URL（`picUrlList[]` 为相对路径） |
+| 官方 24h 健康值 | 搜索 34-100 波动、详情 89、价格接口 100 | 搜索 97、**详情 V1 = 6（30 天几乎全在 0-12，基本不可用）** |
+| 平均耗时 | 搜索 2.4s、详情 22.5s、价格 2.6s | 搜索 5.4s、详情 0.4s（多为失败） |
+
+**结论：接京东**。四条理由：
+
+1. **只有京东能拿到库存状态**（`stock.StockState`），而库存是 `enrichLiveData` 要覆盖的易变字段之一；
+2. **类目链完整**（`cid1/cid2/cid3`），构建期源派生 7 品类时不需要额外的类目反查；
+3. **接口健康值更高**：淘宝详情 V1 长期 0-12/100，作为运行时依赖不可接受（官方自己在文档里建议「部分商品不支持，可切换 V1/V6/V9 使用」——多版本切换本身就是不稳定的信号）；
+4. **分页元数据完整**（`totalCount` 7607、每页 48 件），构建期按品类取 Top N 时可控。
+
+**两边都拿不到的字段（本批端点范围内）**：`rating` / `reviews` / `sales`。它们要么实测为空（`itemGradeAvg`=0、`commentCount`=""、`sales`/`monthSales`=""），要么只是区间文案（`cc`="20万+"、`orderPayUV`="1万+"）。要拿真值必须接「商品评论 / 商品评价 / 商品销量」这类独立接口（京东与淘宝都有）——**明确放第二批**，本批不接（见 §4.1）。
 
 ---
 
-## 3. 字段映射表（`Product` ← JustOneAPI）
+## 3. 字段映射表（`Product` ← JustOneAPI）—— **实测回填版（2026-09-25）**
 
 `Product` 模型（`lib/types.ts:18-47`）：`id / name / brand / category / price / originalPrice / rating / reviews / sales / stock / image / description / specifications / tags`
 
-图例：✅ 可直接映射　⚠️ 需换算或派生（写明算法）　❌ 源里没有　🔬 **待实测确认字段名**（拿到 token 后回填）
+图例：✅ 可直接映射　⚠️ 需换算或派生（写明算法）　❌ 源里没有（写明在哪一层确认）
 
-| Product 字段 | 淘宝/天猫 | 京东 | Amazon（第二批） | 说明 |
-| --- | --- | --- | --- | --- |
-| `id` | 🔬 `itemId` | 🔬 `skuId` | 🔬 `asin` | 前缀区分平台（如 `tb-`/`jd-`/`amz-`），避免三源 id 撞车；与现有 `idPrefix`（`amz`）同思路 |
-| `name` | ✅ `title` | ✅ `title` | ✅ `title` | 直接取；长度按现有 `truncate` 截断 |
-| `brand` | 🔬 品牌字段 | 🔬 品牌字段 | ✅ `brand` | 源里可能没有独立品牌字段 → 从标题或参数表提取；提不出就用平台名兜底（与图书用作者兜底同理） |
-| `category` | ⚠️ 平台类目 → 项目 7 品类 | ⚠️ 同 | ⚠️ 同 | **需要新写平台类目映射表**（现有 `CATEGORY_RULES` 面向 CSV 类目字符串，不适用）；映射不到就丢弃该商品（沿用按行丢弃策略） |
-| `price` | ✅ 现价 | ✅ 现价 | ✅ 现价 | 国内平台已是 CNY；非 CNY 走 §5 |
-| `originalPrice` | 🔬 划线价 | 🔬 划线价 | ✅ `list_price` | 无划线价时按现有兜底 `originalPrice = price`（`products.ts:87-89`） |
-| `rating` | 🔬 `rating` | 🔬 `rating` | ✅ `rating` | 需实测确认量纲（5 分制还是 10 分制）；若是 10 分制 → ⚠️ 除以 2；超出 `0–5` 会被 `isProductLike` 丢弃（`products.ts:36`） |
-| `reviews` | 🔬 评论数 | 🔬 评论数 | ✅ `reviews_count` | 缺失记 0，界面显示「暂无评分」（现有策略） |
-| `sales` | 🔬 月销（**必须实测**） | 🔬 同 | 🔬 `bought_past_month` | **见 §4**：只有确认是上游原生字段才映射 |
-| `stock` | 🔬 库存状态 | 🔬 库存状态 | 🔬 `availability` | **见 §4**：只取等级信号，不取件数 |
-| `image` | ✅ 主图 | ✅ 主图 | ✅ 主图 | 可能是多图数组（现有 `toImageUrl` 处理过 JSON 数组字符串的坑） |
-| `description` | 🔬 详情文案 | 🔬 详情文案 | ⚠️ | 淘宝/京东详情常含 HTML 与超长文案 → 必须清洗 + 截断（现有 `clean`/`truncate` 可复用） |
-| `specifications` | ✅ 参数表 → `Record<string,string>` | ✅ 同 | ✅ `product_details` | 需剔除与对比表固定行同名的键（现有构建期已踩过「品牌」重名导致 React key 冲突，`project-status` §4.4） |
-| `tags` | ⚠️ 从标题/类目/参数派生 | ⚠️ 同 | ⚠️ 同 | 复用 `localize-catalog.mjs` 的中文功能词表思路；无命中就是空数组（现有 21 件无标签是允许状态） |
+取数端点简称：**jd-search** = `/api/jd/search-item-list/v1`（`data.products[]`，48 件/页）；**jd-detail** = `/api/jd/get-item-detail/v1`（`data.*`）；**tb-search** = `/api/taobao/search-item-list/v1`（`data.model.itemList[]`）。所有字段名均来自真实响应的字段路径清单（原始响应存于 `.cache/justoneapi-probe/`，不进仓库）。
+
+| Product 字段 | 京东（选定平台） | 淘宝（对照，本批不接） | 说明 |
+| --- | --- | --- | --- |
+| `id` | ✅ jd-search `products[].id`（string，`"100207440191"`） | ✅ tb-search `itemList[].itemId`（number，`1019762789206`） | 加平台前缀 `jd-` / `tb-`，避免与快照目录（Amazon ASIN）撞车 |
+| `name` | ✅ jd-search `products[].title`（`"Viken【2026最新款丨柏林之声第1名】骨传导蓝牙耳机…"`） | ✅ tb-search `itemList[].itemName` | 京东标题含大量促销词（`【…第1名】`），沿用现有 `truncate` 截断即可 |
+| `brand` | ✅ jd-detail `product.brandName`（`"维肯（Viken）"`）、`product.cBrand` | ❌ 源里没有（`model.brandList[]` 是**筛选用品牌列表**，36 个候选，不是本商品的品牌） | 京东搜索不带品牌，只有详情有 → 构建期需详情补齐 |
+| `category` | ⚠️ jd-search `cid1/cid2/cid3`（`"652/828/842"`）+ jd-detail `product.category`（`"652,828,842"`）→ **自建 cid → 7 品类映射表** | ❌ tb-search 无类目（`model.propertyList[]` 是筛选项） | 需新写映射表（现有 `CATEGORY_RULES` 面向 CSV 类目字符串，不适用）；映射不到就丢弃该商品 |
+| `price` | ✅ jd-search `products[].price`（`"198.00"`，`parseFloat`）　❌ jd-detail `priceFloor.price` 实测为 `"1??"`（`frontStaticDocument.priceFloor.priceLoginText` = `"登录查看价格"`，无登录态时**打码**） | ✅ tb-search `priceYuanDouble`（`15.9`） | **京东价格必须来自搜索端点**（或待实测的 `/api/jd/get-item-price/v1`），详情取不到 |
+| `originalPrice` | ❌ 源里没有（`lowestPrice` 实测 0/1、`jdpriceRange`/`priceTag` 为空串，都不是价格） | ⚠️ `discntPriceYuan` / `priceZKYuanDouble`（活动价，实测 124 vs 现价 399）→ 仅当它**高于**现价时作 `originalPrice` | 京东侧沿用现有兜底 `originalPrice = price`（`products.ts:87-89`） |
+| `rating` | ❌ 源里没有（jd-search 无评分字段；`gcp`(99/100) 是**好评率百分数**，折算是派生值冒充真实值，按原则不用；jd-detail `pricerate.rate` 为空串） | ❌ 源里没有（`itemGradeAvg` 字段存在但实测全为 0） | **不覆盖**，保持快照值（要真值需接评论类接口，第二批） |
+| `reviews` | ❌ 源里没有（`cc` 实测是区间文案 `"20万+"` / `"5000+"`，不是数值） | ❌ 源里没有（`commentCount` 实测全为空串） | 同 `rating`；缺失时界面显示「暂无评分」（现有策略） |
+| `sales` | ❌ 源里没有（`sales` / `monthSales` 字段存在但实测全为空串） | ❌ 源里没有（`orderPayUV` 实测 `"1万+"`，区间文案） | **一律记 0**（见 §4.1） |
+| `stock` | ✅ jd-detail `stock.StockState`（实测 `33`；京东官方 IOP 文档枚举：`33/39/40`=有货、`36`=预订、`34`=无货） | ❌ 源里没有（`frontStock` 实测 20000 / 29745876，是「前 N 件」促销名额） | 只编码为等级代表值 0/10/40（见 §4.2），界面仍只显示等级 |
+| `image` | ⚠️ jd-search `products[].imageUrl`（`"jfs/t1/…"` 相对路径，需拼 `https://img30.360buyimg.com/sku/`）　✅ jd-detail `product.mainImages[]`（完整 URL，实测 3 张） | ✅ tb-search `picUrlFull`（完整 URL） | 京东侧用 jd-detail 的 `mainImages[0]` 最稳；jd-search 的 `images[]` 实测为空数组 |
+| `description` | ❌ 源里没有（jd-search/jd-detail 无描述文案；`product.sellPoint` 实测为空串） | ❌ 源里没有（tb-search 无描述；详情里的 `beehiveContent` 是买家评价内容，不是商品描述） | 无 → 构建期写空串或沿用现有清洗后的兜底 |
+| `specifications` | ⚠️ jd-detail `product`：`weight`(`"0.182"`)、`width/height/length`、`model`(`"i113"`)、`upc`、`wserve`(`"1年质保"`)、`skuName`/`product.spec` 等 → 组成 `Record<string,string>` | ⚠️ tb-search `model.propertyList[]` 是**筛选属性**（`pname/valueList`），非本商品参数 | 需剔除与对比表固定行同名的键（构建期已踩过「品牌」重名导致 React key 冲突，`project-status` §4.4） |
+| `tags` | ⚠️ 从 `title` / `cid` 派生（复用 `localize-catalog.mjs` 的中文功能词表思路） | ⚠️ 同 | 无命中就是空数组（现有 21 件无标签是允许状态） |
 
 ---
 
 ## 4. `sales` 与 `stock`：两个敏感字段的处理
 
-### 4.1 `sales`
+### 4.1 `sales` —— **实测判定：一律记 0（不映射）**（2026-09-25 写死）
 
 - **现状基线**：真实销量只覆盖 112 件中的 17 件（Amazon `bought_past_month`、Lazada `number_sold`），界面优先展示真实评价数，销量仅用于排序与对比（`project-status` §4.3）。
-- **判定规则（写入实现，不做例外）**：
-  1. 实测确认是**上游原生数值字段**（如淘宝「月销」）→ ✅ 直接映射，并在产物元信息里标注"来自 JustOneAPI 原生销量字段"；
-  2. 实测只拿到「已售 N 件」这类文案字符串 → ⚠️ 可解析为整数则映射，解析不出就 0；
-  3. 实测显示销量是区间/等级（如「1000+」）→ ❌ **不映射**，记 0（区间值冒充精确值会重演"派生值冒充真实值"的错误）；
-  4. 实测确认是平台估算 → ❌ 不映射，记 0。
-- **兜底**：无论哪种，`sales: 0` 时界面行为与今天完全一致（不显示销量，显示评价数）。
+- **实测证据**（本批可用端点内，均为真实响应）：
 
-### 4.2 `stock`
+| 来源 | 字段 | 实测值 | 判定 |
+| --- | --- | --- | --- |
+| 京东搜索 | `products[].sales`、`products[].monthSales` | **全为空字符串**（48 件逐件确认） | ❌ 不映射 |
+| 淘宝搜索 | `itemList[].orderPayUV` | `"1万+"`（区间文案） | ❌ 不映射 |
+| 淘宝搜索 | `itemList[].itemGradeAvg` / `commentCount` | `0` / `""`（字段在、值没填） | ❌ 不映射 |
+
+- **结论**：`sales` 记 0。区间值（`"1万+"`）冒充精确值会重演「派生值冒充真实值」的错误；空字段与「解析不出」同理。要拿真值需接京东/淘宝的「商品销量」类独立接口（第二批）。
+- **兜底**：`sales: 0` 时界面行为与今天完全一致（不显示销量，显示评价数）。
+
+### 4.2 `stock` —— **实测判定：京东 `stock.StockState` → 等级代表值**（2026-09-25 写死）
 
 - **现状基线**：`stock` 是**内部可用性模型**（缺货不可加购、加购上限、性价比缺货惩罚），界面只显示等级；件数在真实源里几乎全是派生的，因此**绝不展示**（`lib/types.ts:33-41`、`project-status` §4.3）。
-- **JustOneAPI 的输入是"状态"不是"件数"**（官方描述为库存状态）→ 设计为**等级编码**：
+- **上游给的是「状态」而不是「件数」**（实测：京东详情 `stock.StockState = 33`；`stock.preStore`/`product.allnum` 语义不明或为空，不作件数使用）→ 编码为**等级代表值**：
 
-| 上游信号 | `stock` 取值 | `stockLevelOf()` 结果 | 界面 |
-| --- | --- | --- | --- |
-| 缺货 / 下架 / 无货 | `0` | `out` | 缺货（不可加购） |
-| 现货紧张（若上游有该信号） | `10` | `low` | 库存紧张 |
-| 有货 | `40` | `in_stock` | 有货 |
-| 未返回该字段 | **沿用现有派生值**（不改动） | 与今天一致 | 与今天一致 |
+| 上游信号（京东 `stock.StockState`） | 依据 | `stock` 取值 | `stockLevelOf()` | 界面 |
+| --- | --- | --- | --- | --- |
+| `33`（现货-下单立即发货）、`39`（在途-内部配货）、`40`（可配货） | 京东官方开放平台 IOP 文档枚举 | `40` | `in_stock` | 有货 |
+| `36`（预订） | 同上 | `10` | `low` | 库存紧张 |
+| `34`（无货） | 同上 | `0` | `out` | 缺货（不可加购） |
+| 其它值 / 未返回该字段 / 淘宝 | — | **不覆盖**（沿用现有派生值，不改动） | 与今天一致 | 与今天一致 |
 
-> 编码值 0/10/40 是**等级代表值**，不是件数；实现里必须在代码注释与产物 `note` 中写明"由真实有货/缺货信号编码而来，不代表真实件数"——这正是"派生值不冒充真实值"要求的正确执行方式。
+> 编码值 0/10/40 是**等级代表值**，不是件数；实现里必须在代码注释与产物 `note` 中写明「由真实有货/缺货信号编码为等级代表值，不代表真实件数」——这正是「派生值不冒充真实值」要求的正确执行方式。
+>
+> 上游枚举来源：京东官方开放平台文档（`opendoc.jd.com` 库存接口的 `stockStateId` 枚举）。**不采用**任何社区博客里的版本（社区文档对 34/40 的解释互相矛盾）。
 
 ---
 
@@ -171,7 +198,7 @@
 | 未配置 | `callJustOneApi()` 抛 `JustOneApiTokenMissingError`（明确错误，不静默失败）；`CATALOG_SOURCE=justoneapi` 时**启动即报错退出**（`resolveSource()` 中校验，`lib/catalog/products.ts:97-103`） |
 | `.env.example` | 增加 `JUSTONEAPI_TOKEN=`（空占位符 + 一行注释说明从 dashboard.justoneapi.com 获取） |
 | `.gitignore` | 已核对第 12–14 行：`.env`、`.env.local`、`.env*.local` 均被忽略；`.env.example` **不在**忽略之列（必须可提交）。实现时 `.env.example` 只写空占位符，绝不写入真值 |
-| 日志 | 只记录 `endpoint`、`code`、`durationMs`、`attempt`；**任何日志与错误消息都不得包含 token**（含 URL 拼接后的完整 URL——记录 URL 前必须先脱敏 `token=***`） |
+| 日志 | 只记录 `endpoint`（**路径，不记完整 URL**）、`code`、`durationMs`、`attempt`；**任何日志与错误消息都不得包含 token**。若日志里不得不出现 URL，必须已脱敏为 `token=***`（`client.ts` 的 `redact()` 是唯一出口：既挡 `token=<值>` 参数，也挡 token 原值回显） |
 | README | 明确写"此源为可选；不配置 token 时，本项目所有现有功能不受影响"，并指向 dashboard 获取方式 |
 | **轮换（请你在实现前完成）** | 你提到此前 token 已在对话中出现过。**请在 Dashboard 轮换一次**，新 token 只写进 `.env.local`；**不要贴进对话**——我拿到新 token 的方式是"你在本地放好后告诉我"，我只执行 `node --env-file=.env.local scripts/justoneapi-probe.mjs` 这类脚本，token 不进对话上下文 |
 
@@ -242,7 +269,7 @@ curl -sS -m 120 "https://api.justoneapi.com/api/jd/get-item-detail/v1?token=$JUS
 
 | 阶段 | 交付 | 复用 / 新增 |
 | --- | --- | --- |
-| **2a** | `lib/justoneapi/{client,errors,types,cache}.ts` + `platforms/{选中的平台}.ts` + 单测（13 码、重试、超时、token 缺失、映射） | 复用：无第三方依赖、原生 `fetch` + `AbortController`（120s）；新增：错误类型体系与映射函数 |
+| **2a** | `lib/justoneapi/{client,errors,types,cache}.ts`（**已完成，commit `e430724`**）+ `platforms/jd.ts`（京东，实测选定；字段映射按 §3 回填）+ 单测（处理项、重试、超时、token 缺失、映射） | 复用：无第三方依赖、原生 `fetch` + `AbortController`（120s）；新增：错误类型体系与映射函数 |
 | **2b-构建** | `scripts/sources/justoneapi.mjs` + `build-real-catalog.mjs` 增加 `--source=justoneapi` 分支 | 复用：`CURRENCY_TO_CNY`、价格区间、`isProductLike` 校验语义、`PER_CATEGORY`、退出即中止的失败语义；新增：平台类目映射表、关键词表（从 7 品类派生） |
 | **2b-运行时** | `fetchLiveProduct(productId, platform)`（含缓存 + 单飞 + 静默回退） | 复用：`getProductById()` 作为回退源；**不接线到任何节点**（见 §1 的待拍板项） |
 | **2c** | README「JustOneAPI 数据源」章节 + `project-status.md`（模块结构 / 变更清单 / 验证状态） | 含错误码速查表、配额说明、"可选源"声明 |
@@ -362,3 +389,49 @@ enrichLiveData(state):
 **验收**：条件边五条判定逐条单测；无效 token 跑一轮确认对话正常、无错误提示、时间线有中性记录；模拟 `code:303` 后同进程不再进入节点；无 token 时图行为与改造前**完全一致**（现有 159 单测全绿）；有 token 时搜"耳机"→问"现在多少钱"→商品卡"实时"标注 + 时间线补充事件；构建期产出独立文件且件数与丢弃统计对得上；`tsc` 0 错误 / 单测全绿 / build 通过。
 
 **明确不做**：不用实时数据替代快照；不改 `searchProducts` / `generateReply` 职责；不做多平台并行（先接 1 个）；不做 Amazon（第二批）；不改演示主路径（仅新增可选步骤）；不给 `searchResults` 写实时数据；不引入新依赖；单测不发真实网络请求。
+
+---
+
+## 15. 实测回填记录（2026-09-25，第 1 步交付）
+
+> 本节是「用真实 token 跑探测 → 回填 §2/§3/§4」的结果存档。原始响应落盘在 `.cache/justoneapi-probe/`（已 gitignore，不进仓库）；脚本 `scripts/justoneapi-probe.mjs`，入口 `npm run justoneapi:probe`。
+
+### 15.1 三条新事实（影响实现，必须知道）
+
+1. **搜索端点路径修正**：正确路径是 `/api/<platform>/search-item-list/v1`（早期契约里的 `search-item/v1` 实测返回 404）。已同步进脚本与 §2；**详情端点路径与契约一致**。
+2. **业务码枚举比契约更宽**：官方 OpenAPI 的 `code` 枚举是 **15 个**——`0, 100, 101, 202, 300, 301, 302, 303, 400, 404, 500, 503, 600, 601, 602`。契约外的 5 个码（`101 / 202 / 300 / 404 / 503`）在实现里一律走 `unknown_code`、**不重试**（`lib/justoneapi/errors.ts`）：其中 `404` 已实测为 `Resource not found`；`503` 官方描述为「服务暂时不可用」——**建议**把它单独归入可重试（1 次），但它不在你给的契约表里，**等你确认后再改**（当前保持不重试）。
+3. **响应信封还带 `requestId`**：实际契约是 `{code, message, data, recordTime, requestId}`（OpenAPI 声明；`recordTime` 已在 §11.1 实测）。实现只依赖 `code` / `message` / `data`，其余忽略。
+
+### 15.2 配额、耗时与响应体大小
+
+| 探测 | 端点 | HTTP | code | 耗时 | 响应体 | 计费 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 淘宝搜索「耳机」 | `/api/taobao/search-item-list/v1` | 200 | 0 | 1,513 ms | 36,524 B（10 件，≈3.6 KB/件） | ✅ 1 次 |
+| 京东搜索「耳机」 | `/api/jd/search-item-list/v1` | 200 | 0 | 2,381 ms | 180,210 B（48 件，≈3.75 KB/件） | ✅ 1 次 |
+| 京东详情 `100207440191` | `/api/jd/get-item-detail/v1` | 200 | 0 | 2,249 ms | 40,836 B（单件） | ✅ 1 次 |
+| 淘宝 / 京东搜索（早期错误路径） | `/api/…/search-item/v1` | 404 | 404 | 698 / 115 ms | 82 B | ❌ 不计费 |
+
+- **本次配额消耗：3 次成功调用**（失败请求不计费）。
+- **缓存内存预估**：只缓存**映射结果**（约 10 个标量字段 ≈ 0.5 KB/件）→ 200 条上限 ≈ **100 KB**；若误缓存原始响应（详情 40 KB/件）则 200 条 = **8 MB**。因此实现明确**只缓存映射结果**（§0 第 6 行）。
+
+### 15.3 待裁定的缺口：**id 空间不兼容**（这条会改 §14.4）
+
+`enrichLiveData` 的设计前提是「取 `searchResults` 前 3 件 → 逐件调详情端点」。但默认数据源 `CATALOG_SOURCE=real` 的商品 id 是 **Amazon ASIN**（`B0…`），而京东详情端点只认 **京东 skuId**（`100207440191` 这类）。拿 ASIN 去查京东**只可能失败**，且每轮会白跑最多 3 次。三个选项：
+
+| 选项 | 做法 | 代价 |
+| --- | --- | --- |
+| **A（推荐）** | 条件边补一条判定「商品 id 可解析为所选平台 id（`jd-` 前缀或 12-13 位纯数字）」；默认快照下自然跳过（**零调用、零风险**）；演示时切 `CATALOG_SOURCE=justoneapi` 即可看到实时标注 | 演示该步需先切源（`docs/demo-script.md` 的可选步骤要写清） |
+| B | 用商品标题去京东搜索、取第一条当「同名商品」的实时价 | 会展示**别人的价格**（同名不同 SKU），直接违反项目「真实性」叙事，错配也无法自证 |
+| C | 混合目录：构建期把 justoneapi 源商品（`jd-` 前缀）与快照商品合并成一份目录，运行时只补充能解析的 id | 需先做第 3 步构建期源 + 一次目录合并改造（工作量最大，演示最自然） |
+
+**在裁定之前，第 2 步不写节点**——否则条件边会退化成「每轮最多 3 次注定失败的调用」：虽然失败不计费，但会污染右栏时间线，也让「失败静默」这个演示点变得没有说服力。
+
+### 15.4 仍未实测的项（需额外调用，等授权）
+
+| 待实测 | 为什么值得跑 | 成本 |
+| --- | --- | --- |
+| `/api/jd/get-item-price/v1`（京东价格 V1，官方健康 100/100、平均 2.6 s） | 详情里价格被打码（`"1??"` + `frontStaticDocument.priceFloor.priceLoginText = "登录查看价格"`），运行时要答「现在多少钱」必须确认这个窄接口能否返回精确价格、以及是否附带库存状态 | 1 次成功调用 |
+| 淘宝详情（V1/V6/V7 任一） | 仅在「改接淘宝」时才需要；当前结论是接京东，故**不跑** | 1 次成功调用 |
+| 京东图片前缀 | 已有答案：详情 `mainImages[]` 直接给完整 URL，无需再花调用 | 0 |
+
+**建议**：只跑第 1 项（1 次计费）。它的结论直接决定 `enrichLiveData` 调哪个端点——若价格接口同时返回库存状态，节点只需**一个端点**即可覆盖 price + stock，调用量与失败面都减半。

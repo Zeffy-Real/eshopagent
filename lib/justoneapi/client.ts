@@ -127,7 +127,9 @@ function isAbortErrorLike(error: unknown): boolean {
 /**
  * 发起一次请求（含超时）。
  *
- * 每次调用都会写一行日志（endpoint / code / attempt / durationMs），日志里**永远没有 token**。
+ * 每次调用都会写一行日志（endpoint / http / code / attempt / durationMs）。
+ * 日志规范（硬约束）：**只记路径，不记完整 URL**；任何要输出的字符串都过 `redact()`
+ * （调用方包好的 logger 已带 token，见 `callJustOneApi`），日志里永远没有 token。
  */
 async function requestOnce<T>(
   url: string,
