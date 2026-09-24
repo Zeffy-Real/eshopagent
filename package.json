@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "catalog:build": "node scripts/build-real-catalog.mjs",
-    "catalog:localize": "node --env-file=.env.local scripts/localize-catalog.mjs"
+    "catalog:localize": "node --env-file=.env.local scripts/localize-catalog.mjs",
+    "justoneapi:probe": "node --env-file=.env.local scripts/justoneapi-probe.mjs"
   },
   "dependencies": {
     "@langchain/core": "^1.2.12",
