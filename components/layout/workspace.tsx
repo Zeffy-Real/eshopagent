@@ -104,6 +104,11 @@ export function Workspace() {
             // 所以 <md 时抽屉占满宽度，成为明确的全屏浮层（面板头部有「收起面板」按钮）；
             // md 及以上聊天区固定在左侧，抽屉只覆盖中栏，不存在遮挡。
             'w-full md:w-[340px] md:max-w-[88vw]',
+            // 抽屉占满宽度时，顶部两条内容区（标签栏 48px + 对话头部 56px，见 h-14）都在它下面：
+            // 对话头部已抬到 z-50（chat-panel.tsx）浮在抽屉之上，这里让出等高位置，
+            // 否则抽屉自己的头部会被压在下面，连「收起面板」都点不到。
+            // md 起抽屉只覆盖中栏，不需要让位，故 md:pt-0。
+            'pt-26 md:pt-0',
             'transition-transform duration-200 ease-out xl:static xl:top-0 xl:z-auto xl:w-[360px] xl:max-w-none',
             rightPanelOpen ? 'translate-x-0' : 'translate-x-full xl:hidden',
           )}

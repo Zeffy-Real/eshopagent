@@ -103,10 +103,23 @@ let runFinished = false;
 /**
  * 在途请求的取消句柄。
  *
- * 只服务于「清除画像」：generation 校验是主防线（清除后旧 patch 一律被丢弃），
- * 中止请求是双保险 —— 让服务端也别再把这一轮跑完。
+ * 凡是**会话身份或本地状态发生变更**的动作（清除画像 / 清空对话 / 开新会话）
+ * 都要中止在途请求：流还在跑的时候换身份，旧 token 会继续写进新的列表 ——
+ * 清除画像的方向是「旧 patch 复活已清空的画像」，换会话的方向是「新会话里冒出
+ * 旧会话的零散文字」，都属于数据污染，不是 UX 瑕疵。
  */
 let activeAbort: AbortController | null = null;
+
+/**
+ * 中止在途请求（主动中止，不是失败）。
+ *
+ * 收尾由 sendMessage / resumeOrder 的 catch 完成：识别到 signal.aborted 就静默
+ * 收尾（thinking 复位、气泡停光标），不弹错误提示。
+ */
+function abortInFlight(): void {
+  activeAbort?.abort();
+  activeAbort = null;
+}
 
 function stopTypewriter(): void {
   if (typeTimer) {
@@ -309,6 +322,8 @@ export const useAgentStore = create<AgentState>()(
       },
 
       clearConversation() {
+        // 先中止在途请求：否则这一轮流还在跑，token 会写进刚清空的消息列表
+        abortInFlight();
         stopTypewriter();
         activeReplyId = null;
         runFinished = true;
@@ -327,6 +342,8 @@ export const useAgentStore = create<AgentState>()(
       },
 
       startNewSession() {
+        // 同 clearConversation：换了身份还在收旧身份的数据 = 数据污染
+        abortInFlight();
         stopTypewriter();
         activeReplyId = null;
         runFinished = true;
@@ -350,7 +367,7 @@ export const useAgentStore = create<AgentState>()(
       clearUserProfile() {
         // 主防线是 generation 自增（在途 patch 会被 applyProfilePatch 丢掉），
         // 中止在途请求是双保险：让服务端也别再把这一轮跑完。
-        activeAbort?.abort();
+        abortInFlight();
         set({ userProfile: clearProfile(get().userProfile) });
       },
 

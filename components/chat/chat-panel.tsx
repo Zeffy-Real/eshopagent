@@ -51,6 +51,11 @@ export function ChatPanel() {
         icon={Bot}
         title="购物助手"
         subtitle="搜索 · 对比 · 加购 · 下单"
+        // 窄屏（<md）抽屉是占满宽度的浮层（z-40），而对话头部与抽屉头部同处顶部这一条，
+        // 会被整个盖住 —— 表现为「清空对话 / 开启新会话」点不到。抬到 z-50 让这条操作栏
+        // 浮在抽屉之上；抽屉侧让出等高的 pt-14（见 workspace.tsx）。
+        // 两边的高度都由 PanelHeader 的 h-14 保证，不存在需要手工同步的数值。
+        className="relative z-50"
         status={
           <span className="flex items-center gap-1 text-[11px] text-success">
             <span className="size-1.5 rounded-full bg-success" />
@@ -82,7 +87,9 @@ export function ChatPanel() {
                   variant="ghost"
                   size="icon-sm"
                   aria-label="开启新会话"
-                  disabled={thinking}
+                  // 运行中也允许点：会话身份变更会先中止在途请求（见 store 的 abortInFlight），
+                  // 不会把旧会话的 token 写进新列表。原先用 disabled 挡住只是回避了这个问题，
+                  // 而「清空对话」并没有挡，污染正是从那一路观察到的。
                   onClick={startNewSession}
                 >
                   <MessageSquarePlus />
