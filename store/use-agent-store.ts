@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AgentStateSnapshot, AgentStreamEvent } from '@/lib/agent/events';
+import { applyProfilePatch, clearProfile, createEmptyProfile, type UserProfile } from '@/lib/profile';
 import type { Order, ToolLogEntry } from '@/lib/types';
 import { resumeAgent, streamAgent } from '@/lib/agent-client';
 import { useCartStore } from '@/store/use-cart-store';
@@ -51,6 +52,13 @@ interface AgentState {
    * 等于开了一个新 thread（表现为「刚聊过的内容突然不记得了」）。
    */
   hasHydrated: boolean;
+  /**
+   * 跨会话画像（**同一浏览器下**的偏好记忆，见 lib/profile.ts）。
+   *
+   * 这里是画像的**唯一存储**：随 store 持久化进 localStorage，服务端不持有它 ——
+   * 每轮请求把它一次性上行（服务端用完即弃），回来的只是本轮的信号增量。
+   */
+  userProfile: UserProfile;
   /** 手动触发持久化恢复；恢复失败也要放行，否则门闸永远关着、用户发不出消息 */
   hydrate: () => Promise<void>;
   sendMessage: (text: string, options?: SendOptions) => Promise<void>;
@@ -61,6 +69,8 @@ interface AgentState {
   clearConversation: () => void;
   /** 开新会话：清空消息并轮换 sessionId（换一个 thread） */
   startNewSession: () => void;
+  /** 一键清空画像：generation 自增使在途 patch 过期，同时中止在途请求（双保险） */
+  clearUserProfile: () => void;
   dismissError: () => void;
   dismissInterrupt: () => void;
 }
@@ -89,6 +99,14 @@ let pendingText = '';
 let activeReplyId: string | null = null;
 /** 本轮是否已结束（收到 done / interrupt）：决定打字机消费完缓冲后要不要收尾 */
 let runFinished = false;
+
+/**
+ * 在途请求的取消句柄。
+ *
+ * 只服务于「清除画像」：generation 校验是主防线（清除后旧 patch 一律被丢弃），
+ * 中止请求是双保险 —— 让服务端也别再把这一轮跑完。
+ */
+let activeAbort: AbortController | null = null;
 
 function stopTypewriter(): void {
   if (typeTimer) {
@@ -161,6 +179,7 @@ export const useAgentStore = create<AgentState>()(
       error: null,
       llmEnabled: true,
       hasHydrated: false,
+      userProfile: createEmptyProfile(),
 
       async hydrate() {
         if (get().hasHydrated) return;
@@ -212,6 +231,8 @@ export const useAgentStore = create<AgentState>()(
             quantity: item.quantity,
           }));
 
+        const controller = new AbortController();
+        activeAbort = controller;
         try {
           await streamAgent(
             {
@@ -220,16 +241,28 @@ export const useAgentStore = create<AgentState>()(
               cart,
               imageDataUrl,
               compareProductIds: options?.compareProductIds,
+              // 画像随请求一次性上行（服务端不持有它），回来的只有本轮信号增量
+              profile: get().userProfile,
+              profileGeneration: get().userProfile.generation,
             },
-            { onEvent: (event) => handleEvent(event, set, get) },
+            { onEvent: (event) => handleEvent(event, set, get), signal: controller.signal },
           );
         } catch (error) {
           stopTypewriter();
-          set({
-            thinking: false,
-            activeNodes: [],
-            error: error instanceof Error ? error.message : '发送失败，请重试',
-          });
+          runFinished = true;
+          if (controller.signal.aborted) {
+            // 主动中止（清除画像）：静默收尾，不当成请求失败弹出错误
+            set({ thinking: false, activeNodes: [] });
+            finalizeReply(set, get);
+          } else {
+            set({
+              thinking: false,
+              activeNodes: [],
+              error: error instanceof Error ? error.message : '发送失败，请重试',
+            });
+          }
+        } finally {
+          if (activeAbort === controller) activeAbort = null;
         }
       },
 
@@ -245,18 +278,32 @@ export const useAgentStore = create<AgentState>()(
         stopTypewriter();
         // 保留 interruptedOrder：弹窗需要在 resume 期间继续展示订单明细
         set({ thinking: true, error: null, timeline: [], resuming: true });
+        const controller = new AbortController();
+        activeAbort = controller;
         try {
           await resumeAgent(
-            { sessionId: get().sessionId, decision },
-            { onEvent: (event) => handleEvent(event, set, get) },
+            {
+              sessionId: get().sessionId,
+              decision,
+              // resume 轮的成交信号（权重最高）同样要能被接受，因此 generation 一并上行
+              profileGeneration: get().userProfile.generation,
+            },
+            { onEvent: (event) => handleEvent(event, set, get), signal: controller.signal },
           );
         } catch (error) {
           stopTypewriter();
-          set({
-            thinking: false,
-            error: error instanceof Error ? error.message : '订单确认失败，请重试',
-          });
+          if (controller.signal.aborted) {
+            runFinished = true;
+            set({ thinking: false, activeNodes: [] });
+            finalizeReply(set, get);
+          } else {
+            set({
+              thinking: false,
+              error: error instanceof Error ? error.message : '订单确认失败，请重试',
+            });
+          }
         } finally {
+          if (activeAbort === controller) activeAbort = null;
           set({ resuming: false, interruptedOrder: null });
         }
       },
@@ -300,6 +347,13 @@ export const useAgentStore = create<AgentState>()(
         set({ error: null });
       },
 
+      clearUserProfile() {
+        // 主防线是 generation 自增（在途 patch 会被 applyProfilePatch 丢掉），
+        // 中止在途请求是双保险：让服务端也别再把这一轮跑完。
+        activeAbort?.abort();
+        set({ userProfile: clearProfile(get().userProfile) });
+      },
+
       dismissInterrupt() {
         set({ interruptedOrder: null });
       },
@@ -315,6 +369,9 @@ export const useAgentStore = create<AgentState>()(
           .slice(-40)
           .map((message) => ({ ...message, streaming: false })),
         snapshot: state.snapshot,
+        // 跨会话画像：与 sessionId 天然解耦（按 sessionId 存会让新会话读不到），
+        // 「新会话」按钮因此不会清掉画像
+        userProfile: state.userProfile,
       }),
     },
   ),
@@ -434,6 +491,14 @@ function applySnapshot(
   // 服务端购物车为准：UI 里的增减也会在下一轮请求中回传，此处同步展示
   useCartStore.getState().setItems(payload.cart);
 
+  // 画像：generation 校验通过才合并（清除画像后 generation 自增，携带旧值的在途 patch 一律丢弃）。
+  // mergeProfile 是幂等的、且「无变化时返回同一引用」，所以一轮里被推多次也不会重复计分。
+  const userProfile = applyProfilePatch(
+    state.userProfile,
+    payload.profilePatch,
+    payload.profileGeneration,
+  );
+
   const messages = state.messages;
   // 本轮回复气泡：存在即说明本轮 token 已经在流式输出
   const activeBubble =
@@ -442,7 +507,7 @@ function applySnapshot(
       : messages.find((message) => message.id === activeReplyId);
 
   if (!payload.reply) {
-    set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled });
+    set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled, userProfile });
     return;
   }
 
@@ -455,7 +520,7 @@ function applySnapshot(
       // 缓冲可能已被消费完（定时器已停），必须重启才会继续揭示
       if (shouldAnimate()) startTypewriter(activeBubble.id, set, get);
     }
-    set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled });
+    set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled, userProfile });
     return;
   }
 
@@ -465,7 +530,7 @@ function applySnapshot(
     lastMessage.role === 'agent' &&
     lastMessage.content === payload.reply;
   if (isDuplicate) {
-    set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled });
+    set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled, userProfile });
     return;
   }
 
@@ -478,6 +543,7 @@ function applySnapshot(
     snapshot: payload,
     timeline,
     llmEnabled: payload.llmEnabled,
+    userProfile,
     thinking: false,
     messages: [
       ...messages,

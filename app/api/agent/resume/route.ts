@@ -11,6 +11,8 @@ export const dynamic = 'force-dynamic';
 const BodySchema = z.object({
   sessionId: z.string().min(1).max(64),
   decision: z.enum(['confirm', 'cancel']),
+  /** 画像 generation：resume 轮由 confirmOrder 产出成交信号，前端需要同一个值来接受它 */
+  profileGeneration: z.number().int().min(0).optional(),
 });
 
 /**
@@ -36,11 +38,16 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const { sessionId, decision } = parsed.data;
+  const { sessionId, decision, profileGeneration } = parsed.data;
 
   const stream = createAgentEventStream({
     app: await getAgentApp(),
-    input: new Command({ resume: decision }),
+    // resume 不经过 parseIntent，因此这里用 Command.update 把 generation 写进状态，
+    // 否则快照回显的还是上一轮的值，成交信号会被前端当成过期 patch 丢掉
+    input: new Command({
+      resume: decision,
+      update: { profileGeneration: profileGeneration ?? 0 },
+    }),
     config: threadConfig(sessionId),
     sessionId,
   });

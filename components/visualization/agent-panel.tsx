@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Brain,
   ChevronRight,
   ListTree,
   ShoppingCart,
@@ -15,6 +16,7 @@ import { CartSection } from '@/components/visualization/cart-section';
 import { CompareSection } from '@/components/visualization/compare-section';
 import { DecisionSection } from '@/components/visualization/decision-section';
 import { IntentSection } from '@/components/visualization/intent-section';
+import { ProfileSection } from '@/components/visualization/profile-section';
 import { TimelineSection } from '@/components/visualization/timeline-section';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,9 +28,10 @@ import { useUiStore } from '@/store/use-ui-store';
 /**
  * Agent 操作可视化面板（右栏）。
  *
- * 五段内容全部由 Agent 执行过程中推送的状态与事件驱动：
+ * 六段内容全部由 Agent 执行过程中推送的状态与事件驱动：
  * 推理时间线（node/tool 事件）、意图解析（searchFilters）、
- * 对比分析（comparison）、决策推荐（comparison 派生）、购物车（cart）。
+ * 对比分析（comparison）、决策推荐（comparison 派生）、购物车（cart）、
+ * 你的偏好（localStorage 里的跨会话画像，同一浏览器下有效）。
  */
 export function AgentPanel() {
   const setRightPanelOpen = useUiStore((s) => s.setRightPanelOpen);
@@ -89,6 +92,10 @@ export function AgentPanel() {
             }
           >
             <CartSection />
+          </PanelSection>
+
+          <PanelSection icon={Brain} title="你的偏好">
+            <ProfileSection />
           </PanelSection>
         </div>
       </ScrollArea>

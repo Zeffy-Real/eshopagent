@@ -1,5 +1,6 @@
 import type { AgentStateUpdate, AgentStateValue } from '@/lib/agent/state';
 import { createLogEntry } from '@/lib/agent/utils';
+import { extractProfileSignals } from '@/lib/profile';
 import { formatPrice } from '@/lib/utils';
 
 /**
@@ -34,6 +35,11 @@ export async function confirmOrderNode(
   return {
     pendingOrder: confirmed,
     cart: [],
+    // 画像信号：成交是权重最高的来源，只从**实际下单的商品**提取
+    profilePatch: [
+      ...state.profilePatch,
+      ...extractProfileSignals({ kind: 'order', items: confirmed.items }),
+    ],
     toolCallLog: [
       createLogEntry({
         kind: 'node',

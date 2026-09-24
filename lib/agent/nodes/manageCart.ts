@@ -11,6 +11,7 @@ import {
 } from '@/lib/agent/tools/cartTools';
 import { createLogEntry, lastHumanText } from '@/lib/agent/utils';
 import { getProductById } from '@/lib/catalog/products';
+import { extractProfileSignals } from '@/lib/profile';
 import type { CartAction, Product } from '@/lib/types';
 import { formatPrice } from '@/lib/utils';
 
@@ -225,6 +226,16 @@ export async function manageCartNode(
       const result = addToCart(state.cart, target.product.id, action.quantity ?? 1);
       return {
         cart: result.cart,
+        // 画像信号：只有**真的加购成功**才算行为。缺货 / 超上限导致的失败不产生信号，
+        // 否则画像会出现「用户加购过」但购物车里根本没有的东西。
+        ...(result.ok
+          ? {
+              profilePatch: [
+                ...state.profilePatch,
+                ...extractProfileSignals({ kind: 'cart', product: target.product }),
+              ],
+            }
+          : {}),
         toolCallLog: [log('加入购物车', result.message, result.ok ? 'done' : 'error')],
       };
     }

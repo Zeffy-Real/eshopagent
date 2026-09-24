@@ -36,12 +36,20 @@ export const INTENT_SYSTEM_PROMPT = `你是电商购物助手的「意图解析�
    它表示「上一轮结果里的第 N 件」；没有序数时 targetIndex 留空。
    这类输入不要在 keywords 里填指代词本身（「第二件」不是一个商品关键词），
    让 keywords 留空即可 —— refine 会自动沿用上一轮的检索条件。
-   注意：只有用户**明确说出新的品类/商品**（「推荐点耳机」）时才算 search。`;
+   注意：只有用户**明确说出新的品类/商品**（「推荐点耳机」）时才算 search。
+
+关于用户历史偏好（仅当下方提供了「用户历史偏好」段时适用）：
+10. 历史偏好只是**参考**：当前输入已给出品类 / 关键词 / 预算时，一律以当前输入为准，
+    不要用偏好改写、扩大或缩小筛选条件。
+11. 仅当输入非常宽泛（例如「推荐点什么」「随便看看」）且用户没给任何品类/关键词时，
+    才可以参考偏好里的第一顺位品类，把它填进 category；没有把握就留空，
+    不要为了用上偏好而强行归类。`;
 
 export function buildIntentUserPrompt(
   text: string,
   previous: SearchFilters,
   history = '',
+  profileLines: string[] = [],
 ): string {
   const lines = [
     `可选品类：${CATEGORIES.join('、')}`,
@@ -51,6 +59,13 @@ export function buildIntentUserPrompt(
   ];
   if (history) {
     lines.push('', '历史对话（仅用于理解指代，不要据此推断意图类别）：', history);
+  }
+  if (profileLines.length > 0) {
+    lines.push(
+      '',
+      '用户历史偏好（同一浏览器下积累的真实行为，仅作参考，不要据此编造商品）：',
+      ...profileLines,
+    );
   }
   lines.push('', `用户输入：${text}`);
   return lines.join('\n');
@@ -73,7 +88,9 @@ export const REPLY_SYSTEM_PROMPT = `你是「购物助手」，一个以对话�
    不要自己换算、截断或四舍五入（把 8.5万 写成 8.4万 会让用户认为数据是编的）。
 8. 商品行里**没有**「销量」二字时，说明该来源没有销量数据（只有评价数），
    此时只能引用评价数，绝对不要自己推测或编造一个销量数字。
-9. 不要输出 JSON，不要重复用户的话。`;
+9. 不要输出 JSON，不要重复用户的话。
+10. 上下文里若有「用户历史偏好提示」，在回复结尾用**一句话**自然带出；
+    除此之外不要据此编造偏好 —— 提示里没提到的品类 / 品牌，不能说是用户的偏好。`;
 
 /** 把当前状态整理成 LLM 可读的精简上下文（只给必要字段，避免 token 浪费） */
 export function buildReplyContext(state: AgentStateValue): string {
@@ -140,6 +157,11 @@ export function buildReplyContext(state: AgentStateValue): string {
     lines.push(
       `待确认订单：${state.pendingOrder.id} 实付 ¥${state.pendingOrder.total}`,
     );
+  }
+
+  // 跨会话画像：由 parseIntent 判定是否该提（宽泛输入 + 画像有信号），这里只负责转达给模型
+  if (state.profileHint) {
+    lines.push(`用户历史偏好提示（结尾用一句话自然带出）：${state.profileHint}`);
   }
 
   return lines.join('\n');

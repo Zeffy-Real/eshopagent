@@ -3,6 +3,7 @@ import { getProductById } from '@/lib/catalog/products';
 import { describeFilters } from '@/lib/agent/ruleParser';
 import type { AgentStateUpdate, AgentStateValue } from '@/lib/agent/state';
 import { createLogEntry } from '@/lib/agent/utils';
+import { extractProfileSignals } from '@/lib/profile';
 import { formatPrice } from '@/lib/utils';
 
 /** 单次检索返回的最大商品数（中栏网格一屏可展示的数量） */
@@ -50,10 +51,19 @@ export async function searchProductsNode(
   const condition = describeFilters(state.searchFilters);
   const outcome = filterProducts(state.searchFilters, SEARCH_LIMIT);
 
+  // 画像信号：只从**真实的检索行为**提取（用户给出的条件 + 实际命中的商品），
+  // 追加到本轮 patch（parseIntent 已在本轮开头把 patch 重置为 []）。
+  const signals = extractProfileSignals({
+    kind: 'search',
+    filters: state.searchFilters,
+    hits: outcome.items,
+  });
+
   return {
     searchResults: outcome.items,
     focusProductId: null,
     needsRefine: outcome.total === 0,
+    profilePatch: [...state.profilePatch, ...signals],
     toolCallLog: [
       createLogEntry({
         kind: 'tool',

@@ -90,6 +90,8 @@ export function toSnapshot(
     toolCallLog: state.toolCallLog.filter((entry) => entry.startedAt >= runStartedAt),
     pendingOrder: state.pendingOrder,
     reply,
+    profilePatch: state.profilePatch,
+    profileGeneration: state.profileGeneration,
     llmEnabled: isLlmEnabled(),
   };
 }

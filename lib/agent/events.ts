@@ -1,3 +1,4 @@
+import type { ProfileSignal, UserProfile } from '@/lib/profile';
 import type {
   AgentIntent,
   CartItem,
@@ -52,6 +53,10 @@ export interface AgentStateSnapshot {
   pendingOrder: Order | null;
   /** 最新一条 Agent 回复（Markdown） */
   reply: string;
+  /** 本轮画像信号（前端幂等合并进本地画像；每轮由 parseIntent 重置） */
+  profilePatch: ProfileSignal[];
+  /** 客户端画像 generation 的原样回显：前端据此丢弃「清除画像」之前发出的在途 patch */
+  profileGeneration: number;
   /** 服务端是否已配置 LLM（决定前端是否展示兜底提示） */
   llmEnabled: boolean;
 }
@@ -77,10 +82,19 @@ export interface AgentRequestBody {
   compareProductIds?: string[];
   /** 以图搜商品：data URL（需配置支持视觉的模型） */
   imageDataUrl?: string;
+  /**
+   * 客户端画像（localStorage 里的那份，服务端不持有）。
+   * 作为一次性上下文注入 prompt，用完即弃，不写服务端存储。
+   */
+  profile?: UserProfile;
+  /** 画像 generation：服务端原样回显，前端用它丢弃过期 patch */
+  profileGeneration?: number;
 }
 
 export interface AgentResumeBody {
   sessionId: string;
   /** 订单确认结果 */
   decision: 'confirm' | 'cancel';
+  /** 画像 generation（resume 轮的成交信号同样要能被前端接受） */
+  profileGeneration?: number;
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import { buildHistoryContext, historyConfig } from '@/lib/agent/history';
 import { isLlmEnabled } from '@/lib/agent/llm';
 import { INTENT_SYSTEM_PROMPT, buildIntentUserPrompt } from '@/lib/agent/prompts';
@@ -10,8 +11,16 @@ import {
 } from '@/lib/agent/ruleParser';
 import type { AgentStateUpdate, AgentStateValue } from '@/lib/agent/state';
 import { invokeStructured, type StructuredMethod } from '@/lib/agent/structured';
-import { nodeLog } from '@/lib/agent/utils';
+import { createLogEntry, nodeLog } from '@/lib/agent/utils';
 import { lastHumanText } from '@/lib/agent/utils';
+import {
+  PROFILE_SOURCE_LABEL,
+  hasProfileSignals,
+  profileFromConfig,
+  profileHintOf,
+  profileRecall,
+  profileSummaryLines,
+} from '@/lib/profile';
 import {
   CATEGORIES,
   INTENT_LABEL,
@@ -105,6 +114,7 @@ function shouldKeepPrevious(
  */
 export async function parseIntentNode(
   state: AgentStateValue,
+  config?: RunnableConfig,
 ): Promise<AgentStateUpdate> {
   const startedAt = Date.now();
   const text = lastHumanText(state.messages);
@@ -114,6 +124,12 @@ export async function parseIntentNode(
   // 历史只作理解输入，不作为路由依据（见 INTENT_SYSTEM_PROMPT 第 6 - 8 条）。
   const { enabled: historyEnabled, maxChars } = historyConfig();
   const history = historyEnabled ? buildHistoryContext(state.messages, maxChars) : '';
+
+  // 跨会话画像：服务端不持有它，随请求（config.configurable）上行，用完即弃。
+  // 注入了什么就展示什么 —— 面板里的「记起你的偏好」必须能对应到这次真实注入。
+  const profile = profileFromConfig(config);
+  const profileLines =
+    profile && hasProfileSignals(profile) ? profileSummaryLines(profile) : [];
 
   let intent: AgentIntent = guessIntentByRules(text);
   let filters = ruleFilters;
@@ -129,7 +145,7 @@ export async function parseIntentNode(
         schema: IntentSchema,
         name: 'parse_intent',
         system: INTENT_SYSTEM_PROMPT,
-        user: buildIntentUserPrompt(text, state.searchFilters, history),
+        user: buildIntentUserPrompt(text, state.searchFilters, history, profileLines),
         temperature: 0,
       });
       intent = result.value.intent;
@@ -166,18 +182,47 @@ export async function parseIntentNode(
     ? ` · 定位到第 ${targetIndex} 件：${focusProduct.name}`
     : '';
 
+  // 画像消费（只在这一处判定，generateReply 只负责渲染）：
+  // - 判据取**规则解析出的当前输入条件**，而不是 LLM 解析出的 filters ——
+  //   模型可能参考画像补上品类，用它判断会把「模型参考了偏好」误判成
+  //   「用户明确说了品类」，提示与记忆事件都不会出现；
+  // - 只有找商品的场景（search / refine / chat）才提偏好，购物车 / 结算 / 对比不打扰用户；
+  // - 规则路径不拿画像改筛选条件（以当前输入为准），只把偏好体现在回复里。
+  const inputHasScope = Boolean(ruleFilters.category) || (ruleFilters.keywords?.length ?? 0) > 0;
+  const recallEligible = intent === 'search' || intent === 'refine' || intent === 'chat';
+  const recall =
+    profile && !inputHasScope && recallEligible ? profileRecall(profile) : null;
+  const profileHint = recall ? profileHintOf(recall) : '';
+
+  const logs = [
+    nodeLog(
+      'parseIntent',
+      `识别意图：${INTENT_LABEL[intent]}`,
+      `${sourceText} · ${detail}${focusNote}`,
+      startedAt,
+    ),
+  ];
+  if (recall) {
+    logs.push(
+      createLogEntry({
+        kind: 'decision',
+        name: 'profile_recall',
+        title: `记起你的偏好：${recall.label}`,
+        detail: `本轮输入未给出品类/关键词，参考了历史偏好（来源：${PROFILE_SOURCE_LABEL[recall.source]}）`,
+        status: 'done',
+        startedAt,
+      }),
+    );
+  }
+
   return {
     intent,
     searchFilters: filters,
     // 每轮都写：解析不出序数时写 null，避免上一轮的目标残留影响本轮
     focusProductId: focusProduct?.id ?? null,
-    toolCallLog: [
-      nodeLog(
-        'parseIntent',
-        `识别意图：${INTENT_LABEL[intent]}`,
-        `${sourceText} · ${detail}${focusNote}`,
-        startedAt,
-      ),
-    ],
+    // 每轮重置本轮画像信号（覆盖型 reducer，见 AgentState 的注释）
+    profilePatch: [],
+    profileHint,
+    toolCallLog: logs,
   };
 }

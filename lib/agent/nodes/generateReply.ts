@@ -178,7 +178,13 @@ export async function generateReplyNode(
     }
   }
 
-  if (!reply) reply = buildTemplateReply(state);
+  if (!reply) {
+    reply = buildTemplateReply(state);
+    // 规则路径也要**消费**画像：筛选条件以当前输入为准，但回复要体现偏好，
+    // 否则「没有 Key 也能参考偏好」就是假的（不报错 ≠ 生效）。
+    // 这句话由 parseIntent 判定并写入 profileHint（判据只有一处）。
+    if (state.profileHint) reply = `${reply}\n\n${state.profileHint}`;
+  }
 
   return {
     messages: [new AIMessage(reply)],

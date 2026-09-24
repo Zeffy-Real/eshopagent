@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { searchProductsNode } from '@/lib/agent/nodes/searchProducts';
 import type { AgentStateUpdate } from '@/lib/agent/state';
 import { PRODUCTS } from '@/lib/catalog/products';
+import type { ProfileSignal } from '@/lib/profile';
 import type { Product, ToolLogEntry } from '@/lib/types';
 import { makeState } from '@/lib/test-utils/factories';
 
@@ -21,6 +22,12 @@ function firstLogOf(update: AgentStateUpdate): ToolLogEntry | undefined {
   const value = update.toolCallLog;
   if (!Array.isArray(value)) throw new Error('searchProductsNode 未返回 toolCallLog');
   return value[0];
+}
+
+function patchOf(update: AgentStateUpdate): ProfileSignal[] {
+  const value = update.profilePatch;
+  if (!Array.isArray(value)) throw new Error('searchProductsNode 未返回 profilePatch');
+  return value;
 }
 
 const books = PRODUCTS.filter((product) => product.category === '图书');
@@ -63,5 +70,33 @@ describe('searchProductsNode：序数指代收窄结果集', () => {
     const log = firstLogOf(update);
     expect(log?.title).toBe('切换到指定商品');
     expect(log?.detail).toContain(target?.name ?? '');
+  });
+});
+
+describe('searchProductsNode：画像信号', () => {
+  it('从真实检索行为提取信号（条件 + 实际命中的商品）', async () => {
+    const update = await searchProductsNode(
+      makeState({ searchFilters: { category: '图书' } }),
+    );
+    expect(patchOf(update)).toContainEqual({
+      kind: 'category',
+      value: '图书',
+      source: 'browse',
+    });
+  });
+
+  it('追加而不覆盖本轮已有信号（同一轮多个节点的信号会累积）', async () => {
+    const existing: ProfileSignal[] = [
+      { kind: 'brand', value: '测试出版社', source: 'cart' },
+    ];
+    const update = await searchProductsNode(
+      makeState({ searchFilters: { category: '图书' }, profilePatch: existing }),
+    );
+    expect(patchOf(update)[0]).toEqual(existing[0]);
+  });
+
+  it('条件为空且结果混品类 → 不产出信号（不替用户总结）', async () => {
+    const update = await searchProductsNode(makeState({ searchFilters: {} }));
+    expect(patchOf(update)).toEqual([]);
   });
 });

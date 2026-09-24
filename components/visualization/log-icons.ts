@@ -3,6 +3,7 @@ import {
   Brain,
   ClipboardList,
   GitCompareArrows,
+  History,
   Loader2,
   MessageSquareText,
   Receipt,
@@ -32,6 +33,8 @@ const ICON_BY_NAME: Record<string, LucideIcon> = {
   prepareOrder: ClipboardList,
   confirmOrder: BadgeCheck,
   generateReply: MessageSquareText,
+  // 跨会话画像的「记起你的偏好」事件（parseIntent 在输入宽泛时产出）
+  profile_recall: History,
 };
 
 /** 时间线条目图标：按工具名 / 节点名匹配，未命中用通用图标 */

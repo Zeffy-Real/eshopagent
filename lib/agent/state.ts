@@ -1,5 +1,6 @@
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 import type { BaseMessage } from '@langchain/core/messages';
+import type { ProfileSignal } from '@/lib/profile';
 import type {
   AgentIntent,
   CartItem,
@@ -88,6 +89,45 @@ export const AgentState = Annotation.Root({
   focusProductId: Annotation<string | null>({
     reducer: (_previous, next) => next,
     default: () => null,
+  }),
+
+  /**
+   * 本轮画像信号（前端幂等合并进本地画像，见 lib/profile.ts）。
+   *
+   * 生命周期与 focusProductId 同思路 —— 由每轮的第一个节点界定边界：
+   * - reducer 是**覆盖型**（不是 concat），否则同一会话跑 N 轮会堆 N 组重复信号；
+   * - `parseIntent` 每轮都写 `[]`，等于在本轮开头清空上一轮的 patch；
+   * - 后续节点（searchProducts / manageCart / confirmOrder）读当前值再追加，
+   *   因此同一轮内多个节点的信号会累积；
+   * - interrupt 恢复轮（resume）不经过 parseIntent，会把上一轮的 patch 再带一遍，
+   *   所以**前端合并必须幂等**（mergeProfile 对完全相同的 patch 返回同一引用）。
+   */
+  profilePatch: Annotation<ProfileSignal[]>({
+    reducer: (_previous, next) => next,
+    default: () => [],
+  }),
+
+  /**
+   * 客户端画像的 generation（每次「清除画像」自增）。
+   *
+   * 服务端**不持有画像**：这个数字只是把客户端随请求上行的值原样回显到快照里，
+   * 前端据此丢弃「清除之前发出的」在途 patch。由路由作为图输入写入（每轮覆盖）。
+   */
+  profileGeneration: Annotation<number>({
+    reducer: (_previous, next) => next,
+    default: () => 0,
+  }),
+
+  /**
+   * 本轮要不要在回复里带一句画像提示（例如「注意到你之前常看图书…」）。
+   *
+   * 由 parseIntent 判定并写入（不适用时写空串），generateReply 只负责渲染 ——
+   * 「什么时候该提偏好」只有一处实现。规则路径把它补在模板回复末尾，
+   * LLM 路径把它作为「结尾自然带出一句」的指令写进上下文。
+   */
+  profileHint: Annotation<string>({
+    reducer: (_previous, next) => next,
+    default: () => '',
   }),
 
   /** 是否需要在搜索后回到 refineSearch 继续细化条件 */
