@@ -117,6 +117,58 @@ npm run catalog:localize           # 用 LLM 把文案本地化为中文 + 派�
 
 实测过直接抓取真实平台：Amazon 直连返回 **503**（反爬拦截），淘宝/京东需要登录态 + 风控对抗，且抓取行为违反平台协议、在国内还涉及《数据安全法》《反不正当竞争法》的合规风险。因此选择「公开授权数据集 + 离线快照」这条合规路径：数据同样真实，且不依赖运行时网络（离线也能跑），需要更新时跑一次 `catalog:build` 即可。
 
+### JustOneAPI 实时数据源（可选；不配 token 时对现有功能零影响）
+
+**定位：`justoneapi` 是补充源与演示源，不是 `real` 快照的替代。** 它的价值是「可刷新的真实价格与库存状态」，代价是上游缺一批字段：
+
+| 字段 | `real`（默认，HF 快照） | `justoneapi`（京东实时） |
+| --- | --- | --- |
+| 标题 / 品牌 / 类目 / 图片 / 价格 / 库存等级 / 商品参数 | ✅ | ✅（实时） |
+| 评分 / 评论数 | ✅ 真实字段 | ❌ **京东搜索与详情端点里没有这些字段**（实测为空串 / 区间文案），一律记 0，界面按既有策略显示「暂无评分」 |
+| 销量 / 划线价 / 商品描述 | 部分有（图书简介为派生） | ❌ 销量与划线价源里没有；描述为派生文案（由品牌/型号/重量等真实字段拼装） |
+| 用途 | **演示与验收基线**，可复现 | 演示「可刷新的实时价格与库存」，构建期可选源 |
+
+所以：切到 `justoneapi` 后商品卡没有评分是**上游没有该字段**，不是漏接。要补齐得接「商品评论 / 商品销量」类接口（明确放第二批）。
+
+**启用方式**
+
+```bash
+# 1) 去 https://dashboard.justoneapi.com 取 token，写进 .env.local（只服务端读取，禁止 NEXT_PUBLIC_*）
+# 2) 构建期源：
+npm run catalog:build:justoneapi              # = node --env-file=.env.local scripts/build-real-catalog.mjs --source=justoneapi
+npm run catalog:build:justoneapi -- --per=8   # 每个品类保留 8 件（默认 14）
+# 3) 用它作运行时目录：
+CATALOG_SOURCE=justoneapi npm run dev          # 未配置 token 时启动即报错，不会静默回落
+```
+
+产物写到 `data/justoneapi-catalog.json`（**不覆盖** `data/real-catalog.json`），用 `tmp + rename` 原子替换：构建失败保留上一版产物，不会留下半个文件。
+
+**已接入端点**（只用同步 V1；V2 是异步任务，本项目不接）
+
+| 用途 | 端点 | 实测备注 |
+| --- | --- | --- |
+| 搜索：价格 / 标题 / 图片 / 类目链 | `/api/jd/search-item-list/v1` | 每页 48 件。**注意早期文档写的 `search-item/v1` 实测返回 404**，正确路径带 `-list` |
+| 详情：品牌 / 主图 / 库存状态 / 参数 | `/api/jd/get-item-detail/v1` | `priceFloor.price` 实测被打码为 `"1??"`（未登录态），价格取不到 |
+| 价格：精确价格 | `/api/jd/get-item-price/v1` | 只返回 `{ good_id, price }`，**price 单位是分**（19800 = 198.00 元） |
+
+**错误码速查（与官方 OpenAPI 的 15 个 code 枚举一致；业务结果一律以响应体的 `code` 为准，HTTP 状态码只作诊断）**
+
+| code | 含义 | 是否重试 | 构建期行为 |
+| --- | --- | --- | --- |
+| 0 | 成功（计费） | — | 正常 |
+| 100 / 101 | Token 无效或已失效 | 否 | **中止**并提示检查 `JUSTONEAPI_TOKEN` |
+| 202 / 302 | 超出速率限制 | 退避后重试 1 次 | 仍失败则丢弃该条 |
+| 301 | 采集失败 | 最多 3 次（指数退避 + 抖动） | 仍失败则丢弃该条 |
+| 303 | 超出每日配额（HTTP 429） | 否 | **中止**，保留上一版产物 |
+| 400 | 参数错误 | 否 | 丢弃该条 |
+| 404 | 资源不存在（路径或商品 ID 无效） | 否 | 丢弃该条 |
+| 500 | 内部服务器错误 | 最多 3 次 | 仍失败则丢弃该条 |
+| 503 | 服务暂时不可用 | 最多 2 次 | 仍失败则丢弃该条 |
+| 600 | 权限不足 | 否 | 中止 |
+| 601 / 602 | 余额不足 / 累计消费超限 | 否 | **中止** |
+
+**配额说明**：成功响应计费、失败不计费；每日限额按 **Asia/Shanghai 自然日**计算，同一账户下所有 token 合并计数，仅 `code=0` 计入。一次性构建的调用数 = 搜索次数（7 品类 × 2 关键词 = 14）+ 每件商品的详情调用数（≤ 品类数 × `--per`），可用 `--per` 控制。
+
 ### 中文检索的 i18n 桥接
 
 真实数据是英文的，而用户说中文，这里做了两层桥接（都在 `lib/agent/tools/productTools.ts` 与本地化脚本里）：
@@ -155,7 +207,7 @@ cp .env.example .env.local
 
 npm run dev        # http://localhost:3000
 npm run typecheck  # 类型检查
-npm test           # 单测（159 个用例：口径一致性的唯一实现、记忆机制、落地校验重试、在途请求中止）
+npm test           # 单测（290 个用例：口径一致性的唯一实现、记忆机制、落地校验重试、在途请求中止、JustOneAPI 码表与映射）
 npm run build      # 生产构建
 ```
 
@@ -167,7 +219,8 @@ npm run build      # 生产构建
 | `LLM_API_KEY` | 接口密钥 | `sk-...` |
 | `LLM_MODEL` | 模型名 | `deepseek-chat` / `qwen-plus` / `gpt-4o-mini` |
 | `LLM_FALLBACK_ENABLED` | ⚠️ **当前实现下无实际效果**（已记为已知问题）：只要 Key 可用就会调用 LLM，Key 不可用本来就走规则兜底 —— 两种取值结果相同。要演示降级路径请让 Key 不可用（清空或写无效值）后重启 | `true` |
-| `CATALOG_SOURCE` | 商品目录数据源：`real`（真实数据快照，默认）/ `mock`（内置演示数据） | `real` |
+| `CATALOG_SOURCE` | 商品目录数据源：`real`（真实数据快照，默认）/ `justoneapi`（京东实时源，需 `JUSTONEAPI_TOKEN`，未配置时启动即报错）/ `mock`（内置演示数据） | `real` |
+| `JUSTONEAPI_TOKEN` | 可选。京东实时数据源 token（[dashboard.justoneapi.com](https://dashboard.justoneapi.com) 获取）。**只服务端读取**，禁止写成 `NEXT_PUBLIC_*`；不配置时该源与实时补充功能整体不启用，现有功能零影响 | 空 |
 | `HISTORY_ENABLED` | 是否把最近若干轮对话注入意图解析（默认 true） | `true` |
 | `HISTORY_MAX_CHARS` | 历史注入的字符预算（约 2 字符 ≈ 1 token），默认 2000 | `2000` |
 | `CHECKPOINT_BACKEND` | 会话持久化后端：`sqlite`（默认，落盘）/ `memory`（纯内存）。sqlite 初始化失败会自动回落 `memory` | `sqlite` |
@@ -517,7 +570,14 @@ lib/
   profile.ts                  # 跨会话画像：信号提取 + 幂等合并 + 提示文案（纯函数）
   agent-client.ts             # SSE 客户端（在途请求的中止入口、AbortError 分类）
   catalog/
-    products.ts               # 统一商品目录入口（real / mock 可切换）
+    products.ts               # 统一商品目录入口（real / justoneapi / mock 可切换）
+  justoneapi/                 # 京东实时数据源（构建期脚本与运行时共用；实现是 .mjs + .d.mts）
+    codes.mjs                 # 码表与重试策略（15 个业务码）、退避公式、熔断集合
+    errors.mjs                # 错误载体与可读文案
+    client.mjs                # HTTP 客户端（120s 超时、先解析响应体、脱敏出口）
+    cache.ts                  # 实时数据缓存（TTL 300s + 单飞 + 失败不缓存）
+    types.ts                  # 实时字段类型（只覆盖易变字段）
+    platforms/jd.mjs          # 京东端点、cid 类目映射、价格/库存换算
   mock/
     products/                 # 内置演示数据（50 条，按品类拆分）
     user.ts                   # 模拟用户、收货地址、优惠券
@@ -538,10 +598,14 @@ lib/
     nodes/                    # 8 个节点，每个节点一个文件
     tools/                    # 商品工具 / 购物车工具
 data/
-  real-catalog.json           # 真实商品数据快照（由 scripts 生成）
+  real-catalog.json           # 真实商品数据快照（默认源，由 scripts 生成）
+  justoneapi-catalog.json     # 京东实时源产物（可选源，构建时刻的真实价格与库存）
 scripts/
-  build-real-catalog.mjs      # 多平台真实数据 → 统一 Product 模型
+  build-real-catalog.mjs      # 多平台真实数据 → 统一 Product 模型（--source=real | justoneapi）
+  catalog-shared.mjs          # 两个构建源共用的常量与纯函数（品类 / 汇率 / 价格区间 / 校验镜像）
+  sources/justoneapi.mjs      # 京东实时源：搜索 → 详情 → 校验 → 原子写盘 + 丢弃统计
   localize-catalog.mjs        # LLM 文案本地化 + 功能标签派生
+  justoneapi-probe.mjs        # 字段探测脚本（打印真实字段名，原始响应落 .cache/）
 store/
   use-agent-store.ts          # 对话、状态快照、时间线、中断（localStorage 持久化）
   use-cart-store.ts           # 购物车（localStorage 持久化）

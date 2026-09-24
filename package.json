@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "catalog:build": "node scripts/build-real-catalog.mjs",
+    "catalog:build:justoneapi": "node --env-file=.env.local scripts/build-real-catalog.mjs --source=justoneapi",
     "catalog:localize": "node --env-file=.env.local scripts/localize-catalog.mjs",
     "justoneapi:probe": "node --env-file=.env.local scripts/justoneapi-probe.mjs"
   },

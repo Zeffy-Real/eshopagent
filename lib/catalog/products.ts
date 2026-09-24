@@ -1,19 +1,26 @@
 import realCatalogJson from '@/data/real-catalog.json';
+import justoneapiCatalogJson from '@/data/justoneapi-catalog.json';
 import { PRODUCTS as MOCK_PRODUCTS } from '@/lib/mock/products';
+import { hasJustOneApiToken } from '@/lib/justoneapi/client.mjs';
 import { CATEGORIES, type Category, type Product } from '@/lib/types';
 
 /**
  * 统一商品目录入口（数据源可切换）。
  *
  * - `real`：真实电商数据快照（Amazon 公开样本数据集，见 data/real-catalog.json 与
- *   scripts/build-real-catalog.mjs），默认数据源；
+ *   scripts/build-real-catalog.mjs），**默认源，也是演示与验收基线**；
+ * - `justoneapi`：京东实时源产物（data/justoneapi-catalog.json，由
+ *   `npm run catalog:build:justoneapi` 生成）。它是**补充源与演示源，不是 real 的替代**：
+ *   有可刷新的真实价格与库存状态，但上游缺评分/评论数/销量/划线价/描述
+ *   （详见 README「JustOneAPI 实时数据源」与 docs/justoneapi-design.md §2/§3）；
  * - `mock`：内置 50 条精编数据，用于离线演示 / 对比测试。
  *
- * 切换方式：环境变量 `CATALOG_SOURCE=mock|real`。业务代码（工具层、节点、组件）
- * 一律从这里取数，不直接依赖具体数据源——接真实电商 API 时只需替换本文件的实现。
+ * 切换方式：环境变量 `CATALOG_SOURCE=real|justoneapi|mock`（next.config.ts 把它内联进
+ * 客户端包，保证服务端与浏览器解析出同一个源；token 这类密钥**不会**也不应该内联）。
+ * 业务代码（工具层、节点、组件）一律从这里取数，不直接依赖具体数据源。
  */
 
-export type CatalogSource = 'real' | 'mock';
+export type CatalogSource = 'real' | 'justoneapi' | 'mock';
 
 export interface CatalogMeta {
   source: CatalogSource;
@@ -44,8 +51,12 @@ const NUMERIC_BOUNDS: { field: 'price' | 'rating'; min: number; max: number }[] 
  *      非字符串的 `description` 会让 React 抛「Objects are not valid as a React child」。
  *   2. `typeof NaN === 'number'` 恒为 true，所以数值字段必须同时判 `Number.isFinite`
  *      与区间，否则一个 NaN 评分会渲染成「NaN 分」。
+ *
+ * 构建期脚本里有一份**同语义的镜像**（`scripts/catalog-shared.mjs` 的 `isProductLike`，
+ * 脚本加载不了 TS），两边必须永远一致——由 `lib/justoneapi/jdSource.test.ts` 的等价性单测盯着。
+ * 这里导出它就是为了那条单测。
  */
-function isProductLike(value: unknown): value is Product {
+export function isProductLike(value: unknown): value is Product {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
 
@@ -76,47 +87,89 @@ interface RawCatalog {
   platforms?: string[];
 }
 
-const rawCatalog = realCatalogJson as RawCatalog;
+/**
+ * 加载一份目录产物：先按 `isProductLike` 丢弃不合格条目，再补齐可能缺失的字段。
+ *
+ * 两个源（快照 / 实时）共用这一处实现——校验与兜底一旦分叉，界面行为就会分叉。
+ */
+function loadProducts(raw: RawCatalog): Product[] {
+  return (raw.products ?? [])
+    .filter(isProductLike)
+    .map((product) => ({
+      ...product,
+      // 真实数据里可能缺原价/库存字段，补齐默认值避免界面出现 undefined
+      originalPrice:
+        typeof product.originalPrice === 'number' && product.originalPrice > 0
+          ? product.originalPrice
+          : product.price,
+      stock: typeof product.stock === 'number' ? product.stock : 0,
+      sales: typeof product.sales === 'number' ? product.sales : 0,
+      reviews: typeof product.reviews === 'number' ? product.reviews : 0,
+      tags: Array.isArray(product.tags) ? product.tags : [],
+      specifications: product.specifications ?? {},
+    }));
+}
 
-const REAL_PRODUCTS: Product[] = (rawCatalog.products ?? [])
-  .filter(isProductLike)
-  .map((product) => ({
-    ...product,
-    // 真实数据里可能缺原价/库存字段，补齐默认值避免界面出现 undefined
-    originalPrice:
-      typeof product.originalPrice === 'number' && product.originalPrice > 0
-        ? product.originalPrice
-        : product.price,
-    stock: typeof product.stock === 'number' ? product.stock : 0,
-    sales: typeof product.sales === 'number' ? product.sales : 0,
-    reviews: typeof product.reviews === 'number' ? product.reviews : 0,
-    tags: Array.isArray(product.tags) ? product.tags : [],
-    specifications: product.specifications ?? {},
-  }));
+const REAL_RAW = realCatalogJson as RawCatalog;
+const JUSTONEAPI_RAW = justoneapiCatalogJson as RawCatalog;
+
+const REAL_PRODUCTS = loadProducts(REAL_RAW);
+const JUSTONEAPI_PRODUCTS = loadProducts(JUSTONEAPI_RAW);
 
 function resolveSource(): CatalogSource {
   const configured = process.env.CATALOG_SOURCE;
   if (configured === 'mock') return 'mock';
   if (configured === 'real') return 'real';
+  if (configured === 'justoneapi') {
+    // 只在校验服务端时强制要求 token 与产物：浏览器端拿不到 token（密钥不进客户端包），
+    // 也不该拿；只要两边解析出的**源**一致，渲染就是一致的
+    if (typeof window === 'undefined') {
+      if (!hasJustOneApiToken()) {
+        throw new Error(
+          'CATALOG_SOURCE=justoneapi 需要配置 JUSTONEAPI_TOKEN（见 .env.example）。这里刻意不静默回落：把实时源当成快照源用，出问题极难定位',
+        );
+      }
+      if (JUSTONEAPI_PRODUCTS.length === 0) {
+        throw new Error(
+          'data/justoneapi-catalog.json 里没有可用商品：先跑 npm run catalog:build:justoneapi 生成产物',
+        );
+      }
+    }
+    return 'justoneapi';
+  }
   // 未配置时：有真实数据就用真实数据，否则退回内置数据
   return REAL_PRODUCTS.length > 0 ? 'real' : 'mock';
 }
 
 export const CATALOG_SOURCE: CatalogSource = resolveSource();
 
+function rawOf(source: CatalogSource): RawCatalog {
+  if (source === 'justoneapi') return JUSTONEAPI_RAW;
+  return REAL_RAW;
+}
+
+function productsOf(source: CatalogSource): Product[] {
+  if (source === 'justoneapi') return JUSTONEAPI_PRODUCTS;
+  if (source === 'real') return REAL_PRODUCTS;
+  return MOCK_PRODUCTS;
+}
+
+function providerOf(source: CatalogSource): string {
+  if (source === 'mock') return '内置演示数据';
+  const platforms = rawOf(source).platforms ?? ['Amazon'];
+  const suffix = source === 'justoneapi' ? '实时商品数据（构建时刻）' : '真实商品数据';
+  return `${platforms.join(' / ')} ${suffix}`;
+}
+
 export const CATALOG_META: CatalogMeta = {
   source: CATALOG_SOURCE,
-  count: CATALOG_SOURCE === 'real' ? REAL_PRODUCTS.length : MOCK_PRODUCTS.length,
-  provider:
-    CATALOG_SOURCE === 'real'
-      ? `${(rawCatalog.platforms ?? ['Amazon']).join(' / ')} 真实商品数据`
-      : '内置演示数据',
-  generatedAt: CATALOG_SOURCE === 'real' ? (rawCatalog.generatedAt ?? null) : null,
-  note: CATALOG_SOURCE === 'real' ? (rawCatalog.note ?? null) : null,
+  count: productsOf(CATALOG_SOURCE).length,
+  provider: providerOf(CATALOG_SOURCE),
+  generatedAt: CATALOG_SOURCE === 'mock' ? null : (rawOf(CATALOG_SOURCE).generatedAt ?? null),
+  note: CATALOG_SOURCE === 'mock' ? null : (rawOf(CATALOG_SOURCE).note ?? null),
 };
 
-export const PRODUCTS: Product[] =
-  CATALOG_SOURCE === 'real' ? REAL_PRODUCTS : MOCK_PRODUCTS;
+export const PRODUCTS: Product[] = productsOf(CATALOG_SOURCE);
 
 const PRODUCT_INDEX = new Map(PRODUCTS.map((product) => [product.id, product]));
 

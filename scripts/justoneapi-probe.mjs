@@ -39,7 +39,11 @@ const OUT_DIR = resolve(ROOT, '.cache/justoneapi-probe');
  */
 const PLATFORMS = {
   taobao: { search: '/api/taobao/search-item-list/v1', detail: '/api/taobao/get-item-detail/v1' },
-  jd: { search: '/api/jd/search-item-list/v1', detail: '/api/jd/get-item-detail/v1' },
+  jd: {
+    search: '/api/jd/search-item-list/v1',
+    detail: '/api/jd/get-item-detail/v1',
+    price: '/api/jd/get-item-price/v1',
+  },
 };
 
 /** 搜索响应里可能的「商品数组」字段名，用于从真实响应里找列表 */
@@ -72,7 +76,8 @@ function printHelp() {
   --keyword=词       搜索关键词，默认「耳机」
   --platform=a,b     搜索的平台，可选 taobao / jd，默认两个都跑（用于二选一比较）
   --detail=平台      改跑商品详情，需同时给 --id
-  --id=商品ID        详情探测用的商品 ID（从搜索结果的 id 字段里取）
+  --price=平台       改跑商品价格端点（目前只有 jd），需同时给 --id
+  --id=商品ID        详情/价格探测用的商品 ID（从搜索结果的 id 字段里取）
 
 产出：
   终端打印真实字段名与首个商品的原始 JSON；
@@ -238,26 +243,29 @@ async function main() {
   }
 
   const detailPlatform = argValue('detail');
+  const pricePlatform = argValue('price');
   const detailId = argValue('id');
   const keyword = argValue('keyword', '耳机');
   const requested = (argValue('platform', 'taobao,jd') ?? '').split(',').map((item) => item.trim());
 
   const tasks = [];
-  if (detailPlatform) {
-    if (!PLATFORMS[detailPlatform]) {
-      console.error(`[探测] 未知平台：${detailPlatform}（可选：${Object.keys(PLATFORMS).join(' / ')}）`);
+  const singleMode = pricePlatform ? 'price' : detailPlatform ? 'detail' : null;
+  if (singleMode) {
+    const platform = pricePlatform ?? detailPlatform;
+    if (!PLATFORMS[platform]) {
+      console.error(`[探测] 未知平台：${platform}（可选：${Object.keys(PLATFORMS).join(' / ')}）`);
+      process.exit(1);
+    }
+    const endpoint = PLATFORMS[platform][singleMode];
+    if (!endpoint) {
+      console.error(`[探测] 平台 ${platform} 没有 ${singleMode} 端点`);
       process.exit(1);
     }
     if (!detailId) {
-      console.error('[探测] --detail 需要同时给 --id=<商品ID>');
+      console.error(`[探测] --${singleMode} 需要同时给 --id=<商品ID>`);
       process.exit(1);
     }
-    tasks.push({
-      platform: detailPlatform,
-      mode: 'detail',
-      endpoint: PLATFORMS[detailPlatform].detail,
-      params: { itemId: detailId },
-    });
+    tasks.push({ platform, mode: singleMode, endpoint, params: { itemId: detailId } });
   } else {
     for (const platform of requested) {
       if (!PLATFORMS[platform]) {

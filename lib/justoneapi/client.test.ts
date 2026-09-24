@@ -8,8 +8,8 @@ import {
   redact,
   tokenFromEnv,
   type CallJustOneApiOptions,
-} from '@/lib/justoneapi/client';
-import { isJustOneApiError, type JustOneApiFailureKind } from '@/lib/justoneapi/errors';
+} from '@/lib/justoneapi/client.mjs';
+import { isJustOneApiError, type JustOneApiFailureKind } from '@/lib/justoneapi/errors.mjs';
 
 /**
  * 客户端单测：**全部 mock fetch**，不发真实网络请求（项目硬约束）。
@@ -154,14 +154,19 @@ describe('业务码：HTTP 状态码不干扰判定（实测 401 + code 100 / 42
     sleeps: number;
   }[] = [
     { code: 100, httpStatus: 401, kind: 'token_invalid', fetchCalls: 1, sleeps: 0 },
+    { code: 101, httpStatus: 401, kind: 'token_invalid', fetchCalls: 1, sleeps: 0 },
+    { code: 202, httpStatus: 429, kind: 'rate_limited', fetchCalls: 2, sleeps: 1 },
     { code: 301, httpStatus: 500, kind: 'collect_failed', fetchCalls: 3, sleeps: 2 },
     { code: 302, httpStatus: 429, kind: 'rate_limited', fetchCalls: 2, sleeps: 1 },
     { code: 303, httpStatus: 429, kind: 'quota_exceeded', fetchCalls: 1, sleeps: 0 },
     { code: 400, httpStatus: 400, kind: 'bad_request', fetchCalls: 1, sleeps: 0 },
+    { code: 404, httpStatus: 404, kind: 'not_found', fetchCalls: 1, sleeps: 0 },
     { code: 500, httpStatus: 500, kind: 'server_error', fetchCalls: 3, sleeps: 2 },
+    { code: 503, httpStatus: 503, kind: 'server_error', fetchCalls: 2, sleeps: 1 },
     { code: 600, httpStatus: 403, kind: 'permission_denied', fetchCalls: 1, sleeps: 0 },
     { code: 601, httpStatus: 403, kind: 'insufficient_balance', fetchCalls: 1, sleeps: 0 },
     { code: 602, httpStatus: 403, kind: 'token_limit', fetchCalls: 1, sleeps: 0 },
+    { code: 300, httpStatus: 200, kind: 'unknown_code', fetchCalls: 1, sleeps: 0 },
     { code: 999, httpStatus: 200, kind: 'unknown_code', fetchCalls: 1, sleeps: 0 },
   ];
 

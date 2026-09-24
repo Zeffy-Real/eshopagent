@@ -5,7 +5,7 @@
 > - 数据快照生成时间：2026-09-24 06:30 UTC
 > - 文案本地化时间：2026-09-24 06:31 UTC
 > - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `c0f053c`（阶段 16）
-> - 校验状态：`tsc --noEmit` 0 错误；**159 个单测全绿（16 个文件）**；`next build` 通过
+> - 校验状态：`tsc --noEmit` 0 错误；**290 个单测全绿（20 个文件）**；`next build` 通过
 
 ---
 
@@ -32,10 +32,10 @@
 | Agent 框架 | `@langchain/langgraph` 1.4（StateGraph + SqliteSaver checkpoint + interrupt） |
 | LLM 封装 | `@langchain/openai` 1.5（ChatOpenAI，`baseURL` 兼容 DeepSeek / 通义千问 / OpenAI） |
 | 流式 | LangGraph `streamEvents()` → 后端 SSE → 前端 `fetch` + `ReadableStream` |
-| 源码规模 | **109 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store`） |
+| 源码规模 | **115 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
 | 页面与接口 | `app` 下 2 个页面（`/`、`/_not-found`）+ 2 个 API 路由 |
 | Agent 节点 | **8 个**（`lib/agent/nodes/`） |
-| 测试 | **159 个单测用例**（Vitest，16 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试与在途请求中止）；无组件/E2E 自动化测试 |
+| 测试 | **290 个单测用例**（Vitest，20 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射）；无组件/E2E 自动化测试 |
 | 版本控制 | git 仓库，远端 `https://github.com/Zeffy-Real/eshopagent` |
 
 ---
@@ -63,7 +63,14 @@ lib/
     events.ts                   前后端共用事件协议
     nodes/                      8 个节点，每个节点一个文件
     tools/                      productTools / cartTools（纯函数 + zod 入参契约）
-  catalog/products.ts           商品目录唯一入口（real | mock 可切换）
+  catalog/products.ts           商品目录唯一入口（real | justoneapi | mock 可切换）
+  justoneapi/                   京东实时数据源（构建期 + 运行时的共用实现）
+    codes.mjs / codes.d.mts     码表与重试策略（15 个 code）、退避公式、熔断集合
+    errors.mjs / errors.d.mts   错误载体 + 可读文案（.mjs + .d.mts 的原因见设计文档 §15.6）
+    client.mjs / client.d.mts   HTTP 客户端（120s 超时、任何 HTTP 状态先解析响应体、脱敏出口）
+    cache.ts                    实时数据缓存（TTL 300s + 单飞 + 失败不缓存）
+    types.ts                    实时字段类型（只覆盖易变字段）
+    platforms/jd.mjs / .d.mts   京东端点、cid 类目映射、价格/库存换算
   profile.ts                    跨会话画像：信号提取 + 幂等合并 + 提示文案（纯函数）
   cart-pricing.ts               购物车金额规则（纯函数，前后端共用）
   decision.ts                   决策推荐理由与对比结论（纯函数）
@@ -71,10 +78,15 @@ lib/
   agent-client.ts               SSE 客户端（在途请求的中止入口、AbortError 分类）
 components/
   chat/ product/ visualization/ charts/ order/ layout/ common/ ui/
-data/real-catalog.json          真实商品数据快照（由 scripts 生成）
+data/
+  real-catalog.json             真实商品数据快照（默认源，112 件，冻结）
+  justoneapi-catalog.json       京东实时源产物（可选源，构建时刻的真实价格/库存）
 scripts/
-  build-real-catalog.mjs        多源真实数据 → 统一 Product 模型
+  build-real-catalog.mjs        多源真实数据 → 统一 Product 模型（--source=real | justoneapi）
+  catalog-shared.mjs            两个构建源共用的常量与纯函数（品类/汇率/价格区间/校验镜像）
+  sources/justoneapi.mjs        京东实时源：搜索 → 详情 → 校验 → 原子写盘 + 丢弃统计
   localize-catalog.mjs          LLM 文案本地化 + 标签派生
+  justoneapi-probe.mjs          字段探测脚本（打印真实字段名，原始响应落 .cache/）
 ```
 
 ### 贯穿全项目的两条约定
@@ -254,6 +266,16 @@ confirmOrder   → generateReply → END
 | 落地校验重试（D）+ 分类入口（F，阶段 16） | `lib/agent/nodes/generateReply.ts` / `store/use-agent-store.ts` / `components/product/category-bar.tsx` / `components/product/product-panel.tsx` | ① 落地校验不过先按纠正提示重试一次（点名不符的数字），仍不过才降级模板；② 前端在「终态不是流式候选的续写」时**整体替换**气泡内容（否则会一直显示被否决的候选）；③ 中栏新增「按品类浏览」chip 行，点击走与对话相同的入口（`parseIntent → searchProducts`），不新增并行筛选实现 |
 | 在途中止统一管理 + 验证缺口（17） | `lib/agent-client.ts` / `store/use-agent-store.ts` / `lib/agent-client.test.ts` / `store/use-agent-store.test.ts` / `vitest.config.mts` | `AbortController` 收敛为单一入口 `abortActiveRequest()`（三个调用方不再各自 new）；中止判定改为 `isAbortError()`（`error.name === 'AbortError'`）与网络错误区分；补 9 条单测（事件派发、HTTP 错误、中止、串行化）；vitest 纳入 `store/**/*.test.ts` |
 
+### 6.6 JustOneAPI 京东实时源（阶段 18，构建期部分）
+
+| 主题 | 文件 | 变更 |
+| --- | --- | --- |
+| 码表与客户端（2a） | `lib/justoneapi/{codes,errors,client}.mjs` + 同名 `.d.mts` / `cache.ts` / `types.ts` / `platforms/jd.mjs` + `.d.mts` | 码表从契约的 13 个扩到官方 OpenAPI 的 **15 个**（新增 101/202/300/404/503；404 显式分类为 `not_found`、503 归 `server_error` 且最多 2 次）；HTTP 客户端 120s 超时、任何 HTTP 状态都先解析响应体、重试仅 301/500/302/202/503/超时；日志与错误消息经 `redact()` 统一脱敏；缓存 TTL 300s + 单飞 + 失败不缓存 |
+| 实测回填（2a） | `docs/justoneapi-design.md` §2/§3/§4/§15 | 平台二选一 → **京东**（实测：48 件/页、字段 85-87、类目链完整、唯一能拿库存状态；淘宝详情 V1 官方健康值仅 6/100）；字段映射逐格换成实测字段名；`sales` 一律记 0；`stock` 只编码等级（33/39/40→40、36→10、34→0，依据京东官方 IOP 文档枚举） |
+| 构建期源（2b） | `scripts/sources/justoneapi.mjs` + `.d.mts` / `scripts/catalog-shared.mjs` + `.d.mts` / `scripts/build-real-catalog.mjs` / `scripts/justoneapi-probe.mjs` | 新增 `--source=justoneapi` 分支；京东源 = 每品类 2 关键词搜索（价格/标题/图片/类目链）+ 每件保留商品 1 次详情（品牌/主图/库存状态/参数）；cid 类目映射表 8 条（含刻意不映射的 11729）；产物 `data/justoneapi-catalog.json` 用 `tmp + rename` 原子写入，失败保留上一版；按原因分类的丢弃统计 + 配额消耗打印；`catalog-shared.mjs` 抽出两个源共用的品类/汇率/价格区间/校验镜像 |
+| 目录源扩展 | `lib/catalog/products.ts` / `next.config.ts` | `CATALOG_SOURCE` 增加 `justoneapi` 分支（服务端缺 token 或缺产物**直接报错**，不静默回落）；两个源的校验与兜底收敛到同一处 `loadProducts()`；`next.config.ts` 把 `CATALOG_SOURCE` 内联进客户端包，保证服务端/浏览器解析出同一个源（否则会 hydration 报错） |
+| 架构约束 | `docs/justoneapi-design.md` §15.6 | `lib/justoneapi` 的核心改成 `.mjs + .d.mts`：构建脚本（纯 node）加载不了 TS，而码表/客户端/字段映射又必须与运行时共用同一份实现，取交集即 `.mjs` 实现 + `.d.mts` 类型 |
+
 ---
 
 ## 七、验证状态
@@ -263,10 +285,10 @@ confirmOrder   → generateReply → END
 | 项 | 方法 | 结果 |
 | --- | --- | --- |
 | 类型 | `npx tsc --noEmit` | ✅ 0 错误 |
-| 单测 | `npm test`（Vitest，16 个文件） | ✅ 159 / 159 通过 |
+| 单测 | `npm test`（Vitest，20 个文件） | ✅ 290 / 290 通过 |
 | 跨重启持久化 | 建会话 → 杀进程（确认端口无监听）→ 重启 → 同 sessionId 追问指代 | ✅ 恢复上一轮上下文（时间线显示「历史 366 字」），指代解析为 refine 并收紧价格 |
 | 内存态回落 | `CHECKPOINT_BACKEND=memory` 独立用例 | ✅ 不建连接、会话管理安全跳过、checkpointer 仍可用、不产生 sqlite 文件 |
-| 构建 | `npm run build` | ✅ 通过；首页 327 kB / First Load 464 kB；共享 103 kB |
+| 构建 | `npm run build` | ✅ 通过；首页 333 kB / First Load 470 kB；共享 103 kB（较上一版 +6 kB，来自内联的 justoneapi 目录产物） |
 | 目录不变量 | 脚本扫描 112 件商品的价格/评分/评论数/销量/库存/原价/图片/描述/标签/规格等 | ✅ 0 异常 |
 | 图书数据 | 逐条核对 16 本 | ✅ 真实书名、作者、价格、评分、评论数、封面、题材标签齐全，无近重复 |
 | 端到端（浏览器） | 3 轮对话 + 完整下单流程 | ✅ 通过 |
@@ -291,6 +313,15 @@ confirmOrder   → generateReply → END
 | 连续快速发两条消息 | 由单测锁住不变量（UI 层运行中所有发送入口已禁用/拒绝，无法构造第二个请求） | ✅ `store/use-agent-store.test.ts`：上一轮未结束时第二次 `sendMessage` 被拒绝（`fetch` 只调用 1 次、第二条不进入消息列表）；上一轮结束后可继续发送。浏览器侧辅证：运行中发送按钮 / 品类 chip / 购物车按钮 / 对比按钮均为 `disabled`，顶栏搜索框由 `handleSubmit` 提前 return，第 14.5 阶段的实测中点击禁用按钮被浏览器拒绝（`pointer-events: none`） |
 | 落地校验重试（浏览器） | 发「前两件加起来一共多少钱」（诱使模型算总价） | ✅ 首次回复算出 **¥2749**（数据里没有的合计）被判未落地 → 按纠正提示重试 → 采用重试结果（只原样引用单价）；时间线显示「落地校验未通过（疑似编造金额 ¥2749），已按纠正提示重试一次并采用重试结果」；气泡内容等于服务端终态，被否决的候选没有残留（全页仅时间线那条诊断文案出现该数字） |
 | 分类浏览入口（浏览器） | 切到「商品」Tab → 点「数码 16」 | ✅ 发送「帮我看看数码的商品」→ 面板标题变为「搜索结果 · 12 件商品 · 数码」，chip 高亮（`aria-pressed`），商品区刷新为数码品类 |
+| JustOneAPI 码表与客户端（单测） | `lib/justoneapi/{errors,client}.test.ts`，全部 mock fetch | ✅ 15 个业务码逐个验证类别/重试次数（含 101/202/300/404/503 与 HTTP 401+code100、429+code303 的并存判定）；301→重试成功、500 连续 4 次只尝试 3 次、503 尝试 2 次、302 重试 1 次、303 立即停止；超时重试 1 次；token 缺失且**不发请求**；日志与错误消息均不含 token |
+| JustOneAPI 缓存（单测） | `lib/justoneapi/cache.test.ts` | ✅ TTL 300s 命中与过期、同键并发只调一次 loader、失败不缓存且重试可恢复、超过 200 条淘汰最旧 |
+| JustOneAPI 字段映射（单测） | `lib/justoneapi/jdSource.test.ts`（夹具为实测响应摘录） | ✅ cid 链 → 7 品类（含刻意不映射的 11729）；搜索价 `"198.00"`→198、价格端点 `19800` 分→198；库存码 33/39/40→40、36→10、34→0、未知码→null；图片相对路径补前缀；归一化产出完整 Product 且不含「品牌」参数行 |
+| 校验语义等价性（单测） | 同一组 12 个用例同时喂给 `lib/catalog/products.ts` 与 `scripts/catalog-shared.mjs` 的两份 `isProductLike` | ✅ 12 / 12 判定一致（含 NaN 价格、空描述、越界评分、非对象） |
+| 构建期源（真实调用） | `node --env-file=.env.local scripts/build-real-catalog.mjs --source=justoneapi --per=4` | ✅ 搜索 14/14、详情 28/28 成功；产出 `data/justoneapi-catalog.json` 28 件（7 品类各 4 件）；丢弃 172 件（全部为「cid 未映射」，即刻意不接的鞋靴类目等）；**配额消耗 42 次**（失败不计费）；过程中遇到 2 次 `code:301` 均由重试恢复 |
+| 原子写入（单测） | `writeJsonAtomically` 成功与失败两条路径 | ✅ 成功替换内容；序列化失败时上一版文件原样保留（无半成品） |
+| 构建期中止语义（单测） | mock 返回 `code:303` | ✅ 立即抛出（不重试、不返回半成品）；单条商品 404 只丢该条、不中止构建 |
+| `CATALOG_SOURCE=justoneapi` 渲染（本地实测） | `CATALOG_SOURCE=justoneapi npm run dev` → 抓首页 HTML 与客户端 chunk | ✅ HTTP 200、4 次请求无错误；首页品类 chip 显示「数码 4」（= 实时源每品类 4 件，real 快照是 16）→ 服务端确实按实时源解析；商品图为 `img30.360buyimg.com`；无评分商品显示「暂无评分」；**客户端 chunk 内联了源判断**（`if (false) {} return 'justoneapi'`）→ 浏览器与服务器解析同一个源，无 hydration 不一致 |
+| `real` 模式零影响 | `npm test` + `npm run build`（默认源） | ✅ 290 个单测全绿；构建通过；快照源行为未变（新增的 justoneapi 目录只作为另一个可选源存在） |
 
 ### 7.2 未验证 / 验证受限
 
@@ -301,6 +332,10 @@ confirmOrder   → generateReply → END
 | 极端时序 | 气泡拆分/计数一致性只验了 3 轮，未做长会话或并发压测 |
 | 画像的跨设备 / 跨用户形态 | 按设计不支持（存 localStorage、无 userId），因此**未实现也未验证**；多浏览器同时使用时的隔离性（各自独立画像）未实测 |
 | 界面回归保护 | 组件 / E2E **无自动化**：单测覆盖 lib 纯函数与 store 不变量，界面仍依赖手工浏览器验收 |
+| 运行时实时补充节点 `enrichLiveData` | 按 2026-09-25 裁定，本轮只交付构建期源；节点接入是**下一步**。因此「搜耳机 → 问『现在多少钱』→ 商品卡出现「实时」标注」这条路径**本轮不成立**，不能算已验证 |
+| `justoneapi` 源的完整对话流程 | 只验到「能启动 + 首页按实时源渲染 + 客户端/服务端源一致」；在该源下跑完整对话（检索、对比、加购、下单）留到下一步（那时节点也接上了，一次验完更省事） |
+| 构建期源的更大规模 | 本轮用 `--per=4` 控制配额（28 件、42 次调用）；`--per=14`（满目录，预计 ≤112 次调用）未跑，配额上限与耗时未实测 |
+| 京东库存状态码的完整枚举 | 只实测到 `33`（有货）；`34/36/39/40` 来自京东官方 IOP 文档枚举，未逐一代码实测（拿不到缺货/预订的真实样本） |
 
 ### 7.3 已知的控制台噪声
 

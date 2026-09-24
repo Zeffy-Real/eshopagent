@@ -30,45 +30,47 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  CATEGORIES,
+  CURRENCY_TO_CNY,
+  PRICE_CNY_MAX,
+  PRICE_CNY_MIN,
+  clean,
+  perCategoryFromArgv,
+  stableHash,
+  stripInvisible,
+  toNumber,
+  truncate,
+} from './catalog-shared.mjs';
 
 const REPO = 'luminati-io/eCommerce-dataset-samples';
 /** 图书专用数据集：综合样本里图书太少，单独接一个真实亚马逊畅销书样本 */
 const BOOKS_REPO = 'luminati-io/Amazon-popular-books-dataset';
 const API_HEADERS = { 'User-Agent': 'eshop-catalog-builder', Accept: 'application/vnd.github+json' };
 
-/**
- * 各平台币种 → 人民币的固定汇率（写死以保证构建结果可复现）。
- *
- * 为什么需要：Amazon/Walmart 是美元，但 Lazada 用 MYR/IDR/THB/PHP/SGD，
- * Shopee 还混了 MXN/CLP/COP/VND/BRL/TWD。只接受美元会把这两个平台整体丢掉，
- * 而它们恰好是唯一含真实书籍品类的数据源。
- * 汇率取近似值，仅用于演示展示；接真实电商 API 时应改用当日汇率。
- */
-const CURRENCY_TO_CNY = {
-  USD: 7.2,
-  SGD: 5.4,
-  MYR: 1.62,
-  THB: 0.21,
-  IDR: 0.00045,
-  PHP: 0.128,
-  VND: 0.00029,
-  TWD: 0.225,
-  BRL: 1.3,
-  MXN: 0.39,
-  CLP: 0.0076,
-  COP: 0.0018,
-  EUR: 7.8,
-  GBP: 9.2,
-};
+const PER_CATEGORY = perCategoryFromArgv(process.argv);
 
-/** 折算后的人民币价格区间（过滤明显异常值） */
-const PRICE_CNY_MIN = 10;
-const PRICE_CNY_MAX = 20000;
-const PER_CATEGORY = Number(
-  (process.argv.find((arg) => arg.startsWith('--per=')) ?? '--per=14').split('=')[1],
-);
+/** 数据源：`real`（默认，HF 公开抓取快照）| `justoneapi`（京东实时，需 JUSTONEAPI_TOKEN） */
+const SOURCE = (process.argv.find((arg) => arg.startsWith('--source=')) ?? '--source=real').split('=')[1];
 
-const CATEGORIES = ['数码', '服饰', '食品', '家居', '运动', '美妆', '图书'];
+/* ---------- 源分支 ---------- */
+// 京东实时源与 HF 快照源的流程没有交集（一个走 HTTP 调用、一个读数据集 CSV），
+// 因此在这里直接分叉：实时源不读数据集、不写 real-catalog.json，产物是独立文件。
+if (SOURCE === 'justoneapi') {
+  const { runJustoneapiSource } = await import('./sources/justoneapi.mjs');
+  try {
+    const result = await runJustoneapiSource({ perCategory: PER_CATEGORY });
+    console.log(`[构建] 完成：${result.count} 件`);
+  } catch (error) {
+    console.error(`状态：failed（已保留上一版产物）\n${error?.message ?? error}`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (SOURCE !== 'real') {
+  console.error(`未知数据源：${SOURCE}（可选：real | justoneapi）`);
+  process.exit(1);
+}
 
 /* ---------- 多平台字段映射 ---------- */
 const SOURCES = [
@@ -278,24 +280,7 @@ function parseCsv(text) {
   return rows;
 }
 
-/* ---------- 字段清洗 ---------- */
-function stripInvisible(text) {
-  return text.replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, '');
-}
-
-function clean(value) {
-  if (typeof value !== 'string') return '';
-  const trimmed = stripInvisible(value).trim();
-  if (trimmed === '' || trimmed === 'null' || trimmed === 'NULL' || trimmed === 'undefined') return '';
-  return trimmed.replace(/^"+|"+$/g, '').replace(/\s+/g, ' ').trim();
-}
-
-function toNumber(value) {
-  const text = clean(value).replace(/[^0-9.]/g, '');
-  const parsed = Number.parseFloat(text);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
+/* ---------- 字段清洗（clean / toNumber / truncate / stableHash 在 catalog-shared.mjs） ---------- */
 function toBooleanish(value) {
   const text = clean(value).toLowerCase();
   if (['true', 'yes', '1', 'in stock', 'instock'].includes(text)) return true;
@@ -379,14 +364,6 @@ function toSpecifications(value) {
   return result;
 }
 
-function stableHash(seed) {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash = (hash * 31 + seed.charCodeAt(i)) % 1_000_000;
-  }
-  return hash;
-}
-
 function resolveCategory(categories, title) {
   const categoryText = categories.join(' > ');
   const haystack = `${categoryText} ${title}`;
@@ -397,10 +374,6 @@ function resolveCategory(categories, title) {
     if (rule.pattern.test(scope)) return rule.category;
   }
   return null;
-}
-
-function truncate(text, max) {
-  return text.length <= max ? text : `${text.slice(0, max).trimEnd()}…`;
 }
 
 /* ---------- 抓取（带本地缓存） ---------- */
