@@ -1,12 +1,52 @@
 # 智能购物助手 · 对话式电商 Agent
 
-以对话为核心交互方式的电商 Agent Web 应用。用户用自然语言即可完成**商品搜索 → 智能推荐 → 多维度对比 → 购物车管理 → 下单结算**的全流程；Agent 的「思考 - 行动 - 观察」全链路以可视化组件实时呈现，而不是纯文本输出。
+**一句话**：用 **LangGraph 状态图**编排的对话式电商 Agent —— 说一句话就能走完「搜索 → 推荐 → 对比 → 加购 → 下单」；Agent 的思考过程、工具结果、数据来源实时画在界面上，而不是只丢一段文字。
 
-Agent 侧基于 **LangGraph.js 状态图（StateGraph）** 构建，采用「状态图编排 + 工具调用 + 事件流可视化」三层设计。
+### 三个卖点
 
-商品目录使用**真实电商平台数据**（112 件商品，7 个品类各 16 件；含真实 ASIN/SKU、价格、评分、评论数、图片与商品参数），数据来自两个公开抓取样本仓库（综合电商样本 + 亚马逊畅销图书样本），由 `scripts/build-real-catalog.mjs` 生成快照，可随时刷新；也保留了一套内置精编数据用于离线对比（`CATALOG_SOURCE=mock`）。
+| 卖点 | 含义 | 看哪里 |
+| --- | --- | --- |
+| **真实商品数据** | 112 件商品（7 品类各 16 件）来自公开的真实平台抓取样本：真实 ASIN/SKU、价格、评分、评论数、图片、参数；派生字段一律标注并降级展示 | 下文「真实商品数据」 |
+| **没有 API Key 也能完整跑通** | LLM 未配置或调用失败时自动降级为规则解析 + 模板回复，搜索 / 对比 / 加购 / 下单中断恢复全部可用，且降级是**可见**的（时间线会写明走的是哪条路） | 下文「Agent 架构」· [演示第 8 步](docs/demo-script.md) |
+| **推理过程可视化** | 「思考 - 行动 - 观察」全链路落在右栏六段面板：时间线 / 意图解析 / 对比分析 / 决策推荐 / 购物车 / 你的偏好 | [docs/architecture.md](docs/architecture.md) |
 
-**没有 API Key 也能完整跑通全流程**：LLM 未配置或调用失败时，自动降级为规则解析 + 模板回复，所有功能（搜索、对比、加购、下单中断恢复）都可正常使用。
+### 架构（状态图缩略）
+
+```mermaid
+flowchart LR
+  START([START]) --> parseIntent["parseIntent 解析意图"]
+  parseIntent -->|search| searchProducts["searchProducts 检索商品"]
+  parseIntent -->|refine| refineSearch["refineSearch 细化条件"]
+  parseIntent -->|compare| compareProducts["compareProducts 商品对比"]
+  parseIntent -->|cart| manageCart["manageCart 购物车"]
+  parseIntent -->|checkout| prepareOrder["prepareOrder 准备订单"]
+  parseIntent -->|chat| generateReply["generateReply 生成回复"]
+  refineSearch -->|重新检索| searchProducts
+  searchProducts -->|"needsRefine 且 refineCount < 2"| refineSearch
+  compareProducts --> generateReply
+  manageCart --> generateReply
+  prepareOrder -->|"interrupt 暂停 → resume 后继续"| confirmOrder["confirmOrder 确认订单"]
+  confirmOrder --> generateReply
+  generateReply --> END([END])
+```
+
+> `refineSearch ⇄ searchProducts` 是图中唯一的环，由 `refineCount` 上限 2 强制收敛；`prepareOrder` 内 `interrupt()` 暂停、`Command({ resume })` 恢复，节点会重入（订单号因此用 seed 确定性生成）。
+>
+> 完整三张图（状态图 / 三层架构 / 时序图）+ **每张图的代码行对照表**：[docs/architecture.md](docs/architecture.md)
+
+### 快速启动
+
+```bash
+npm install
+npm run dev            # http://localhost:3000
+# 可选：cp .env.example .env.local 并填 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL；不填则走规则兜底
+```
+
+### 演示与技术决策
+
+- **[docs/demo-script.md](docs/demo-script.md)** —— 5 分钟 / 2 分钟演示脚本：每一步都写了「操作 / 预期画面（三栏）/ 这一步在证明什么」，全部在真机上跑通。
+- **[docs/decisions.md](docs/decisions.md)** —— 10 条技术决策记录（背景 / 选项 / 决策 / 理由 / 代价 + 「如果被追问」）：为什么不用 tool calling、为什么不做语义记忆、为什么硬串行化、为什么库存不显示件数、为什么用 SSE 而不是 WebSocket…
+- **[docs/project-status.md](docs/project-status.md)** —— 项目现状说明书：已完成 / 已验证 / 未验证 / 已知问题，**不美化**。
 
 ---
 
@@ -124,7 +164,7 @@ npm run build      # 生产构建
 | `LLM_BASE_URL` | OpenAI 兼容接口地址 | `https://api.deepseek.com/v1` |
 | `LLM_API_KEY` | 接口密钥 | `sk-...` |
 | `LLM_MODEL` | 模型名 | `deepseek-chat` / `qwen-plus` / `gpt-4o-mini` |
-| `LLM_FALLBACK_ENABLED` | 是否允许规则兜底（默认 true） | `true` |
+| `LLM_FALLBACK_ENABLED` | ⚠️ **当前实现下无实际效果**（已记为已知问题）：只要 Key 可用就会调用 LLM，Key 不可用本来就走规则兜底 —— 两种取值结果相同。要演示降级路径请让 Key 不可用（清空或写无效值）后重启 | `true` |
 | `CATALOG_SOURCE` | 商品目录数据源：`real`（真实数据快照，默认）/ `mock`（内置演示数据） | `real` |
 | `HISTORY_ENABLED` | 是否把最近若干轮对话注入意图解析（默认 true） | `true` |
 | `HISTORY_MAX_CHARS` | 历史注入的字符预算（约 2 字符 ≈ 1 token），默认 2000 | `2000` |
