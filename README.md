@@ -42,6 +42,8 @@ npm run dev            # http://localhost:3000
 # 可选：cp .env.example .env.local 并填 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL；不填则走规则兜底
 ```
 
+> Windows 上也可以**双击仓库根目录的 `start-agent.cmd`**：一键脚本会检查 Node 版本 → 依赖缺失时才 `npm install` → 只打印「是否已配置 LLM」（不读取密钥内容）→ 启动 dev server，并在端口就绪后自动打开浏览器；端口已被占用时只提示并打开已有服务，不重复启动。
+
 ### 演示与技术决策
 
 - **[docs/demo-script.md](docs/demo-script.md)** —— 5 分钟 / 2 分钟演示脚本：每一步都写了「操作 / 预期画面（三栏）/ 这一步在证明什么」，全部在真机上跑通。
