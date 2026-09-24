@@ -230,6 +230,36 @@ export function extractFiltersByRules(text: string): SearchFilters {
   };
 }
 
+/** 中文数字 → 阿拉伯数字（序数只覆盖常见范围） */
+const CN_ORDINAL: Record<string, number> = {
+  一: 1,
+  二: 2,
+  两: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
+  九: 9,
+  十: 10,
+};
+
+/**
+ * 从文本里提取序数指代（「第二件」「第 3 个」「换成第2款」），返回 1 起始的序号。
+ *
+ * 必须带「第」字前缀：不带前缀的「3 件」是数量而不是序数。
+ * 越界或解析不出时返回 null，调用方按「没有序数指代」处理。
+ */
+export function parseOrdinalIndex(text: string): number | null {
+  const match = text.match(/第\s*([0-9]{1,2}|[一二两三四五六七八九十])\s*[件个款本条款]/);
+  const raw = match?.[1];
+  if (!raw) return null;
+  const index = /^[0-9]+$/.test(raw) ? Number(raw) : CN_ORDINAL[raw];
+  if (index === undefined || index < 1 || index > 20) return null;
+  return index;
+}
+
 /** 细化场景：在原条件上做「更便宜 / 更轻 / 更高评分」的增量调整 */
 export function relaxFilters(filters: SearchFilters, text: string): SearchFilters {
   const next: SearchFilters = { ...filters, rawQuery: text };

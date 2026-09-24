@@ -76,6 +76,20 @@ export const AgentState = Annotation.Root({
     default: () => null,
   }),
 
+  /**
+   * 序数指代的目标商品 id（「换成第二件」里的「第二件」）。
+   *
+   * 生命周期与 profilePatch 同思路 —— 由每轮的第一个节点界定边界：
+   * - `parseIntent` 每轮都会写这个字段（解析不出序数时写 null），因此上一轮的
+   *   残留不会影响本轮；
+   * - `searchProducts` 看到它时把结果收窄为这一件，并写回 null 消费掉，
+   *   这样同一轮里后续的 refine 轮次会回到正常检索，而不是一直卡在单件。
+   */
+  focusProductId: Annotation<string | null>({
+    reducer: (_previous, next) => next,
+    default: () => null,
+  }),
+
   /** 是否需要在搜索后回到 refineSearch 继续细化条件 */
   needsRefine: Annotation<boolean>({
     reducer: (_previous, next) => next,

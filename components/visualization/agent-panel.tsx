@@ -58,7 +58,9 @@ export function AgentPanel() {
       />
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-3 p-3">
+        {/* 窄屏下输入区被提到抽屉之上（z-50），会遮住抽屉底部，这里留出等高的内边距，
+            否则最后一段面板内容会被永久挡住 */}
+        <div className="space-y-3 p-3 pb-28 md:pb-3">
           <PanelSection icon={ListTree} title="推理时间线">
             <TimelineSection />
           </PanelSection>

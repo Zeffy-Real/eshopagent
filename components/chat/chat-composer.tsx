@@ -98,7 +98,13 @@ export function ChatComposer({ value, onChange, onSubmit, disabled = false }: Ch
   }
 
   return (
-    <form onSubmit={handleSubmit} className="shrink-0 border-t border-border bg-sidebar p-3">
+    <form
+      onSubmit={handleSubmit}
+      // relative z-50：窄屏下 Agent 抽屉是 z-40 的浮层，会盖住输入区。
+      // 把输入区提到抽屉之上，保证「发送」始终可见可点，不会出现
+      // 「输入框能打字、发送键被盖住、点了没反应」的静默失效。
+      className="relative z-50 shrink-0 border-t border-border bg-sidebar p-3"
+    >
       {imageError && (
         <p className="mb-2 rounded-[var(--radius-sm)] bg-danger-soft px-2 py-1 text-[11px] text-danger">
           {imageError}

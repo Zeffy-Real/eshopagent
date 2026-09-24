@@ -6,6 +6,7 @@ import {
   describeFilters,
   extractFiltersByRules,
   guessIntentByRules,
+  parseOrdinalIndex,
 } from '@/lib/agent/ruleParser';
 import type { AgentStateUpdate, AgentStateValue } from '@/lib/agent/state';
 import { invokeStructured, type StructuredMethod } from '@/lib/agent/structured';
@@ -16,6 +17,7 @@ import {
   INTENT_LABEL,
   SORT_KEYS,
   type AgentIntent,
+  type Product,
   type SearchFilters,
 } from '@/lib/types';
 
@@ -34,10 +36,26 @@ const IntentSchema = z.object({
   brands: z.array(z.string()).nullish(),
   tags: z.array(z.string()).nullish(),
   sort: z.enum(SORT_KEYS).nullish(),
+  /** 序数指代：「换成第二件」里的 2（1 起始）。不是序数时留空 */
+  targetIndex: z.number().int().min(1).max(20).nullish(),
   reason: z.string().nullish(),
 });
 
 type IntentParseResult = z.infer<typeof IntentSchema>;
+
+/**
+ * 把序数解析成上一轮结果里的具体商品。
+ *
+ * 越界（例如上一轮只有 3 件却问「第 5 件」）或没有序数时返回 null，
+ * 调用方按「普通细化」处理，不去改结果集。
+ */
+export function resolveOrdinalTarget(
+  results: Product[],
+  index: number | null,
+): Product | null {
+  if (index === null) return null;
+  return results[index - 1] ?? null;
+}
 
 function toFilters(parsed: IntentParseResult, text: string): SearchFilters {
   const filters: SearchFilters = { rawQuery: text };
@@ -102,6 +120,7 @@ export async function parseIntentNode(
   let source: 'llm' | 'rules' = 'rules';
   let method: StructuredMethod | null = null;
   let llmError: string | null = null;
+  let llmTargetIndex: number | null = null;
   let detail = describeFilters(ruleFilters);
 
   if (isLlmEnabled() && text.trim()) {
@@ -117,6 +136,7 @@ export async function parseIntentNode(
       filters = toFilters(result.value, text);
       source = 'llm';
       method = result.method;
+      llmTargetIndex = result.value.targetIndex ?? null;
       detail = result.value.reason || describeFilters(filters);
     } catch (error) {
       // 不再静默吞掉：把失败原因写进时间线，否则线上只能看到「LLM 不可用」这种误导性描述
@@ -138,14 +158,24 @@ export async function parseIntentNode(
         }`
       : `规则解析${llmError ? ` · LLM 失败：${llmError.slice(0, 80)}` : ''}`;
 
+  // 序数指代（「换成第二件」）：定位到上一轮结果的第 N 件，交给 searchProducts 收窄结果集。
+  // LLM 没给出 targetIndex 时用规则解析兜底 —— 「无 Key 也能跑」同样要覆盖这个能力。
+  const targetIndex = llmTargetIndex ?? parseOrdinalIndex(text);
+  const focusProduct = resolveOrdinalTarget(state.searchResults, targetIndex);
+  const focusNote = focusProduct
+    ? ` · 定位到第 ${targetIndex} 件：${focusProduct.name}`
+    : '';
+
   return {
     intent,
     searchFilters: filters,
+    // 每轮都写：解析不出序数时写 null，避免上一轮的目标残留影响本轮
+    focusProductId: focusProduct?.id ?? null,
     toolCallLog: [
       nodeLog(
         'parseIntent',
         `识别意图：${INTENT_LABEL[intent]}`,
-        `${sourceText} · ${detail}`,
+        `${sourceText} · ${detail}${focusNote}`,
         startedAt,
       ),
     ],

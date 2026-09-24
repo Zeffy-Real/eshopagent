@@ -5,6 +5,7 @@ import {
   extractFiltersByRules,
   guessIntentByRules,
   loosenFilters,
+  parseOrdinalIndex,
   parsePriceRange,
   relaxFilters,
 } from '@/lib/agent/ruleParser';
@@ -97,6 +98,26 @@ describe('detectSort：排序意图', () => {
 
   it('没有排序意图时返回 undefined', () => {
     expect(detectSort('推荐几本书')).toBeUndefined();
+  });
+});
+
+describe('parseOrdinalIndex：序数指代', () => {
+  it('识别中文与阿拉伯数字的序数', () => {
+    expect(parseOrdinalIndex('换成第二件')).toBe(2);
+    expect(parseOrdinalIndex('要第 3 个')).toBe(3);
+    expect(parseOrdinalIndex('换成第2款')).toBe(2);
+    expect(parseOrdinalIndex('第三本')).toBe(3);
+  });
+
+  it('没有「第」字前缀时不算序数（「3 件」是数量）', () => {
+    expect(parseOrdinalIndex('要 3 件')).toBeNull();
+    expect(parseOrdinalIndex('推荐几本书')).toBeNull();
+  });
+
+  it('越界或无法识别时返回 null', () => {
+    expect(parseOrdinalIndex('第 99 件')).toBeNull();
+    expect(parseOrdinalIndex('第 0 件')).toBeNull();
+    expect(parseOrdinalIndex('第很多件')).toBeNull();
   });
 });
 

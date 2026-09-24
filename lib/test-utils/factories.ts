@@ -46,6 +46,7 @@ export function makeState(overrides: Partial<AgentStateValue> = {}): AgentStateV
     cart: [],
     toolCallLog: [],
     pendingOrder: null,
+    focusProductId: null,
     needsRefine: false,
     refineCount: 0,
     ...overrides,

@@ -98,7 +98,12 @@ export function Workspace() {
           inert={!rightPanelOpen}
           aria-hidden={!rightPanelOpen}
           className={cn(
-            'fixed bottom-0 right-0 top-14 z-40 flex w-[340px] max-w-[88vw] flex-col border-l border-border bg-sidebar',
+            'fixed bottom-0 right-0 top-14 z-40 flex flex-col border-l border-border bg-sidebar',
+            // 窄屏（<md）下聊天区是全宽的，抽屉却锚在右下角，会盖住聊天输入框的发送按钮：
+            // 输入框左半仍然可见可点，发送按钮却被盖住，用户点下去没有任何反应也没有提示。
+            // 所以 <md 时抽屉占满宽度，成为明确的全屏浮层（面板头部有「收起面板」按钮）；
+            // md 及以上聊天区固定在左侧，抽屉只覆盖中栏，不存在遮挡。
+            'w-full md:w-[340px] md:max-w-[88vw]',
             'transition-transform duration-200 ease-out xl:static xl:top-0 xl:z-auto xl:w-[360px] xl:max-w-none',
             rightPanelOpen ? 'translate-x-0' : 'translate-x-full xl:hidden',
           )}
