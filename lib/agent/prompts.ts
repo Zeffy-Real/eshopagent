@@ -1,5 +1,6 @@
 import { PRODUCTS } from '@/lib/catalog/products';
 import type { AgentStateValue } from '@/lib/agent/state';
+import { applyLiveOverride } from '@/lib/justoneapi/overrides';
 import { CATEGORIES, STOCK_LABEL, stockLevelOf, type SearchFilters } from '@/lib/types';
 import { formatCount, hasRealSales } from '@/lib/utils';
 
@@ -100,7 +101,13 @@ export function buildReplyContext(state: AgentStateValue): string {
     // 只给前 5 件明细，但**必须**把总数写清楚：
     // 实测模型会把「列出的条数」当成总数，回复写「检索到 5 本」而中栏商品区写着
     // 「8 件商品」，同一个事实出现两个数字（与销量口径不一致是同一类问题）。
-    const shown = state.searchResults.slice(0, 5);
+    //
+    // 明细套一层实时覆盖：enrichLiveData 已经用实时价覆盖了展示值，
+    // 模型若看到旧价会答出与卡片分叉的数字（用户问「现在多少钱」时尤其明显）。
+    // 覆盖只改 price / originalPrice / stock，其余字段与快照一致。
+    const shown = state.searchResults
+      .slice(0, 5)
+      .map((product) => applyLiveOverride(product, state.liveOverrides));
     lines.push(
       `检索条件：${JSON.stringify(state.searchFilters)}`,
       `检索结果：共 ${state.searchResults.length} 件（下列只列出前 ${shown.length} 件明细；` +

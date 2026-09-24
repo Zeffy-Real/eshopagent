@@ -23,6 +23,9 @@ flowchart LR
   parseIntent -->|chat| generateReply["generateReply 生成回复"]
   refineSearch -->|重新检索| searchProducts
   searchProducts -->|"needsRefine 且 refineCount < 2"| refineSearch
+  searchProducts -->|"六条判定全满足（配了 token / 命中实时性关键词 / id 可解析 …）"| enrichLiveData["enrichLiveData 补充实时数据"]
+  searchProducts -->|"判定不满足（默认即如此）"| generateReply
+  enrichLiveData --> generateReply
   compareProducts --> generateReply
   manageCart --> generateReply
   prepareOrder -->|"interrupt 暂停 → resume 后继续"| confirmOrder["confirmOrder 确认订单"]
@@ -31,6 +34,8 @@ flowchart LR
 ```
 
 > `refineSearch ⇄ searchProducts` 是图中唯一的环，由 `refineCount` 上限 2 强制收敛；`prepareOrder` 内 `interrupt()` 暂停、`Command({ resume })` 恢复，节点会重入（订单号因此用 seed 确定性生成）。
+>
+> `enrichLiveData` 是 `searchProducts → generateReply` 直线上的**条件触发补充节点**：六条判定（token 已配置 / 结果非空 / 命中实时性关键词 / 商品 id 可解析为平台 id / 距上次拉取 > 60 秒 / 当日未熔断）全部满足才进入；默认数据源（id 是 Amazon ASIN）下第 4 条自然失败 → **零调用、零行为变化**。它只覆盖 `price` 与库存等级，不新增商品、不改排序，失败完全静默（只在右栏时间线留一条中性记录）。
 >
 > 完整三张图（状态图 / 三层架构 / 时序图）+ **每张图的代码行对照表**：[docs/architecture.md](docs/architecture.md)
 
@@ -168,6 +173,26 @@ CATALOG_SOURCE=justoneapi npm run dev          # 未配置 token 时启动即报
 | 601 / 602 | 余额不足 / 累计消费超限 | 否 | **中止** |
 
 **配额说明**：成功响应计费、失败不计费；每日限额按 **Asia/Shanghai 自然日**计算，同一账户下所有 token 合并计数，仅 `code=0` 计入。一次性构建的调用数 = 搜索次数（7 品类 × 2 关键词 = 14）+ 每件商品的详情调用数（≤ 品类数 × `--per`），可用 `--per` 控制。
+
+**运行时：条件触发的补充节点 `enrichLiveData`**
+
+图里有一个补充节点，只有在**同时满足六条判定**时才会被触发（缺一条都直接跳过到 `generateReply`，与改造前完全一致）：
+
+| # | 判定 | 说明 |
+| --- | --- | --- |
+| 1 | `JUSTONEAPI_TOKEN` 已配置 | 只读 `process.env`，没配就是彻底不启用 |
+| 2 | 本轮检索结果非空 | — |
+| 3 | 用户输入命中实时性关键词 | 现在 / 最新 / 实时 / 当前 / 多少钱 / 涨价 / 降价 / 还有货 / 库存 / 有货 / 缺货 / 现货 |
+| 4 | **至少一件商品的 id 可解析为目标平台 id** | `jd-<纯数字>`。默认 `real` 源的 id 是 Amazon ASIN，这一条自然失败 → 零调用、零行为变化 |
+| 5 | 距上次拉取 > 60 秒 | 同一会话反复追问不会重复烧配额 |
+| 6 | 当日未熔断 | 收到 `303 / 601 / 602`（配额用尽 / 余额不足 / 限额超限）后当日不再进入；标记锚在 `globalThis`，dev 热更新不会把它重置 |
+
+进入节点后：**最多 3 件**商品，默认只调价格端点（`price` 单位是分，换算后覆盖展示价）；只有用户问到货/库存时才额外取详情端点读 `StockState`（每件 +1 次）。同一商品 5 分钟内走缓存（含单飞去重），失败不缓存。
+
+- **覆盖范围只有 `price` 与库存等级**——京东搜索与详情端点里没有评分/评论数/销量（实测为空串或「1万+」区间文案），拿不到的东西不假装有；划线价会随实时价保持一致（不出现「划线价低于现价」）。
+- **失败完全静默**：不抛错、不进对话文本、不弹提示，只在右栏时间线留一条中性记录（「实时数据不可用，已用快照数据」）。
+- **不改筛选 / 排序 / 推荐**：实时值只作用于展示与回复上下文，不重跑检索。
+- 前端三处标注（商品卡 / 详情弹窗 / 对比表价格格）都读同一份 `liveOverrides`，hover 显示拉取时刻。所有位置统一走 `lib/justoneapi/overrides.ts` 的 `applyLiveOverride`，避免出现「卡片实时价、弹窗快照价」这种分叉。
 
 ### 中文检索的 i18n 桥接
 
@@ -328,6 +353,8 @@ sequenceDiagram
 | `intent` | 覆盖 | `search` / `refine` / `compare` / `cart` / `checkout` / `chat` |
 | `searchFilters` | 浅合并 | refine 时只更新变化字段（如仅调整价格上限） |
 | `searchResults` | 覆盖 | 本轮搜索结果 |
+| `liveOverrides` | **合并** | 实时覆盖（键 = 商品 id）：只盖 `price`（含划线价一致性）与库存等级；**不写进 `searchResults`**，数据来源可追溯 |
+| `liveFetchedAt` | 覆盖 | 上次实时拉取时刻，条件边的 60 秒冷却依据 |
 | `compareTargets` | 覆盖 | 待对比商品（2 - 4 件） |
 | `comparison` | 覆盖 | 对比结果（差异表 + 各维度最优 + 性价比得分） |
 | `cart` | 覆盖 | 购物车 |
@@ -347,6 +374,7 @@ sequenceDiagram
 | `parseIntent` | LLM 结构化输出解析意图与筛选条件，失败时走规则解析器 |
 | `searchProducts` | 调用 `filterProducts` 检索，命中为空时置 `needsRefine=true` |
 | `refineSearch` | 合并追加条件或自动放宽条件，回到 `searchProducts` |
+| `enrichLiveData` | **条件触发的补充节点**（第 9 个）：对 id 可解析的前 3 件商品用京东实时价覆盖 `price`，命中库存类关键词时额外覆盖库存等级；失败静默、只在时间线留一条中性记录 |
 | `compareProducts` | 生成差异表、各维度最优与性价比得分 |
 | `manageCart` | 解析购物车指令（LLM 优先 / 规则兜底）并写回 `cart` |
 | `prepareOrder` | 生成订单草稿并 `interrupt()` 暂停，等待用户确认 |
@@ -367,7 +395,9 @@ START → parseIntent
 refineSearch → searchProducts                       （合并追加条件后重新检索）
 
 searchProducts ├─ needsRefine && refineCount < 2 → refineSearch
+               ├─ 实时补充六条判定全满足           → enrichLiveData
                └─ 否则                            → generateReply
+enrichLiveData → generateReply                      （无条件出边）
 
 prepareOrder   ├─ pendingOrder 非空 → confirmOrder   （interrupt 确认后恢复执行）
                └─ 否则             → generateReply
@@ -375,7 +405,7 @@ confirmOrder   → generateReply
 generateReply  → END
 ```
 
-**循环保护**：`refineSearch ⇄ searchProducts` 是图中唯一的环。没有计数器时，「检索为空 → 放宽条件 → 仍为空」会一直绕环，直到撞上 LangGraph 的默认递归上限抛 `GraphRecursionError`（错误信息对用户毫无意义）。因此状态里加了 `refineCount`，超过 `MAX_REFINE_ROUNDS`（2 轮）后强制走 `generateReply` 收敛。
+**循环保护**：`refineSearch ⇄ searchProducts` 是图中唯一的环。没有计数器时，「检索为空 → 放宽条件 → 仍为空」会一直绕环，直到撞上 LangGraph 的默认递归上限抛 `GraphRecursionError`（错误信息对用户毫无意义）。因此状态里加了 `refineCount`，超过 `MAX_REFINE_ROUNDS`（2 轮）后强制走 `generateReply` 收敛。`enrichLiveData` 只是这条直线上的插入点，不进环。
 
 ### 状态图构建与编译
 
@@ -595,7 +625,7 @@ lib/
     events.ts                 # 前后端共用的流式事件协议（客户端安全）
     sse.ts                    # streamEvents → SSE 转换
     utils.ts                  # 时间线日志工厂 / 消息文本提取
-    nodes/                    # 8 个节点，每个节点一个文件
+    nodes/                    # 9 个节点，每个节点一个文件（含条件触发的 enrichLiveData）
     tools/                    # 商品工具 / 购物车工具
 data/
   real-catalog.json           # 真实商品数据快照（默认源，由 scripts 生成）

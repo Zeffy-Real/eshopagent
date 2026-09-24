@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CATALOG_META, getFeaturedProducts, getProductById } from '@/lib/catalog/products';
+import { applyLiveOverride } from '@/lib/justoneapi/overrides';
 import type { Product, SortKey } from '@/lib/types';
 import { useAgentStore } from '@/store/use-agent-store';
 import { useUiStore } from '@/store/use-ui-store';
@@ -51,12 +52,28 @@ export function ProductPanel() {
   const hasFilters =
     snapshot !== null && Object.keys(snapshot.searchFilters).length > 1;
 
+  // 实时覆盖：只在**展示层**套用（价格/库存等级），排序仍按快照值走——
+  // 「不改筛选 / 排序 / 推荐」这条边界不能因为多了实时价就被打破。
+  const liveOverrides = snapshot?.liveOverrides;
+  const liveAt = snapshot?.liveFetchedAt ?? null;
+  const liveIds = useMemo(
+    () => new Set(Object.keys(liveOverrides ?? {})),
+    [liveOverrides],
+  );
+
   const products = useMemo(() => {
     const base = searched ? snapshot.searchResults : FEATURED;
-    return sortProducts(base, sort);
-  }, [searched, snapshot, sort]);
+    return sortProducts(base, sort).map((product) =>
+      applyLiveOverride(product, liveOverrides),
+    );
+  }, [searched, snapshot, sort, liveOverrides]);
 
-  const detailProduct = detailProductId ? getProductById(detailProductId) ?? null : null;
+  // 详情弹窗的数据来自目录（不是快照），因此这里也要叠加一次实时覆盖 ——
+  // 否则会出现「卡片显示实时价、弹窗显示快照价」的分叉
+  const detailProduct = useMemo(() => {
+    const base = detailProductId ? (getProductById(detailProductId) ?? null) : null;
+    return base ? applyLiveOverride(base, liveOverrides) : null;
+  }, [detailProductId, liveOverrides]);
   const condition = snapshot && hasFilters ? snapshot.conditionText : null;
 
   return (
@@ -130,7 +147,7 @@ export function ProductPanel() {
               ))}
             </div>
           ) : products.length > 0 ? (
-            <ProductGrid products={products} />
+            <ProductGrid products={products} liveIds={liveIds} liveAt={liveAt} />
           ) : (
             <EmptyState
               icon={SearchX}
@@ -182,6 +199,7 @@ export function ProductPanel() {
 
       <ProductDetailDialog
         product={detailProduct}
+        liveAt={detailProduct && liveIds.has(detailProduct.id) ? liveAt : null}
         open={detailProductId !== null}
         onOpenChange={(open) => {
           if (!open) closeProductDetail();

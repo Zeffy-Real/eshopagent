@@ -84,6 +84,10 @@ export function toSnapshot(
     searchFilters: state.searchFilters,
     conditionText: describeFilters(state.searchFilters),
     searchResults: state.searchResults,
+    // 实时覆盖随快照整体下发：前端三处渲染（卡片 / 弹窗 / 对比表）按 id 取用，
+    // 与快照一样是「整体替换」，前端不需要额外 reducer
+    liveOverrides: state.liveOverrides,
+    liveFetchedAt: state.liveFetchedAt,
     compareTargets: state.compareTargets,
     comparison: state.comparison,
     cart: state.cart,

@@ -68,10 +68,18 @@ function collectKnownCounts(state: AgentStateValue): {
   return { sales, reviews };
 }
 
-/** 状态里出现过的全部商品（去重前的并集） */
+/**
+ * 状态里出现过的全部商品（去重前的并集）。
+ *
+ * `liveOverrides` 必须在这里：enrichLiveData 用实时价覆盖了展示值，
+ * 回复引用的就是那个新价格。若不登记，回复会因为「这个金额不在数据里」被判为编造，
+ * 触发一次无意义的重试甚至降级成模板——等于自己把自己的实时数据判成假数据。
+ * 覆盖值只改 price / originalPrice / stock，其余字段与快照一致，因此不会污染销量与评价口径。
+ */
 function collectProducts(state: AgentStateValue): Product[] {
   return [
     ...state.searchResults,
+    ...Object.values(state.liveOverrides),
     ...state.compareTargets,
     ...state.cart.map((item) => item.product),
     ...(state.comparison?.products ?? []),

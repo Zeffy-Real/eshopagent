@@ -20,7 +20,9 @@ flowchart TD
 
   refineSearch -->|"回到检索 —— 图中唯一的环"| searchProducts
   searchProducts -->|"needsRefine 且 refineCount < 2"| refineSearch
-  searchProducts -->|"否则"| generateReply
+  searchProducts -->|"六条判定全满足（含 id 可解析）"| enrichLiveData["enrichLiveData · 补充实时数据<br/>前 3 件覆盖 price（可选库存等级）<br/>失败静默，只在时间线留中性记录"]
+  searchProducts -->|"判定不满足（默认即如此）"| generateReply
+  enrichLiveData --> generateReply
 
   compareProducts --> generateReply
   manageCart --> generateReply
@@ -35,6 +37,8 @@ flowchart TD
 ```
 
 **环的收敛**：`refineSearch ⇄ searchProducts` 是图中唯一的环。退出条件是 `needsRefine && refineCount < MAX_REFINE_ROUNDS`（上限 **2**），否则「检索为空 → 放宽条件 → 仍为空」会一直绕环，直到撞上 LangGraph 的默认递归上限抛 `GraphRecursionError`。`refineSearch` 每进一次就 `refineCount + 1`，所以环最多转两圈。
+
+**实时补充是插入点，不是新环**：`enrichLiveData` 挂在 `searchProducts → generateReply` 这条直线上（进不进由条件边的六条判定决定），出边无条件回到 `generateReply`。判定不通过时直接 `generateReply` —— **默认数据源下走的就是这条**，因此图行为与改造前完全一致。
 
 **interrupt / resume 的语义**：`interrupt()` 实现为抛中断信号 → LangGraph 落一次 checkpoint 并暂停 → 用户确认后 `Command({ resume })` 恢复，`prepareOrder` 会**从头重新执行**，这一次 `interrupt()` 直接返回用户决策值。两个直接后果：
 
@@ -157,15 +161,19 @@ sequenceDiagram
 
 | 图里写的 | 代码位置 |
 | --- | --- |
-| 8 个节点注册 | `lib/agent/graph.ts:58-65` |
-| `START → parseIntent` | `lib/agent/graph.ts:66` |
-| 6 条意图分支 | `lib/agent/graph.ts:67-75`（分流函数 `graph.ts:18-35`） |
-| `refineSearch → searchProducts`（环） | `lib/agent/graph.ts:76` |
-| `searchProducts` 的环退出条件 | `lib/agent/graph.ts:77-80`（判定 `graph.ts:42-45`，上限 `lib/agent/state.ts:152`） |
-| `compareProducts / manageCart → generateReply` | `lib/agent/graph.ts:81-82` |
-| `prepareOrder` 的条件边 | `lib/agent/graph.ts:83-86`（判定 `graph.ts:48-50`） |
-| `confirmOrder → generateReply`、`generateReply → END` | `lib/agent/graph.ts:87-88` |
-| 编译时注入 checkpointer | `lib/agent/graph.ts:96` |
+| 9 个节点注册 | `lib/agent/graph.ts:65-73` |
+| `START → parseIntent` | `lib/agent/graph.ts:74` |
+| 6 条意图分支 | `lib/agent/graph.ts:75-83`（分流函数 `graph.ts:20-37`） |
+| `refineSearch → searchProducts`（环） | `lib/agent/graph.ts:82` |
+| `searchProducts` 的环退出条件 + 实时补充分支 | `lib/agent/graph.ts:83-87`（判定 `graph.ts:46-51`，上限 `lib/agent/state.ts:188`） |
+| 六条判定（token / 结果 / 关键词 / id 可解析 / 冷却 / 熔断） | `lib/agent/nodes/enrichLiveData.ts:118-141`（纯函数 `shouldEnrich`） |
+| 节点实现（最多 3 件、失败静默、时间线中性记录） | `lib/agent/nodes/enrichLiveData.ts:246-280` |
+| 覆盖规则（只盖 price / 库存等级 + 划线价一致性） | `lib/justoneapi/overrides.ts`（`withLivePrice` / `withLiveStock` / `applyLiveOverride`） |
+| 熔断标记（`globalThis` + 按自然日） | `lib/agent/nodes/enrichLiveData.ts:65-92` |
+| `compareProducts / manageCart → generateReply` | `lib/agent/graph.ts:91-92` |
+| `prepareOrder` 的条件边 | `lib/agent/graph.ts:93-96`（判定 `graph.ts:54-56`） |
+| `confirmOrder → generateReply`、`generateReply → END` | `lib/agent/graph.ts:97-98` |
+| 编译时注入 checkpointer | `lib/agent/graph.ts:106` |
 | checkpointer 单例（globalThis + Promise） | `lib/agent/checkpointer.ts:81-86` |
 | `thread_id` 隔离 | `lib/agent/checkpointer.ts:102-104` |
 | `interrupt()` 调用点 | `lib/agent/nodes/prepareOrder.ts:57-60` |
@@ -175,30 +183,32 @@ sequenceDiagram
 
 | 字段 | 行 | 合并语义 |
 | --- | --- | --- |
-| `messages` | 27 | 追加（`messagesStateReducer`，按 id 去重） |
-| `intent` | 33 | 覆盖 |
-| `searchFilters` | 39 | 浅合并（refine 只更新变化字段） |
-| `searchResults` | 45 | 覆盖 |
-| `compareTargets` | 51 | 覆盖 |
-| `comparison` | 57 | 覆盖 |
-| `cart` | 63 | 覆盖 |
-| `toolCallLog` | 69 | 追加（右栏时间线） |
-| `pendingOrder` | 75 | 覆盖（interrupt 载荷） |
-| `focusProductId` | 89 | 覆盖（序数指代，消费后置 null） |
-| `profilePatch` | 105 | 覆盖（每轮由 `parseIntent` 重置为 `[]`） |
-| `profileGeneration` | 116 | 覆盖（客户端 generation 的原样回显） |
-| `profileHint` | 128 | 覆盖（本轮是否带出偏好提示） |
-| `needsRefine` | 134 | 覆盖（环的入口条件） |
-| `refineCount` | 145 | 覆盖（环的收敛保证，上限见 152 行） |
+| `messages` | 41 | 追加（`messagesStateReducer`，按 id 去重） |
+| `intent` | 47 | 覆盖 |
+| `searchFilters` | 53 | 浅合并（refine 只更新变化字段） |
+| `searchResults` | 59 | 覆盖 |
+| `liveOverrides` | 72 | **合并**（`mergeLiveOverrides`：多轮各自累积，不互相清空） |
+| `liveFetchedAt` | 81 | 覆盖（60 秒冷却依据） |
+| `compareTargets` | 87 | 覆盖 |
+| `comparison` | 93 | 覆盖 |
+| `cart` | 99 | 覆盖 |
+| `toolCallLog` | 105 | 追加（右栏时间线） |
+| `pendingOrder` | 111 | 覆盖（interrupt 载荷） |
+| `focusProductId` | 125 | 覆盖（序数指代，消费后置 null） |
+| `profilePatch` | 141 | 覆盖（每轮由 `parseIntent` 重置为 `[]`） |
+| `profileGeneration` | 152 | 覆盖（客户端 generation 的原样回显） |
+| `profileHint` | 164 | 覆盖（本轮是否带出偏好提示） |
+| `needsRefine` | 170 | 覆盖（环的入口条件） |
+| `refineCount` | 181 | 覆盖（环的收敛保证，上限见 188 行） |
 
 ### 事件与接口
 
 | 图里写的 | 代码位置 |
 | --- | --- |
-| 事件协议 10 种 | `lib/agent/events.ts:64-74` |
-| 快照字段（含 `profilePatch` / `profileGeneration`） | `lib/agent/events.ts:42-62` |
-| 请求体 / 恢复体契约 | `lib/agent/events.ts:76-101` |
-| SSE 事件映射 | `lib/agent/sse.ts:157-231`（`toSnapshot` 在 `sse.ts:68-96`） |
+| 事件协议 10 种 | `lib/agent/events.ts:66-76` |
+| 快照字段（含 `liveOverrides` / `liveFetchedAt` / `profilePatch`） | `lib/agent/events.ts:44-66` |
+| 请求体 / 恢复体契约 | `lib/agent/events.ts:78-103` |
+| SSE 事件映射 | `lib/agent/sse.ts:157-231`（`toSnapshot` 在 `sse.ts:68-99`） |
 | 只转发 `generateReply` 的 token | `lib/agent/sse.ts:31`、`sse.ts:210-223` |
 | 图结束后无条件补推终态 + 检测中断 | `lib/agent/sse.ts:238-252` |
 | 主入口（zod 校验 / 会话元信息 / config 透传画像） | `app/api/agent/route.ts:29-95` |

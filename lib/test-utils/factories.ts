@@ -41,6 +41,8 @@ export function makeState(overrides: Partial<AgentStateValue> = {}): AgentStateV
     intent: 'search',
     searchFilters: {},
     searchResults: [],
+    liveOverrides: {},
+    liveFetchedAt: null,
     compareTargets: [],
     comparison: null,
     cart: [],

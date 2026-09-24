@@ -2,6 +2,7 @@
 
 import { Table2 } from 'lucide-react';
 import { EmptyState } from '@/components/common/empty-state';
+import { LiveBadge } from '@/components/product/live-badge';
 import { ProductImage } from '@/components/product/product-image';
 import { useAgentStore } from '@/store/use-agent-store';
 import { useUiStore } from '@/store/use-ui-store';
@@ -10,6 +11,8 @@ import { cn } from '@/lib/utils';
 /** 对比分析：多商品参数差异表，差异项标记、最优项高亮 */
 export function CompareSection() {
   const comparison = useAgentStore((s) => s.snapshot?.comparison ?? null);
+  const liveOverrides = useAgentStore((s) => s.snapshot?.liveOverrides);
+  const liveAt = useAgentStore((s) => s.snapshot?.liveFetchedAt ?? null);
   const openProductDetail = useUiStore((s) => s.openProductDetail);
 
   if (!comparison || comparison.products.length < 2) {
@@ -79,7 +82,20 @@ export function CompareSection() {
                         : 'text-foreground',
                     )}
                   >
-                    {value}
+                    {/* 价格行的值来自服务端（快照口径），因此这里只挂标注、
+                        不改数字 —— 与商品卡/详情弹窗保持一致：
+                        「哪些字段来自实时」在三处必须指向同一个事实 */}
+                    {row.key === '价格' ? (
+                      <span className="inline-flex items-center gap-1">
+                        {value}
+                        <LiveBadge
+                          at={products[index] && liveOverrides?.[products[index].id] ? liveAt : null}
+                          className="px-0.5 py-0"
+                        />
+                      </span>
+                    ) : (
+                      value
+                    )}
                   </td>
                 ))}
               </tr>

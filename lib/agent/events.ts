@@ -20,6 +20,7 @@ export const NODE_LABEL: Record<string, string> = {
   parseIntent: '解析意图',
   searchProducts: '检索商品',
   refineSearch: '细化条件',
+  enrichLiveData: '补充实时数据',
   compareProducts: '对比商品',
   manageCart: '管理购物车',
   prepareOrder: '准备订单',
@@ -31,6 +32,7 @@ export const NODE_ORDER: string[] = [
   'parseIntent',
   'searchProducts',
   'refineSearch',
+  'enrichLiveData',
   'compareProducts',
   'manageCart',
   'prepareOrder',
@@ -45,6 +47,14 @@ export interface AgentStateSnapshot {
   /** 筛选条件的中文描述（服务端渲染，避免把解析器打进客户端包） */
   conditionText: string;
   searchResults: Product[];
+  /**
+   * 实时数据覆盖（键 = 商品 id）。**不写进 searchResults**：这样才始终说得清
+   * 「哪个价格来自快照、哪个来自实时查询」。渲染时按 id 查覆盖值，查不到就用原值
+   * （统一走 `lib/justoneapi/overrides.ts` 的 `applyLiveOverride`）。
+   */
+  liveOverrides: Record<string, Product>;
+  /** 上次实时拉取的时刻（毫秒）；前端「实时 · HH:mm」标注与冷却判定都用它 */
+  liveFetchedAt: number | null;
   compareTargets: Product[];
   /** 对比结果（差异表 + 各维度最优），无对比时为 null */
   comparison: ComparisonResult | null;

@@ -3,6 +3,7 @@ import { getCheckpointer } from './checkpointer';
 import { AgentState, MAX_REFINE_ROUNDS, type AgentStateValue } from './state';
 import { compareProductsNode } from './nodes/compareProducts';
 import { confirmOrderNode } from './nodes/confirmOrder';
+import { enrichLiveDataNode, shouldEnterEnrichLiveData } from './nodes/enrichLiveData';
 import { generateReplyNode } from './nodes/generateReply';
 import { manageCartNode } from './nodes/manageCart';
 import { parseIntentNode } from './nodes/parseIntent';
@@ -35,13 +36,19 @@ function routeByIntent(
 }
 
 /**
- * searchProducts 之后：是否需要继续细化条件。
- * refineCount 上限是图的收敛保证——没有它，「检索为空 → 放宽 → 仍为空」会
- * 一直绕环，直到撞上 LangGraph 的递归上限抛错。
+ * searchProducts 之后：先看要不要继续细化条件；否则判断能否做实时补充，不能就直接生成回复。
+ *
+ * - refineCount 上限是图的收敛保证——没有它，「检索为空 → 放宽 → 仍为空」会一直绕环，
+ *   直到撞上 LangGraph 的递归上限抛错；
+ * - 实时补充插在 searchProducts → generateReply 这条直线上：三个去向都是单向边，
+ *   **不引入新的环**（图中唯一的环仍是 refineSearch ⇄ searchProducts）；
+ * - 「是否进入实时补充」的六条判定放在条件边里（可被单测逐条覆盖，见 nodes/enrichLiveData.ts）。
  */
-function routeAfterSearch(state: AgentStateValue): 'refineSearch' | 'generateReply' {
+function routeAfterSearch(
+  state: AgentStateValue,
+): 'refineSearch' | 'enrichLiveData' | 'generateReply' {
   if (state.needsRefine && state.refineCount < MAX_REFINE_ROUNDS) return 'refineSearch';
-  return 'generateReply';
+  return shouldEnterEnrichLiveData(state) ? 'enrichLiveData' : 'generateReply';
 }
 
 /** prepareOrder 之后：interrupt 确认过才进入 confirmOrder */
@@ -58,6 +65,7 @@ export function buildAgentGraph() {
     .addNode('parseIntent', parseIntentNode)
     .addNode('searchProducts', searchProductsNode)
     .addNode('refineSearch', refineSearchNode)
+    .addNode('enrichLiveData', enrichLiveDataNode)
     .addNode('compareProducts', compareProductsNode)
     .addNode('manageCart', manageCartNode)
     .addNode('prepareOrder', prepareOrderNode)
@@ -76,8 +84,12 @@ export function buildAgentGraph() {
     .addEdge('refineSearch', 'searchProducts')
     .addConditionalEdges('searchProducts', routeAfterSearch, [
       'refineSearch',
+      'enrichLiveData',
       'generateReply',
     ])
+    // 实时补充是 searchProducts → generateReply 直线上的插入点：
+    // 六条判定不通过时上一条条件边直接送往 generateReply，行为与改造前完全一致
+    .addEdge('enrichLiveData', 'generateReply')
     .addEdge('compareProducts', 'generateReply')
     .addEdge('manageCart', 'generateReply')
     .addConditionalEdges('prepareOrder', routeAfterPrepare, [

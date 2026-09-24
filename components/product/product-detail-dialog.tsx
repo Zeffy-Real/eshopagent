@@ -2,6 +2,7 @@
 
 import { Check, GitCompareArrows, Plus, ShieldCheck, Truck } from 'lucide-react';
 import { ProductImage } from '@/components/product/product-image';
+import { LiveBadge } from '@/components/product/live-badge';
 import { RatingStars } from '@/components/product/rating-stars';
 import { StockBadge } from '@/components/product/stock-badge';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,8 @@ import { discountLabel, formatCount, formatPrice, hasRealSales } from '@/lib/uti
 
 export interface ProductDetailDialogProps {
   product: Product | null;
+  /** 价格来自实时覆盖时传实时拉取时刻（毫秒）；否则不传 */
+  liveAt?: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -22,6 +25,7 @@ export interface ProductDetailDialogProps {
 /** 商品详情弹窗：规格参数 + 加购 + 加入对比 */
 export function ProductDetailDialog({
   product,
+  liveAt,
   open,
   onOpenChange,
 }: ProductDetailDialogProps) {
@@ -94,6 +98,9 @@ export function ProductDetailDialog({
                 <div className="flex flex-wrap items-end gap-2">
                   <span className="text-[26px] font-semibold leading-8 text-primary-ink">
                     {formatPrice(product.price)}
+                  </span>
+                  <span className="pb-1.5">
+                    <LiveBadge at={liveAt} />
                   </span>
                   {product.originalPrice > product.price && (
                     <span className="pb-1 text-[13px] text-muted-foreground line-through">

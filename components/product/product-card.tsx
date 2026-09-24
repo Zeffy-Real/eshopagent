@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { Check, GitCompareArrows, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ProductImage } from '@/components/product/product-image';
+import { LiveBadge } from '@/components/product/live-badge';
 import { RatingStars } from '@/components/product/rating-stars';
 import { StockBadge } from '@/components/product/stock-badge';
 import { Badge } from '@/components/ui/badge';
@@ -17,9 +18,11 @@ import { cn, discountLabel, formatCount, formatPrice, hasRealSales } from '@/lib
 
 export interface ProductCardProps {
   product: Product;
+  /** 该商品的价格来自实时覆盖时，传实时拉取时刻（毫秒）；否则不传 */
+  liveAt?: number | null;
 }
 
-function ProductCardBase({ product }: ProductCardProps) {
+function ProductCardBase({ product, liveAt }: ProductCardProps) {
   const openProductDetail = useUiStore((s) => s.openProductDetail);
   const compareIds = useUiStore((s) => s.compareIds);
   const toggleCompare = useUiStore((s) => s.toggleCompare);
@@ -90,8 +93,9 @@ function ProductCardBase({ product }: ProductCardProps) {
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-1">
           <div className="min-w-0">
-            <p className="text-[16px] font-semibold leading-6 text-primary-ink">
+            <p className="flex items-center gap-1.5 text-[16px] font-semibold leading-6 text-primary-ink">
               {formatPrice(product.price)}
+              <LiveBadge at={liveAt} />
             </p>
             {product.originalPrice > product.price && (
               <p className="text-[11px] leading-4 text-muted-foreground line-through">

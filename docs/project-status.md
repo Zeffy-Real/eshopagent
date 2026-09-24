@@ -34,8 +34,8 @@
 | 流式 | LangGraph `streamEvents()` → 后端 SSE → 前端 `fetch` + `ReadableStream` |
 | 源码规模 | **115 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
 | 页面与接口 | `app` 下 2 个页面（`/`、`/_not-found`）+ 2 个 API 路由 |
-| Agent 节点 | **8 个**（`lib/agent/nodes/`） |
-| 测试 | **290 个单测用例**（Vitest，20 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射）；无组件/E2E 自动化测试 |
+| Agent 节点 | **9 个**（`lib/agent/nodes/`，含条件触发的 `enrichLiveData`） |
+| 测试 | **321 个单测用例**（Vitest，21 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射、实时补充节点六条判定与静默失败）；无组件/E2E 自动化测试 |
 | 版本控制 | git 仓库，远端 `https://github.com/Zeffy-Real/eshopagent` |
 
 ---
@@ -61,7 +61,7 @@ lib/
     ruleParser.ts               规则解析器（无 LLM 时的主路径）
     sse.ts                      streamEvents → SSE
     events.ts                   前后端共用事件协议
-    nodes/                      8 个节点，每个节点一个文件
+    nodes/                      9 个节点，每个节点一个文件（含条件触发的 enrichLiveData）
     tools/                      productTools / cartTools（纯函数 + zod 入参契约）
   catalog/products.ts           商品目录唯一入口（real | justoneapi | mock 可切换）
   justoneapi/                   京东实时数据源（构建期 + 运行时的共用实现）
@@ -71,6 +71,7 @@ lib/
     cache.ts                    实时数据缓存（TTL 300s + 单飞 + 失败不缓存）
     types.ts                    实时字段类型（只覆盖易变字段）
     platforms/jd.mjs / .d.mts   京东端点、cid 类目映射、价格/库存换算
+    overrides.ts                实时覆盖规则（只盖 price/库存等级 + 划线价一致性；前后端共用）
   profile.ts                    跨会话画像：信号提取 + 幂等合并 + 提示文案（纯函数）
   cart-pricing.ts               购物车金额规则（纯函数，前后端共用）
   decision.ts                   决策推荐理由与对比结论（纯函数）
@@ -276,6 +277,17 @@ confirmOrder   → generateReply → END
 | 目录源扩展 | `lib/catalog/products.ts` / `next.config.ts` | `CATALOG_SOURCE` 增加 `justoneapi` 分支（服务端缺 token 或缺产物**直接报错**，不静默回落）；两个源的校验与兜底收敛到同一处 `loadProducts()`；`next.config.ts` 把 `CATALOG_SOURCE` 内联进客户端包，保证服务端/浏览器解析出同一个源（否则会 hydration 报错） |
 | 架构约束 | `docs/justoneapi-design.md` §15.6 | `lib/justoneapi` 的核心改成 `.mjs + .d.mts`：构建脚本（纯 node）加载不了 TS，而码表/客户端/字段映射又必须与运行时共用同一份实现，取交集即 `.mjs` 实现 + `.d.mts` 类型 |
 
+### 6.7 实时补充节点 enrichLiveData（阶段 19）
+
+| 主题 | 文件 | 变更 |
+| --- | --- | --- |
+| 图结构 | `lib/agent/graph.ts` / `lib/agent/events.ts` | 第 9 个节点 `enrichLiveData`；`searchProducts` 的条件边由「refineSearch / generateReply」改为「refineSearch / enrichLiveData / generateReply」，出边无条件回 `generateReply`——**不引入新环**；`NODE_LABEL` / `NODE_ORDER` 同步 |
+| 状态与快照 | `lib/agent/state.ts` / `lib/agent/sse.ts` / `lib/agent/events.ts` | 新增 `liveOverrides`（**合并型** reducer，`mergeLiveOverrides`）与 `liveFetchedAt`（覆盖型）；**不写 `searchResults`**，让「哪个价格来自实时」可追溯；两者随 SSE 快照整体下发 |
+| 节点实现 | `lib/agent/nodes/enrichLiveData.ts` / `lib/justoneapi/overrides.ts` | 六条判定（`shouldEnrich` 纯函数）+ 前 3 件上限 + 复用 `callJustOneApi` / `parseJdPriceFen` / `encodeStockLevel` / `SingleFlightCache`；只覆盖 `price`（含划线价一致性）与库存等级；失败静默、只在时间线留中性记录；熔断标记锚 `globalThis` 按自然日失效 |
+| 口径同步（关键） | `lib/agent/grounding.ts` / `lib/agent/prompts.ts` | ① `collectProducts` 并入 `liveOverrides` 的值——否则回复引用实时价会被**自己的落地校验**判成编造并降级；② `buildReplyContext` 的明细套一层 `applyLiveOverride`，否则回复报旧价、卡片报新价 |
+| 前端三处标注 | `components/product/live-badge.tsx`（新增）/ `product-card.tsx` / `product-grid.tsx` / `product-panel.tsx` / `product-detail-dialog.tsx` / `components/visualization/compare-section.tsx` | 「实时 · HH:mm」小标注（hover 显示拉取时刻）：卡片价格旁、详情弹窗价格行、对比表价格格；详情弹窗的数据来自目录（不是快照），因此单独叠了一次覆盖。排序仍按快照值走——**不改排序/筛选/推荐** |
+| 文档 | README / `docs/{architecture,decisions,demo-script,justoneapi-design}.md` / 本文件 | 架构图与节点清单、新增 ADR 11（为什么做成节点而不是独立函数）、演示脚本第 9 步（可选）、§1 运行时整节从「待下一步」改为「已接入」 |
+
 ---
 
 ## 七、验证状态
@@ -285,7 +297,7 @@ confirmOrder   → generateReply → END
 | 项 | 方法 | 结果 |
 | --- | --- | --- |
 | 类型 | `npx tsc --noEmit` | ✅ 0 错误 |
-| 单测 | `npm test`（Vitest，20 个文件） | ✅ 290 / 290 通过 |
+| 单测 | `npm test`（Vitest，21 个文件） | ✅ 321 / 321 通过 |
 | 跨重启持久化 | 建会话 → 杀进程（确认端口无监听）→ 重启 → 同 sessionId 追问指代 | ✅ 恢复上一轮上下文（时间线显示「历史 366 字」），指代解析为 refine 并收紧价格 |
 | 内存态回落 | `CHECKPOINT_BACKEND=memory` 独立用例 | ✅ 不建连接、会话管理安全跳过、checkpointer 仍可用、不产生 sqlite 文件 |
 | 构建 | `npm run build` | ✅ 通过；首页 333 kB / First Load 470 kB；共享 103 kB（较上一版 +6 kB，来自内联的 justoneapi 目录产物） |
@@ -322,6 +334,9 @@ confirmOrder   → generateReply → END
 | 构建期中止语义（单测） | mock 返回 `code:303` | ✅ 立即抛出（不重试、不返回半成品）；单条商品 404 只丢该条、不中止构建 |
 | `CATALOG_SOURCE=justoneapi` 渲染（本地实测） | `CATALOG_SOURCE=justoneapi npm run dev` → 抓首页 HTML 与客户端 chunk | ✅ HTTP 200、4 次请求无错误；首页品类 chip 显示「数码 4」（= 实时源每品类 4 件，real 快照是 16）→ 服务端确实按实时源解析；商品图为 `img30.360buyimg.com`；无评分商品显示「暂无评分」；**客户端 chunk 内联了源判断**（`if (false) {} return 'justoneapi'`）→ 浏览器与服务器解析同一个源，无 hydration 不一致 |
 | `real` 模式零影响 | `npm test` + `npm run build`（默认源） | ✅ 290 个单测全绿；构建通过；快照源行为未变（新增的 justoneapi 目录只作为另一个可选源存在） |
+| 实时补充节点（单测，`lib/agent/nodes/enrichLiveData.test.ts`，全部 mock fetch） | 六条判定逐条 / 节点行为 / reducer / 划线价 / grounding 衔接 | ✅ 六条判定各自构造「只差这一条」的输入断言跳过（含 ASIN 场景）；≤3 件上限（价格模式 3 次调用、库存模式 6 次）；部分失败只丢该件；全部失败→空覆盖 + 中性记录 + 不抛错；命中 303 后条件边不再进入；`mergeLiveOverrides` 多轮合并且不污染无关商品；`withLivePrice` 的划线价一致性；覆盖后的价格被 `checkGrounding` 认作真实数据（未登记时会判为编造——用例同时断言了这一点） |
+| 实时补充节点（真实调用，`CATALOG_SOURCE=justoneapi`） | 驱动 `/api/agent` 五轮：搜索 → 实时提问 → 库存提问 → 无效 token → 默认源对照 | ✅ ① 搜索轮：`liveOverrides` 空、`liveFetchedAt` null、**0 次调用**（条件边第 3 条挡住）；② 「按现在的价格推荐几款耳机」：时间线出现 `补充实时数据 · 3 件价格`、`liveOverrides` 3 件、价格端点 **3 次**（分→元换算与快照一致：376.4 / 99 / 237.8）；③ 再次提问时命中 **60 秒冷却**（实测 61.9 秒时仍被挡，省下一次调用）；④ 库存模式：时间线 `3 件价格 + 3 件库存`，价格 3 次**命中缓存**（0 新调用）、详情 3 次（284/290/238ms）；⑤ 无效 token：3 次 `HTTP 401 + code 100` 不重试、`liveOverrides` 空、时间线 `实时数据不可用，已用快照数据`、对话与回复正常、无 error 事件；⑥ 默认 `real` 源同样的问法：商品 id 是 `amz-…` → **0 次调用**、时间线无新增、无 error |
+| 实时补充节点的配额消耗（本轮实测） | 逐次记录 | ✅ **6 次成功调用计费**（价格 3 + 详情 3）；无效 token 的 3 次失败、冷却被挡的 1 轮、默认源的 1 轮均**不计费** |
 
 ### 7.2 未验证 / 验证受限
 
@@ -332,8 +347,9 @@ confirmOrder   → generateReply → END
 | 极端时序 | 气泡拆分/计数一致性只验了 3 轮，未做长会话或并发压测 |
 | 画像的跨设备 / 跨用户形态 | 按设计不支持（存 localStorage、无 userId），因此**未实现也未验证**；多浏览器同时使用时的隔离性（各自独立画像）未实测 |
 | 界面回归保护 | 组件 / E2E **无自动化**：单测覆盖 lib 纯函数与 store 不变量，界面仍依赖手工浏览器验收 |
-| 运行时实时补充节点 `enrichLiveData` | 按 2026-09-25 裁定，本轮只交付构建期源；节点接入是**下一步**。因此「搜耳机 → 问『现在多少钱』→ 商品卡出现「实时」标注」这条路径**本轮不成立**，不能算已验证 |
-| `justoneapi` 源的完整对话流程 | 只验到「能启动 + 首页按实时源渲染 + 客户端/服务端源一致」；在该源下跑完整对话（检索、对比、加购、下单）留到下一步（那时节点也接上了，一次验完更省事） |
+| 运行时实时补充节点 `enrichLiveData` | **已接入并实测**（见 §7.1 两行）；仍然受限的是：`intent` 被解析为 `compare` / `chat` 时**不经过** `searchProducts`，因此那些问法不会触发实时补充（本轮实测：「那这几款现在多少钱？」被判成 compare、「这几款耳机还有货吗」被判成 chat，均未触发）——这是图结构决定的（节点挂在 searchProducts 之后），要覆盖更多问法需要改意图解析，本轮明确不做 |
+| `justoneapi` 源的完整对话流程 | 本轮已补验**检索 → 实时补充 → 回复**这条主链路（含库存模式与失败降级）；尚未在实时源下走**加购 → 对比 → 下单**的完整流程 |
+| 前端「实时」标注的视觉 | 通过组件路径与 store 数据流验证（SSE 快照 → `liveOverrides` → 三处渲染共用 `applyLiveOverride`），**未做浏览器截图**（本轮验收走的是 `/api/agent` 的 SSE 实机链路 + 单测） |
 | 构建期源的更大规模 | 本轮用 `--per=4` 控制配额（28 件、42 次调用）；`--per=14`（满目录，预计 ≤112 次调用）未跑，配额上限与耗时未实测 |
 | 京东库存状态码的完整枚举 | 只实测到 `33`（有货）；`34/36/39/40` 来自京东官方 IOP 文档枚举，未逐一代码实测（拿不到缺货/预订的真实样本） |
 
@@ -365,6 +381,8 @@ confirmOrder   → generateReply → END
 | 14 | ~~grounding 校验失败直接降级为模板回复~~ | 质量 | ✅ **已实现（阶段 16）**：先带「哪些数字不在数据里」的纠正提示重试一次（用 `invoke` 非流式，避免两段候选拼进同一气泡），仍不符才降级模板；顺带修掉「气泡显示被否决候选」——终态不是候选续写时前端整体替换气泡内容 |
 | 15 | **页面刷新 / 导航不中止在途请求** | 资源 | 会话身份变更（清除画像 / 清空对话 / 新会话）已中止并静默收尾；刷新与导航**属浏览器行为**，卸载时连接随会话一起消失，代码层没有可挽救的动作，因此不做处理，只作为已知噪声记录 |
 | 16 | **`LLM_FALLBACK_ENABLED` 是死开关** | 配置准确性 | `isLlmEnabled()` 里 `LLM_FALLBACK_ENABLED === 'false' && !isLlmConfigured()` 这一支与随后的 `return isLlmConfigured()` 结果完全相同 —— 两种取值行为一致，变量无实际效果。**本轮不改代码**：二选一（① 实现原语义：`=false` 时未配置就报错而不是降级；② 删掉该变量与 README 对应行），README 环境变量表已先标注为「无实际效果」 |
+| 17 | **实时覆盖只影响展示与回复，不重跑筛选 / 排序 / 推荐** | 定位边界 | 本轮定位是「补充信息」而非「重算」：`liveOverrides` 只改展示值与回复上下文，检索结果、排序、对比表数值、决策推荐仍按快照口径计算（对比表价格格只挂「实时」标注、不改数字）。后果是：若某件商品实时价大幅变化，它在「价格升序」里的位置不会随之改变。要改需把覆盖值回注 `searchResults` 并重跑排序——那会破坏「哪个价格来自快照」的可追溯性，与本轮明确约束冲突，**刻意不做** |
+| 18 | **实时补充只在 `searchProducts` 之后触发** | 能力边界 | 意图被解析为 `compare` / `chat` 的问法（如「那这几款现在多少钱？」「这几款还有货吗」）不经过 `searchProducts`，因此不会触发实时补充。这是图结构的直接结果（节点挂在检索之后）；要扩大覆盖需要改意图解析或把节点挂到更多边，本轮明确不做。演示时用「按现在的价格推荐几款耳机」这类 search/refine 问法 |
 
 ---
 

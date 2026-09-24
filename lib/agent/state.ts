@@ -12,6 +12,20 @@ import type {
 } from '@/lib/types';
 
 /**
+ * liveOverrides 的合并规则（导出即为了单测能直接钉住它）。
+ *
+ * 合并型而不是覆盖型：多轮追问会分别覆盖不同商品（第一轮盖了 A，第二轮盖 B），
+ * 覆盖型会让 A 的实时价在第二轮被整体清掉，界面上的「实时」标注随之消失——
+ * 而那个价格确实来自真实查询，没有理由丢弃。
+ */
+export function mergeLiveOverrides(
+  previous: Record<string, Product>,
+  next: Record<string, Product>,
+): Record<string, Product> {
+  return { ...previous, ...next };
+}
+
+/**
  * Agent 全局状态（StateGraph 所有节点共享读写）。
  *
  * 设计要点：
@@ -45,6 +59,28 @@ export const AgentState = Annotation.Root({
   searchResults: Annotation<Product[]>({
     reducer: (_previous, next) => next,
     default: () => [],
+  }),
+
+  /**
+   * 实时数据覆盖（键 = 商品 id，值 = 覆盖后的商品）。由 enrichLiveData 写入。
+   *
+   * 为什么**不写进 searchResults**：那样就再也说不清哪个价格来自快照、哪个来自实时查询。
+   * 独立字段让「数据来源可追溯」成为结构上的事实（界面可标注「实时 · 14:32」），
+   * 而不是靠约定。
+   * reducer 是**合并型**：多轮追问会分别覆盖不同商品，早期覆盖不该被本轮清掉。
+   */
+  liveOverrides: Annotation<Record<string, Product>>({
+    reducer: mergeLiveOverrides,
+    default: () => ({}),
+  }),
+
+  /**
+   * 上次实时拉取的时刻（毫秒）。条件边用它做 60 秒冷却，避免同一 thread 反复烧配额。
+   * 覆盖型：每轮以最新一次为准。
+   */
+  liveFetchedAt: Annotation<number | null>({
+    reducer: (_previous, next) => next,
+    default: () => null,
   }),
 
   /** 待对比商品（2 - 4 件） */
