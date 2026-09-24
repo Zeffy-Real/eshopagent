@@ -4,8 +4,8 @@
 >
 > - 数据快照生成时间：2026-09-24 06:30 UTC
 > - 文案本地化时间：2026-09-24 06:31 UTC
-> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `49b8174`（阶段 14）
-> - 校验状态：`tsc --noEmit` 0 错误；**146 个单测全绿（14 个文件）**；`next build` 通过
+> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `e07ccc4`（阶段 15）
+> - 校验状态：`tsc --noEmit` 0 错误；**150 个单测全绿（14 个文件）**；`next build` 通过
 
 ---
 
@@ -32,10 +32,10 @@
 | Agent 框架 | `@langchain/langgraph` 1.4（StateGraph + SqliteSaver checkpoint + interrupt） |
 | LLM 封装 | `@langchain/openai` 1.5（ChatOpenAI，`baseURL` 兼容 DeepSeek / 通义千问 / OpenAI） |
 | 流式 | LangGraph `streamEvents()` → 后端 SSE → 前端 `fetch` + `ReadableStream` |
-| 源码规模 | **106 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store`） |
+| 源码规模 | **107 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store`） |
 | 页面与接口 | `app` 下 2 个页面（`/`、`/_not-found`）+ 2 个 API 路由 |
 | Agent 节点 | **8 个**（`lib/agent/nodes/`） |
-| 测试 | **146 个单测用例**（Vitest，14 个文件，覆盖口径一致性的唯一实现、记忆机制与会话持久化）；无组件/E2E 自动化测试 |
+| 测试 | **150 个单测用例**（Vitest，14 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化与落地校验重试）；无组件/E2E 自动化测试 |
 | 版本控制 | git 仓库，远端 `https://github.com/Zeffy-Real/eshopagent` |
 
 ---
@@ -175,7 +175,7 @@ confirmOrder   → generateReply → END
 
 ### 5.3 两道防线
 
-1. **落地校验**（`lib/agent/grounding.ts`）：抽取回复里所有 ¥ 金额，逐个核对是否来自真实数据（商品价 / 原价 / 数量小计 / 优惠 / 运费 / 应付 / 两两价差）；「万」口径也必须与界面一致。任一不符即改用模板回复并在时间线标注原因。
+1. **落地校验**（`lib/agent/grounding.ts`）：抽取回复里所有 ¥ 金额，逐个核对是否来自真实数据（商品价 / 原价 / 数量小计 / 优惠 / 运费 / 应付 / 两两价差）；「万」口径也必须与界面一致。处理分两级：**先带纠正提示重试一次**（把「哪些数字不在数据里」点名告诉模型，用 `invoke` 非流式，避免两段候选拼进同一气泡），仍不符才改用模板回复并在时间线标注原因。
 2. **流式过滤**（`lib/agent/sse.ts`）：只把 `generateReply`（唯一面向用户的节点）的 token 推给前端，`parseIntent` / `manageCart` 的结构化 JSON 属内部中间结果，不外泄。
 
 ### 5.4 记忆机制（四层）
@@ -245,6 +245,7 @@ confirmOrder   → generateReply → END
 | 会话持久化（13） | `lib/agent/checkpointer.ts` / `session-store.ts` / `state.ts` / `store/use-agent-store.ts` / 两个 API 路由 | SqliteSaver（WAL + `busy_timeout`）+ `CHECKPOINT_BACKEND` 兜底与自动回落；「清空对话 / 新会话」语义拆分；`hasHydrated` 门闸修 rehydrate 竞态；`session_meta` + 惰性 TTL 清理 |
 | 跨会话画像（14） | `lib/profile.ts` / `lib/agent/state.ts` / `nodes/{parseIntent,searchProducts,manageCart,confirmOrder,generateReply}.ts` / `lib/agent/prompts.ts` / `app/api/agent/route.ts` / `store/use-agent-store.ts` / `components/visualization/profile-section.tsx` | 三个画像状态字段（`profilePatch` / `profileGeneration` / `profileHint`）；信号只来自真实行为且合并幂等；两条消费路径 + 记忆事件；清除竞态处理；右栏「你的偏好」面板（来源标注 + 一键清空） |
 | 在途中止与窄屏遮挡（14.5） | `store/use-agent-store.ts` / `components/chat/chat-panel.tsx` / `components/layout/workspace.tsx` | 清除画像 / 清空对话 / 开启新会话统一中止在途请求并静默收尾（原先会导致旧 token 写进新会话）；窄屏抽屉不再遮挡对话头部（头部抬 `z-50` + 抽屉让出等高位置） |
+| 落地校验重试（D）+ 分类入口（F，阶段 16） | `lib/agent/nodes/generateReply.ts` / `store/use-agent-store.ts` / `components/product/category-bar.tsx` / `components/product/product-panel.tsx` | ① 落地校验不过先按纠正提示重试一次（点名不符的数字），仍不过才降级模板；② 前端在「终态不是流式候选的续写」时**整体替换**气泡内容（否则会一直显示被否决的候选）；③ 中栏新增「按品类浏览」chip 行，点击走与对话相同的入口（`parseIntent → searchProducts`），不新增并行筛选实现 |
 
 ---
 
@@ -255,10 +256,10 @@ confirmOrder   → generateReply → END
 | 项 | 方法 | 结果 |
 | --- | --- | --- |
 | 类型 | `npx tsc --noEmit` | ✅ 0 错误 |
-| 单测 | `npm test`（Vitest，14 个文件） | ✅ 146 / 146 通过 |
+| 单测 | `npm test`（Vitest，14 个文件） | ✅ 150 / 150 通过 |
 | 跨重启持久化 | 建会话 → 杀进程（确认端口无监听）→ 重启 → 同 sessionId 追问指代 | ✅ 恢复上一轮上下文（时间线显示「历史 366 字」），指代解析为 refine 并收紧价格 |
 | 内存态回落 | `CHECKPOINT_BACKEND=memory` 独立用例 | ✅ 不建连接、会话管理安全跳过、checkpointer 仍可用、不产生 sqlite 文件 |
-| 构建 | `npm run build` | ✅ 通过；首页 327 kB / First Load 463 kB；共享 103 kB |
+| 构建 | `npm run build` | ✅ 通过；首页 327 kB / First Load 464 kB；共享 103 kB |
 | 目录不变量 | 脚本扫描 112 件商品的价格/评分/评论数/销量/库存/原价/图片/描述/标签/规格等 | ✅ 0 异常 |
 | 图书数据 | 逐条核对 16 本 | ✅ 真实书名、作者、价格、评分、评论数、封面、题材标签齐全，无近重复 |
 | 端到端（浏览器） | 3 轮对话 + 完整下单流程 | ✅ 通过 |
@@ -277,6 +278,8 @@ confirmOrder   → generateReply → END
 | — 清除竞态 | 请求在途时点「清除画像」 | ✅ `generation` 自增、画像保持为空、在途信号未复活画像、无错误提示 |
 | — 在途中止 | 回复流到一半点「开启新会话」/「清空对话」 | ✅ 消息列表保持为空、无残留 token、无错误提示、`thinking` 正常复位 |
 | — 窄屏抽屉遮挡 | 抽屉打开时点对话头部按钮 | ✅ 「清空对话 / 开启新会话」与抽屉自身「收起面板」均可点击 |
+| 落地校验重试（浏览器） | 发「前两件加起来一共多少钱」（诱使模型算总价） | ✅ 首次回复算出 **¥2749**（数据里没有的合计）被判未落地 → 按纠正提示重试 → 采用重试结果（只原样引用单价）；时间线显示「落地校验未通过（疑似编造金额 ¥2749），已按纠正提示重试一次并采用重试结果」；气泡内容等于服务端终态，被否决的候选没有残留（全页仅时间线那条诊断文案出现该数字） |
+| 分类浏览入口（浏览器） | 切到「商品」Tab → 点「数码 16」 | ✅ 发送「帮我看看数码的商品」→ 面板标题变为「搜索结果 · 12 件商品 · 数码」，chip 高亮（`aria-pressed`），商品区刷新为数码品类 |
 
 ### 7.2 未验证 / 验证受限
 
@@ -306,15 +309,15 @@ confirmOrder   → generateReply → END
 | 3 | **无鉴权、无限流** | 安全 | 生产前必须加会话鉴权 + 按用户限流 + 单次 token 上限 |
 | 4 | ~~MemorySaver 无上限~~ | 稳定性 | ✅ **已修（阶段 13）**：换 SqliteSaver（WAL + busy_timeout），`session_meta` + 惰性 TTL 清理；初始化失败自动回落内存态 |
 | 5 | ~~`tool()` 契约未接入 LLM~~ | 完整性 | ✅ **已决策（方案 b，阶段 13.5）**：评估后判定 tool calling 在本项目是多余的间接层（节点预设 / 路由有限 / 工具与节点一一对应，「动态选择工具集」问题不存在），已删除 `tool()` 包装与未被引用的数组，保留 zod schema；`cartLineSchema` 同时被 `/api/agent` 请求校验复用，消除了原先手写的重复约束 |
-| 6 | **无分类浏览入口** | 功能缺口 | `CATEGORY_COUNTS` 已统计好但界面未使用，当前只能靠对话按品类检索 |
-| 7 | ~~无测试、非 git 仓库~~ | 工程化 | ✅ **已修（阶段 11.5）**：Vitest 单测 + git 仓库（远端 `Zeffy-Real/eshopagent`），现共 146 个用例 / 14 个文件 |
+| 6 | ~~无分类浏览入口~~ | 功能缺口 | ✅ **已实现（阶段 16）**：中栏「按品类浏览」chip 行（7 个品类 + 件数），点击后发一句自然语言请求走**与对话相同的入口**（`parseIntent → searchProducts`），因此点分类与说品类的结果必然一致；当前品类高亮、重复点击禁用 |
+| 7 | ~~无测试、非 git 仓库~~ | 工程化 | ✅ **已修（阶段 11.5）**：Vitest 单测 + git 仓库（远端 `Zeffy-Real/eshopagent`），现共 150 个用例 / 14 个文件 |
 | 8 | ~~消息历史不参与 LLM 上下文~~ | 能力边界 | ✅ **已修（阶段 12）**：`parseIntent` 注入最近若干轮历史，可消解「刚才那个」这类指代 |
 | 9 | **21 件商品无标签** | 数据完整度 | 源数据无 features 且文案无功能词；带标签过滤的检索会排除它们 |
 | 10 | **数据快照需手动刷新** | 运维 | 生产应改为定时任务，或替换为实时电商 API 客户端 |
 | 11 | ~~跨会话偏好记忆缺失~~ | 能力边界 | ✅ **已修（阶段 14）**：结构化画像（`lib/profile.ts`），信号只来自真实行为、合并幂等、可查看来源、可一键清空且不被在途信号复活；服务端不持有画像（请求期内经 `config.configurable` 使用，不落 checkpoint）。**边界**：仅同一浏览器有效 |
 | 12 | **画像随 prompt 出境到 LLM 服务商** | 安全 / 合规 | demo 阶段**刻意不做合规处理**（无用户告知、无数据处理协议、无出境评估），README「隐私边界」已写明；生产必须评估出境合规与告知义务，或改为本地模型 |
 | 13 | **画像无 userId、不随账号迁移** | 能力边界 | 存 localStorage 的必然结果（换浏览器即另一个「用户」）；若要做跨设备需引入账号体系与服务端存储，属另一个量级的改动 |
-| 14 | **grounding 校验失败直接降级为模板回复** | 质量 | 可先让 LLM 带着「哪些金额不符」的纠正提示重试一次，仍不符再降级；阶段 14 之后排期 |
+| 14 | ~~grounding 校验失败直接降级为模板回复~~ | 质量 | ✅ **已实现（阶段 16）**：先带「哪些数字不在数据里」的纠正提示重试一次（用 `invoke` 非流式，避免两段候选拼进同一气泡），仍不符才降级模板；顺带修掉「气泡显示被否决候选」——终态不是候选续写时前端整体替换气泡内容 |
 | 15 | **页面刷新 / 导航不中止在途请求** | 资源 | 会话身份变更（清除画像 / 清空对话 / 新会话）已中止并静默收尾；刷新与导航仍会把服务端那一轮跑完（无害但浪费 token） |
 
 ---

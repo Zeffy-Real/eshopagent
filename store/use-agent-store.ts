@@ -532,12 +532,34 @@ function applySnapshot(
     // 以服务端最终文案为准补齐尾部：打字机可能还没消费完，也可能有 token 在路上。
     // pendingText 直接整体替换为「尚未揭示的剩余部分」，避免重复追加
     const revealed = activeBubble.content;
-    if (payload.reply.startsWith(revealed) && payload.reply.length > revealed.length) {
-      pendingText = payload.reply.slice(revealed.length);
-      // 缓冲可能已被消费完（定时器已停），必须重启才会继续揭示
-      if (shouldAnimate()) startTypewriter(activeBubble.id, set, get);
+    if (payload.reply.startsWith(revealed)) {
+      if (payload.reply.length > revealed.length) {
+        pendingText = payload.reply.slice(revealed.length);
+        // 缓冲可能已被消费完（定时器已停），必须重启才会继续揭示
+        if (shouldAnimate()) startTypewriter(activeBubble.id, set, get);
+      }
+      set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled, userProfile });
+      return;
     }
-    set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled, userProfile });
+
+    // 终态与流式候选**不是同一段文本**：说明这段候选被落地校验否决了
+    // （按纠正提示重试后改用新文案，或直接降级为模板）。此时必须整体替换气泡内容 ——
+    // 否则界面会一直显示那段被判为「不可信」的文字，与状态里的 reply 分叉：
+    // 用户看到的和 Agent 实际采用的会变成两段话。
+    stopTypewriter();
+    const staleReplyId = activeBubble.id;
+    activeReplyId = null;
+    set({
+      snapshot: payload,
+      timeline,
+      llmEnabled: payload.llmEnabled,
+      userProfile,
+      messages: messages.map((message) =>
+        message.id === staleReplyId
+          ? { ...message, content: payload.reply, streaming: false }
+          : message,
+      ),
+    });
     return;
   }
 

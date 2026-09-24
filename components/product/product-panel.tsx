@@ -5,6 +5,7 @@ import { Database, GitCompareArrows, Package, SearchX, Sparkles } from 'lucide-r
 import { AnimatePresence, motion } from 'framer-motion';
 import { EmptyState } from '@/components/common/empty-state';
 import { PanelHeader } from '@/components/common/panel-header';
+import { CategoryBar } from '@/components/product/category-bar';
 import { ProductDetailDialog } from '@/components/product/product-detail-dialog';
 import { ProductGrid } from '@/components/product/product-grid';
 import { SortControl } from '@/components/product/sort-control';
@@ -101,6 +102,8 @@ export function ProductPanel() {
         }
         actions={<SortControl value={sort} onChange={setSort} />}
       />
+
+      <CategoryBar />
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="@container space-y-4 p-4 md:p-5">

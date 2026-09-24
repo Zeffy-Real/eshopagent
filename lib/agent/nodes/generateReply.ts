@@ -1,5 +1,6 @@
 import { AIMessage } from '@langchain/core/messages';
-import { checkGrounding } from '@/lib/agent/grounding';
+import type { BaseMessage } from '@langchain/core/messages';
+import { checkGrounding, type GroundingResult } from '@/lib/agent/grounding';
 import { createChatModel, isLlmEnabled } from '@/lib/agent/llm';
 import { REPLY_SYSTEM_PROMPT, buildReplyContext } from '@/lib/agent/prompts';
 import { describeFilters } from '@/lib/agent/ruleParser';
@@ -125,10 +126,75 @@ function buildTemplateReply(state: AgentStateValue): string {
 }
 
 /**
+ * 落地校验的失败项整理成一句可读说明（时间线与纠正提示共用同一份措辞）。
+ */
+function describeGroundingProblems(grounding: GroundingResult): string {
+  return [
+    grounding.unknownAmounts.length > 0
+      ? `疑似编造金额 ${grounding.unknownAmounts.map((amount) => `¥${amount}`).join('、')}`
+      : '',
+    grounding.mismatchedCounts.length > 0
+      ? `数量口径与界面不一致 ${grounding.mismatchedCounts.join('、')}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('；');
+}
+
+/**
+ * 纠正提示。
+ *
+ * 关键是**点名**：只说「不要编造」等于把系统提示里的软约束重复一遍，
+ * 模型没有可执行的修正目标。把「你写的这几个数字不在数据里」摊开，它才知道改哪里。
+ */
+function correctionHint(problems: string): string {
+  return [
+    `你上一次的回复没有通过数据校验：${problems}。`,
+    '请重新生成一次回复：金额与数量只能**原样引用**上方数据里出现过的数字，',
+    '不要自行换算、四舍五入或用别的商品的数字代替；数据里没有的数字就直接不提。',
+  ].join('');
+}
+
+/** 收集流式输出（stream() 才会产出 on_chat_model_stream，前端打字机依赖它） */
+async function collectText(stream: AsyncIterable<BaseMessage>): Promise<string> {
+  let buffer = '';
+  for await (const chunk of stream) buffer += messageText(chunk);
+  return buffer.trim();
+}
+
+/**
+ * 按纠正提示重试一次。
+ *
+ * 用 `invoke` 而不是 `stream`：第一次的 token 已经流到前端了，若重试也流式输出，
+ * 两段候选文本会拼进同一个气泡。重试结果随终态一次性替换（前端 applySnapshot 已处理）。
+ */
+async function retryWithCorrection(
+  prompt: string,
+  candidate: string,
+  problems: string,
+): Promise<string> {
+  try {
+    // 温度 0：纠错要的是收敛，不是多样性
+    const model = createChatModel({ temperature: 0 });
+    const message = await model.invoke([
+      { role: 'system', content: REPLY_SYSTEM_PROMPT },
+      { role: 'user', content: prompt },
+      { role: 'assistant', content: candidate },
+      { role: 'user', content: correctionHint(problems) },
+    ]);
+    return messageText(message).trim();
+  } catch {
+    // 重试失败等同于「重试后仍未通过」：调用方会用模板回复兜底
+    return '';
+  }
+}
+
+/**
  * 回复生成节点（所有分支的汇合点）。
  *
  * LLM 可用时生成自然语言回复（流式 token 由 streamEvents 透传，
- * 前端呈现打字机效果）；不可用时用模板回复兜底，数据同样全部来自状态。
+ * 前端呈现打字机效果）；落地校验不过先带纠正提示重试一次，仍不过才用模板兜底
+ * （模板数据 100% 来自状态）；LLM 不可用时直接用模板。
  */
 export async function generateReplyNode(
   state: AgentStateValue,
@@ -139,42 +205,39 @@ export async function generateReplyNode(
   let guardNote = '';
 
   if (isLlmEnabled()) {
+    const prompt = `${buildReplyContext(state)}\n\n请基于以上数据生成回复。`;
+    let candidate = '';
     try {
       const model = createChatModel({ temperature: 0.4 });
       // 用 stream() 而不是 invoke()：这样 LangGraph 才会产出
       // on_chat_model_stream 事件，前端拿到真实 token 做打字机效果
       const stream = await model.stream([
         { role: 'system', content: REPLY_SYSTEM_PROMPT },
-        { role: 'user', content: `${buildReplyContext(state)}\n\n请基于以上数据生成回复。` },
+        { role: 'user', content: prompt },
       ]);
-      let buffer = '';
-      for await (const chunk of stream) {
-        buffer += messageText(chunk);
-      }
-      const candidate = buffer.trim();
+      candidate = await collectText(stream);
+    } catch {
+      candidate = '';
+    }
 
-      if (candidate) {
-        // LLM 输出属于不可信输入：进入状态前先核对金额与销量口径
-        const grounding = checkGrounding(candidate, state);
-        if (grounding.grounded) {
-          reply = candidate;
+    if (candidate) {
+      // LLM 输出属于不可信输入：进入状态前先核对金额与销量口径
+      const grounding = checkGrounding(candidate, state);
+      if (grounding.grounded) {
+        reply = candidate;
+        source = 'llm';
+      } else {
+        const problems = describeGroundingProblems(grounding);
+        // 第一次没过不直接放弃：把不符的数字作为纠正提示再问一次
+        const retry = await retryWithCorrection(prompt, candidate, problems);
+        if (retry && checkGrounding(retry, state).grounded) {
+          reply = retry;
           source = 'llm';
+          guardNote = ` · 落地校验未通过（${problems}），已按纠正提示重试一次并采用重试结果`;
         } else {
-          const problems = [
-            grounding.unknownAmounts.length > 0
-              ? `疑似编造金额 ${grounding.unknownAmounts.map((amount) => `¥${amount}`).join('、')}`
-              : '',
-            grounding.mismatchedCounts.length > 0
-              ? `数量口径与界面不一致 ${grounding.mismatchedCounts.join('、')}`
-              : '',
-          ]
-            .filter(Boolean)
-            .join('；');
-          guardNote = ` · 落地校验未通过（${problems}），已改用模板回复`;
+          guardNote = ` · 落地校验未通过（${problems}），重试后仍未通过，已改用模板回复`;
         }
       }
-    } catch {
-      reply = '';
     }
   }
 
