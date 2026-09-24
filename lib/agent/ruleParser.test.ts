@@ -28,6 +28,19 @@ describe('guessIntentByRules：意图分类', () => {
     expect(guessIntentByRules('今天天气不错')).toBe('chat');
   });
 
+  it('序数 / 替换类指代判为 refine（判成 search 会丢掉上一轮条件、放宽范围）', () => {
+    expect(guessIntentByRules('换成第二件')).toBe('refine');
+    expect(guessIntentByRules('换个便宜的')).toBe('refine');
+    expect(guessIntentByRules('要第三个')).toBe('refine');
+  });
+
+  it('明确说出新品类时不能被替换规则吞成 refine', () => {
+    // 「换成耳机」是明确的新目标，必须走搜索语义；若被误判为 refine，
+    // 会沿用上一轮的图书条件，用户要耳机却拿到书
+    expect(guessIntentByRules('推荐点耳机')).toBe('search');
+    expect(guessIntentByRules('换成耳机')).not.toBe('refine');
+  });
+
   it('对比优先于搜索：同时出现「推荐」和「对比」时判为对比', () => {
     expect(guessIntentByRules('推荐几款并帮我对比')).toBe('compare');
   });
