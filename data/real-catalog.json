@@ -1,0 +1,3099 @@
+{
+  "generatedAt": "2026-09-24T08:29:41.505Z",
+  "source": "https://github.com/luminati-io/eCommerce-dataset-samples + https://github.com/luminati-io/Amazon-popular-books-dataset",
+  "platforms": [
+    "Amazon",
+    "Lazada",
+    "Walmart"
+  ],
+  "currencyToCny": {
+    "USD": 7.2,
+    "SGD": 5.4,
+    "MYR": 1.62,
+    "THB": 0.21,
+    "IDR": 0.00045,
+    "PHP": 0.128,
+    "VND": 0.00029,
+    "TWD": 0.225,
+    "BRL": 1.3,
+    "MXN": 0.39,
+    "CLP": 0.0076,
+    "COP": 0.0018,
+    "EUR": 7.8,
+    "GBP": 9.2
+  },
+  "note": "标题/品牌/价格/原价/评分/评论数/图片/类目/商品参数/ASIN 为真实平台数据；销量为 Amazon / Lazada 提供的真实字段，其余来源无销量字段记 0（界面改展示真实评价数）；库存只有「有货/紧张/缺货」等级来自真实信号，件数为派生值且界面不展示；人民币价格按固定汇率折算；图书简介为派生文案",
+  "count": 112,
+  "products": [
+    {
+      "id": "amz-B092R6HW7L",
+      "name": "Seagate Expansion 18TB 外置硬盘 HDD - USB 3.0，含 Rescue 数据恢复服务 (STKP18000400)",
+      "brand": "Seagate",
+      "category": "数码",
+      "price": 2398,
+      "originalPrice": 2520,
+      "rating": 4.7,
+      "reviews": 243907,
+      "sales": 300,
+      "stock": 291,
+      "image": "https://m.media-amazon.com/images/I/61NF1FZUYUL.__AC_SY445_SX342_QL70_FMwebp_.jpg",
+      "description": "适合家庭、办公室或宿舍使用，Seagate Expansion 桌面硬盘提供超大桌面存储空间，可存放照片、电影、音乐等。备份和传输内容非常方便。",
+      "specifications": {
+        "类目": "外置硬盘",
+        "尺寸": "8.4 x 6.8 x 2.3 英寸；2.59 磅",
+        "型号": "STKP18000400"
+      },
+      "tags": [
+        "外置硬盘",
+        "大容量",
+        "USB 3.0",
+        "数据恢复"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B092R6HW7L",
+      "sourceUrl": "https://www.amazon.com/Seagate-Expansion-STKP18000400-Desktop-Drive/dp/B092R6HW7L?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "Seagate Expansion 18TB External Hard Drive HDD - USB 3.0, with Rescue Data Recovery Services (STKP18000400)"
+    },
+    {
+      "id": "amz-B07TRQ9JSH",
+      "name": "JBL Charge 4 - 防水便携蓝牙音箱 - 黑色",
+      "brand": "JBL",
+      "category": "数码",
+      "price": 828,
+      "originalPrice": 828,
+      "rating": 4.8,
+      "reviews": 45361,
+      "sales": 0,
+      "stock": 196,
+      "image": "https://m.media-amazon.com/images/I/71DW6JMyCWL.__AC_SX300_SY300_QL70_ML2_.jpg",
+      "description": "推出 JBL Charge 4 便携蓝牙音箱，具有全频谱强劲音效和内置移动电源可为设备充电。它采用专有开发的驱动单元。",
+      "specifications": {
+        "类目": "便携蓝牙音箱",
+        "重量": "3.31 磅",
+        "尺寸": "3.5 x 8.5 x 3.4 英寸",
+        "型号": "JBLCHARGE4BLK"
+      },
+      "tags": [
+        "防水",
+        "蓝牙",
+        "便携",
+        "蓝牙音箱",
+        "移动电源"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B07TRQ9JSH",
+      "sourceUrl": "https://www.amazon.com/dp/B07TRQ9JSH?language=en_US&currency=USD",
+      "nameOriginal": "JBL Charge 4 - Waterproof Portable Bluetooth Speaker - Black"
+    },
+    {
+      "id": "amz-B07QNR7LTH",
+      "name": "JETech 保护壳适用于 iPad Pro 10.5 英寸和 iPad Air 3 (10.5 英寸 2019，第三代)，智能保护盖自动唤醒/睡眠 (深空灰色)",
+      "brand": "JETech",
+      "category": "数码",
+      "price": 93,
+      "originalPrice": 108,
+      "rating": 4.5,
+      "reviews": 27124,
+      "sales": 0,
+      "stock": 201,
+      "image": "https://m.media-amazon.com/images/I/612lmyuNxeL.__AC_SX300_SY300_QL70_ML2_.jpg",
+      "description": "关于此商品 专为 iPad Air 第三代 10.5 (2019) 和 iPad Pro 10.5 (2017) 设计。不兼容任何其他 iPad 型号。适用 iPad 型号：A1701/A1709/A1852/A2152/A2123…",
+      "specifications": {
+        "类目": "保护壳",
+        "重量": "9.2 盎司",
+        "尺寸": "10.24 x 7.32 x 0.47 英寸",
+        "型号": "3052N"
+      },
+      "tags": [
+        "智能",
+        "保护壳",
+        "智能保护盖",
+        "自动唤醒",
+        "深空灰色"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B07QNR7LTH",
+      "sourceUrl": "https://www.amazon.com/JETech-Case-iPad-10-5-inch-Sleep/dp/B07QNR7LTH",
+      "nameOriginal": "JETech Case for iPad Pro 10.5-Inch and iPad Air 3 (10.5-Inch 2019, 3rd Generation), Smart Cover Auto Wake/Sleep Cover (Space Gray)"
+    },
+    {
+      "id": "amz-B01CO26G5Y",
+      "name": "GPX PC332B 便携式 CD 播放器，带防跳保护、FM 收音机和立体声耳塞 - 黑色",
+      "brand": "GPX",
+      "category": "数码",
+      "price": 175,
+      "originalPrice": 175,
+      "rating": 3.9,
+      "reviews": 10294,
+      "sales": 0,
+      "stock": 140,
+      "image": "https://m.media-amazon.com/images/I/61VDELllCqL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "使用 GPX 便携式 FM 收音机和 CD 播放器，随时随地收听您喜爱的 CD 或 FM 电台。这款便携式播放器具有 60 秒防跳保护、可编程曲目…",
+      "specifications": {
+        "类目": "便携式 CD 播放器",
+        "重量": "6.9 盎司",
+        "尺寸": "8.32 x 7.32 x 2.08 英寸",
+        "型号": "PC332B"
+      },
+      "tags": [
+        "便携",
+        "CD 播放器",
+        "FM 收音机",
+        "防跳保护"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01CO26G5Y",
+      "sourceUrl": "https://www.amazon.com/GPX-PC332B-Portable-Anti-Skip-Protection/dp/B007XP893K",
+      "nameOriginal": "GPX PC332B Portable CD Player with Anti-Skip Protection, FM Radio and Stereo Earbuds - Black"
+    },
+    {
+      "id": "lzd-421086744_MY-7805046715",
+      "name": "UGREEN 尼龙 USB Type C 快充线，适用于 Samsung S23 Ultra、Samsung S24 Ultra Galaxy S20/HUAWEI MATE 30/P20/P30",
+      "brand": "UGREEN",
+      "category": "数码",
+      "price": 13,
+      "originalPrice": 13,
+      "rating": 4.9,
+      "reviews": 6612,
+      "sales": 30856,
+      "stock": 203,
+      "image": "https://img.lazcdn.com/g/p/e5bf9ec6f72c2edabbc44134049e5b98.png_720x720q80.png_.webp",
+      "description": "UGREEN。华为官方马来西亚商店。UGREEN 绿色官方商店。URGEEN 官方马来西亚。手机线缆转换器。Micro USB 线 5 米。适用于所有 Type-C 设备，如果您可以…",
+      "specifications": {
+        "类目": "线缆与转换器"
+      },
+      "tags": [
+        "快充",
+        "Type-C",
+        "尼龙",
+        "数据线"
+      ],
+      "platform": "Lazada",
+      "sourceId": "421086744_MY-7805046715",
+      "sourceUrl": "https://www.lazada.com.my/products/ugreen-nylon-usb-type-c-fast-charging-cable-for-samsung-s23-ultra-samsung-s24-ultra-galaxy-s20huawei-mate-30p20p30-i421086744-s7805046715.html",
+      "nameOriginal": "UGREEN Nylon USB Type C Fast charging Cable for Samsung S23 Ultra, Samsung S24 Ultra Galaxy S20/HUAWEI MATE 30/P20/P30"
+    },
+    {
+      "id": "amz-B079L7YGH3",
+      "name": "Amazon Basics 长方形相框，5\" x 7\"，5 件装，黑色",
+      "brand": "Amazon Basics",
+      "category": "数码",
+      "price": 144,
+      "originalPrice": 159,
+      "rating": 4.7,
+      "reviews": 5051,
+      "sales": 500,
+      "stock": 424,
+      "image": "https://m.media-amazon.com/images/I/71bBYWjIOcL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "产品描述 Amazon Basics 相框 - 5\" x 7\"，黑色 - 5 件装 来自制造商 Amazon Basics",
+      "specifications": {
+        "类目": "墙面与桌面相框",
+        "重量": "0.64 磅",
+        "尺寸": "7\"长 x 5\"宽",
+        "型号": "1010889-040-A60"
+      },
+      "tags": [
+        "相框",
+        "长方形",
+        "5件装",
+        "黑色"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B079L7YGH3",
+      "sourceUrl": "https://www.amazon.com/Amazon-Basics-Rectangular-Photo-Picture/dp/B079L7YGH3?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "Amazon Basics Rectangular Photo Picture Frame, 5\" x 7\", Pack of 5, Black"
+    },
+    {
+      "id": "amz-B094TJ5FBF",
+      "name": "Sony SRS-XP500 X系列无线便携蓝牙派对音箱 IPX4防溅 20小时续航 黑色",
+      "brand": "Sony",
+      "category": "数码",
+      "price": 2801,
+      "originalPrice": 2801,
+      "rating": 4.6,
+      "reviews": 2376,
+      "sales": 50,
+      "stock": 104,
+      "image": "https://m.media-amazon.com/images/I/81JpekGME6S._AC_SL1500_.jpg",
+      "description": "SRS-XP500便携无线音箱带来清晰强劲音效，MEGA BASS重低音与索尼X-Balanced扬声器单元，适合派对使用。",
+      "specifications": {
+        "类目": "扩声系统",
+        "重量": "24.7 磅",
+        "尺寸": "10.83\"深 x 11.61\"宽 x 22.52\"高",
+        "型号": "SRSXP500"
+      },
+      "tags": [
+        "无线",
+        "蓝牙",
+        "便携",
+        "防溅",
+        "重低音"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B094TJ5FBF",
+      "sourceUrl": "https://www.amazon.com/dp/B094TJ5FBF?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "Sony SRS-XP500 X-Series Wireless Portable-BLUETOOTH-Karaoke Party-Speaker IPX4 Splash-resistant with 20 Hour-Battery,Black"
+    },
+    {
+      "id": "lzd-3819450107_MY-22139944502",
+      "name": "POCO C65 智能手机 6+128GB/8+256GB 联发科G85 5000万AI三摄",
+      "brand": "Xiaomi",
+      "category": "数码",
+      "price": 693,
+      "originalPrice": 808,
+      "rating": 5,
+      "reviews": 1661,
+      "sales": 5400,
+      "stock": 219,
+      "image": "https://img.lazcdn.com/g/ff/kf/Saaf38ab76efb49ba8d06c14c1cdd3275d.jpg_720x720q80.jpg_.webp",
+      "description": "小米5000mAh电池，6.67英寸屏幕。红米马来西亚官方店，原装5G智能手机。",
+      "specifications": {
+        "类目": "智能手机"
+      },
+      "tags": [
+        "智能",
+        "智能手机",
+        "5G",
+        "大电池",
+        "AI三摄"
+      ],
+      "platform": "Lazada",
+      "sourceId": "3819450107_MY-22139944502",
+      "sourceUrl": "https://www.lazada.com.my/products/poco-c65-smartphone-6128gb8256gb-powerful-mediatek-g85-50mp-ai-triple-camera-i3819450107-s22139944502.html",
+      "nameOriginal": "POCO C65 Smartphone | 6+128GB/8+256GB, powerful MediaTek G85, 50MP AI triple camera"
+    },
+    {
+      "id": "amz-B0832V7FJ6",
+      "name": "KMC 6口浪涌保护插座 2个USB端口 3.4A 980焦耳 白色 2件装",
+      "brand": "KMC",
+      "category": "数码",
+      "price": 68,
+      "originalPrice": 137,
+      "rating": 4.7,
+      "reviews": 1240,
+      "sales": 300,
+      "stock": 124,
+      "image": "https://m.media-amazon.com/images/I/61iyjpXjIQL.__AC_SY300_SX300_QL70_FMwebp_.jpg",
+      "description": "KMC 6口浪涌保护器，带2个USB端口3.4A，980焦耳，白色。",
+      "specifications": {
+        "类目": "浪涌保护器",
+        "重量": "1.08 磅",
+        "尺寸": "6.14 x 4.02 x 3.98 英寸",
+        "型号": "KT-30621"
+      },
+      "tags": [
+        "浪涌保护",
+        "USB充电",
+        "多口"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B0832V7FJ6",
+      "sourceUrl": "https://www.amazon.com/KMC-6-Outle-Surge-Protector-Ports/dp/B0832V7FJ6?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "KMC 6-Outlet Surge Tap, 2 USB Ports (3.4A), 980 Joules Surge Protector, White (2 Pack)"
+    },
+    {
+      "id": "amz-B00Q2XHECQ",
+      "name": "DYMO 标准D1标签带 适用于LabelManager标签机 蓝底黑字 1/2''宽 x 23'长 1盒 (45016)",
+      "brand": "DYMO",
+      "category": "数码",
+      "price": 96,
+      "originalPrice": 158,
+      "rating": 4.6,
+      "reviews": 990,
+      "sales": 0,
+      "stock": 244,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/81SguJyfw5L.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "蓝底黑字标签带，1/2 x 23，蓝底黑字标签带，1/2 x 23。",
+      "specifications": {
+        "类目": "标签带",
+        "重量": "1.44 盎司",
+        "尺寸": "3.5 x 2.5 x 0.5 英寸",
+        "型号": "45016"
+      },
+      "tags": [
+        "标签带",
+        "蓝底黑字"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B00Q2XHECQ",
+      "sourceUrl": "https://www.amazon.com/dp/B00Q2XHECQ?language=en_US&currency=USD",
+      "nameOriginal": "DYMO Standard D1 Labeling Tape for LabelManager Label Makers, Black Print on Blue Tape, 1/2'' W x 23' L, 1 Cartridge (45016)"
+    },
+    {
+      "id": "amz-B000XLX74M",
+      "name": "Remo PP-0950-BE Emperor 涂层嗵鼓鼓皮套装 12\"、13\"和16\"",
+      "brand": "Remo",
+      "category": "数码",
+      "price": 31,
+      "originalPrice": 31,
+      "rating": 4.8,
+      "reviews": 942,
+      "sales": 50,
+      "stock": 270,
+      "image": "https://m.media-amazon.com/images/I/71R8pjkqMBL._AC_SL1500_.jpg",
+      "description": "Remo Emperor嗵鼓鼓皮套装，标准涂层，12、13和16英寸。",
+      "specifications": {
+        "类目": "嗵鼓鼓皮",
+        "重量": "0.8 盎司",
+        "尺寸": "8 x 14 x 1.5 英寸",
+        "型号": "PP-0950-BE"
+      },
+      "tags": [
+        "鼓皮",
+        "涂层",
+        "套装"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B000XLX74M",
+      "sourceUrl": "https://www.amazon.com/dp/B000XLX74M?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "Remo PP-0950-BE Emperor Coated Tom Drumhead Pack - 12\", 13\" & 16"
+    },
+    {
+      "id": "amz-B00LTT1F5A",
+      "name": "植物大战僵尸：花园战争（需在线游玩）- PlayStation 4",
+      "brand": "Electronic Arts",
+      "category": "数码",
+      "price": 124,
+      "originalPrice": 144,
+      "rating": 4.6,
+      "reviews": 834,
+      "sales": 0,
+      "stock": 287,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51SSWcJUhXL._SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "射击游戏变得古怪！植物大战僵尸：花园战争带来爆炸性动作体验，在战场上射击僵尸、植物和新角色。",
+      "specifications": {
+        "类目": "游戏",
+        "重量": "2.4 盎司",
+        "尺寸": "0.6 x 5.3 x 6.7 英寸；2.4 盎司",
+        "型号": "73178"
+      },
+      "tags": [
+        "射击",
+        "在线游玩",
+        "PS4"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B00LTT1F5A",
+      "sourceUrl": "https://www.amazon.com/dp/B00LTT1F5A?language=en_US&currency=USD",
+      "nameOriginal": "Plants vs Zombies Garden Warfare(Online Play Required) - PlayStation 4"
+    },
+    {
+      "id": "lzd-3902541529_MY-22580992063",
+      "name": "POCO X6 5G 智能手机 | 8+256GB/12+256GB/12+512GB，搭载骁龙® 7s Gen 2，全球版，1年保修",
+      "brand": "Xiaomi",
+      "category": "数码",
+      "price": 2056,
+      "originalPrice": 2428,
+      "rating": 5,
+      "reviews": 816,
+      "sales": 2597,
+      "stock": 146,
+      "image": "https://img.lazcdn.com/g/ff/kf/S70127223a128486291fd9c68de10c077y.jpg_720x720q80.jpg_.webp",
+      "description": "小米 6.67 英寸 5000 mAh 12 256GB 12 512GB 8 256GB。小米 civi 4 pro。红米 note 13 pro。googlepixel 8 pro。三星 a35 5g。poco f6 pro 5g",
+      "specifications": {
+        "类目": "智能手机"
+      },
+      "tags": [
+        "智能"
+      ],
+      "platform": "Lazada",
+      "sourceId": "3902541529_MY-22580992063",
+      "sourceUrl": "https://www.lazada.com.my/products/poco-x6-5g-smartphone-8256gb12256gb12512gb-powered-by-snapdragon-7s-gen-2-global-version-in-1-year-warranty-i3902541529-s22580992063.html",
+      "nameOriginal": "POCO X6 5G Smartphone | 8+256GB/12+256GB/12+512GB, powered by Snapdragon® 7s Gen 2 Global Version in 1 year Warranty"
+    },
+    {
+      "id": "wmt-408608184",
+      "name": "Softsoap 洗手皂片 闪亮薰衣草，补充片（3片装）",
+      "brand": "Softsoap",
+      "category": "数码",
+      "price": 65,
+      "originalPrice": 65,
+      "rating": 3.7,
+      "reviews": 802,
+      "sales": 0,
+      "stock": 401,
+      "image": "https://i5.walmartimages.com/seo/Softsoap-Hand-Soap-Tablets-Sparkling-Lavender-Refill-Tablets-3-Count_4fdbf5ae-fc7b-4dc7-b5b4-68620a6b3e65.2d88f3c839048e7641a2901709d23ae0.jpeg",
+      "description": "填充、投放、起泡：Softsoap 洗手皂片是一种方便快捷的方式，可补充您喜爱的泡沫洗手液——只需将泵装满水，放入一片，然后让它起泡…",
+      "specifications": {
+        "类目": "1001719",
+        "型号": "035000982452"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "408608184",
+      "sourceUrl": "https://www.walmart.com/ip/Softsoap-Hand-Soap-Tablets-Sparkling-Lavender-Refill-Tablets-3-Count/408608184",
+      "nameOriginal": "Softsoap Hand Soap Tablets Sparkling Lavender, Refill Tablets (3 Count)"
+    },
+    {
+      "id": "wmt-845174402",
+      "name": "Softsoap 洗手皂片 柠檬汽水，补充片（3片装）",
+      "brand": "Softsoap",
+      "category": "数码",
+      "price": 68,
+      "originalPrice": 68,
+      "rating": 3.7,
+      "reviews": 802,
+      "sales": 0,
+      "stock": 327,
+      "image": "https://i5.walmartimages.com/seo/Softsoap-Hand-Soap-Tablets-Lemon-Fizz-Refill-Tablets-3-Count_446e4aad-2ba3-4148-ad52-0659b4c6583e.15f389b7cf79d14dfbf74946821eeaa6.jpeg",
+      "description": "填充、投放、起泡：Softsoap 洗手皂片是一种方便快捷的方式，可补充您喜爱的泡沫洗手液——只需将泵装满水，放入一片，然后让它起泡…",
+      "specifications": {
+        "类目": "1001719",
+        "型号": "035000982469"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "845174402",
+      "sourceUrl": "https://www.walmart.com/ip/Softsoap-Hand-Soap-Tablets-Lemon-Fizz-Refill-Tablets-3-Count/845174402",
+      "nameOriginal": "Softsoap Hand Soap Tablets Lemon Fizz, Refill Tablets (3 Count)"
+    },
+    {
+      "id": "amz-B07TT2V5WS",
+      "name": "象牙色雪纺背景幕布 10英尺x10英尺 生日派对背景 摄影背景帷幔 用于婚礼拱门派对装饰",
+      "brand": "B-COOL",
+      "category": "数码",
+      "price": 186,
+      "originalPrice": 200,
+      "rating": 4.7,
+      "reviews": 698,
+      "sales": 0,
+      "stock": 440,
+      "image": "https://m.media-amazon.com/images/I/71w8VjRtkvL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "阅读更多 100% 雪纺面料 透气柔软 4 英寸宽杆袋 阅读更多 婚礼派对用品制造商 作为婚礼派对用品的专业制造商，B-CO…",
+      "specifications": {
+        "类目": "背景幕布",
+        "重量": "1.68 磅",
+        "尺寸": "120 x 117.6 x 12 英寸"
+      },
+      "tags": [
+        "透气"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B07TT2V5WS",
+      "sourceUrl": "https://www.amazon.com/dp/B07TT2V5WS?language=en_US&currency=USD",
+      "nameOriginal": "Ivory Chiffon Backdrop Curtain 10ftx10ft Birthday Party Backdrop Photography Backdrop Drapes for Wedding Arch Party Decorations"
+    },
+    {
+      "id": "amz-B09P8H7K1Y",
+      "name": "WallFlower 女式 Luscious Curvy 微喇中腰 Insta Stretch 青少年牛仔裤（标准款和加大款）",
+      "brand": "WallFlower",
+      "category": "服饰",
+      "price": 253,
+      "originalPrice": 288,
+      "rating": 4.4,
+      "reviews": 47149,
+      "sales": 0,
+      "stock": 101,
+      "image": "https://m.media-amazon.com/images/I/71T4od+2poL._AC_UX569_.jpg",
+      "description": "Luscious Curvy 微喇裤是我们复古风格的中腰版型，采用柔软弹力牛仔布。四季皆宜的永恒修身版型！无论您是在寻找日常牛仔裤…",
+      "specifications": {
+        "类目": "牛仔裤",
+        "型号": "WFCURBOOT"
+      },
+      "tags": [
+        "弹力",
+        "修身"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B09P8H7K1Y",
+      "sourceUrl": "https://www.amazon.com/WallFlower-Luscious-Bootcut-Mid-Rise-Standard/dp/B0BHKMWH12",
+      "nameOriginal": "WallFlower Women's Luscious Curvy Bootcut Mid-Rise Insta Stretch Juniors Jeans (Standard and Plus)"
+    },
+    {
+      "id": "amz-B0BVZ1MLB9",
+      "name": "AUSELILY 女式短袖宽松纯色休闲长款带口袋超长连衣裙",
+      "brand": "AUSELILY",
+      "category": "服饰",
+      "price": 252,
+      "originalPrice": 274,
+      "rating": 4.4,
+      "reviews": 34871,
+      "sales": 0,
+      "stock": 355,
+      "image": "https://m.media-amazon.com/images/I/811oZeYKgoL.__AC_SX342_SY445_QL70_FMwebp_.jpg",
+      "description": "上一页 下一页 AUSELILY 带口袋超长连衣裙 上一页 下一页 1 尺码表 2 买家秀 3 细节 女式带口袋超长连衣裙 无袖超长连衣裙 短袖…",
+      "specifications": {
+        "类目": "休闲",
+        "尺寸": "12 x 9 x 0.5 英寸；8 盎司"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B0BVZ1MLB9",
+      "sourceUrl": "https://www.amazon.com/AUSELILY-Sleeve-Casual-Dresses-Pockets/dp/B09175BYM6",
+      "nameOriginal": "AUSELILY Women Short Sleeve Loose Plain Casual Long Maxi Dresses with Pockets"
+    },
+    {
+      "id": "amz-B099S8HJ4F",
+      "name": "Glamorise 大码 Wonderwire 前扣文胸 #1245",
+      "brand": "Glamorise",
+      "category": "服饰",
+      "price": 319,
+      "originalPrice": 425,
+      "rating": 4,
+      "reviews": 29658,
+      "sales": 0,
+      "stock": 219,
+      "image": "https://m.media-amazon.com/images/I/719pTAlW02L.__AC_SY445_SX342_QL70_ML2_.jpg",
+      "description": "这款大码文胸兼具便利与舒适。前扣设计穿脱方便，软垫钢圈贴合不压胸。",
+      "specifications": {
+        "类目": "日常文胸",
+        "型号": "1245"
+      },
+      "tags": [
+        "舒适",
+        "大码",
+        "前扣",
+        "钢圈"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B099S8HJ4F",
+      "sourceUrl": "https://www.amazon.com/dp/B099S8HJ4F?language=en_US&currency=USD",
+      "nameOriginal": "Glamorise Women's Plus Size Wonderwire Front-Closure Bra Underwire #1245"
+    },
+    {
+      "id": "amz-B08SX7WH8H",
+      "name": "Amazon Essentials 男士法兰绒睡裤（有大码加长款）",
+      "brand": "AMAZON ESSENTIALS",
+      "category": "服饰",
+      "price": 95,
+      "originalPrice": 119,
+      "rating": 4.6,
+      "reviews": 26760,
+      "sales": 0,
+      "stock": 317,
+      "image": "https://m.media-amazon.com/images/I/81U9hpMzfEL._AC_UY741_.jpg",
+      "description": "我们倾听顾客反馈，精细调整每个细节，确保衣物更舒适、更优质、更耐穿，价格实惠，适合全家人。",
+      "specifications": {
+        "类目": "睡裤",
+        "型号": "MAE90005FL18"
+      },
+      "tags": [
+        "舒适",
+        "法兰绒",
+        "睡裤",
+        "耐穿"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08SX7WH8H",
+      "sourceUrl": "https://www.amazon.com/Amazon-Essentials-AEM20157SS22-Mens-Aem20157ss22/dp/B09KY427SF",
+      "nameOriginal": "Amazon Essentials Men's Flannel Pajama Pant (Available in Big & Tall)"
+    },
+    {
+      "id": "amz-B0936TTCL4",
+      "name": "SWOMOG 女士丝绸缎面睡衣家居服两件套纽扣睡衣套装",
+      "brand": "SWOMOG",
+      "category": "服饰",
+      "price": 216,
+      "originalPrice": 216,
+      "rating": 4.5,
+      "reviews": 19937,
+      "sales": 0,
+      "stock": 433,
+      "image": "https://m.media-amazon.com/images/I/61kxO4YyMxL._AC_UX679_.jpg",
+      "description": "献给所有喜欢在漫长一天后享受舒适时光的女士们，我们为您准备了舒适又可爱的睡衣。无论您想要性感睡衣还是……",
+      "specifications": {
+        "类目": "套装",
+        "尺寸": "11.81 x 9.84 x 0.71 英寸；8.11 盎司",
+        "型号": "LM10001"
+      },
+      "tags": [
+        "舒适",
+        "丝绸",
+        "缎面",
+        "睡衣",
+        "两件套",
+        "家居服"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B0936TTCL4",
+      "sourceUrl": "https://www.amazon.com/SWOMOG-Loungewear-Two-Piece-Sleepwear-Button-Down/dp/B07WJXT431",
+      "nameOriginal": "SWOMOG Womens Silk Satin Pajamas Loungewear Two-piece Sleepwear Button-Down Pj Set"
+    },
+    {
+      "id": "amz-B004I5NVFY",
+      "name": "Carhartt 男士宽松版斜纹实用工装裤",
+      "brand": "Carhartt Sportswear - Mens",
+      "category": "服饰",
+      "price": 288,
+      "originalPrice": 324,
+      "rating": 4.5,
+      "reviews": 18301,
+      "sales": 0,
+      "stock": 77,
+      "image": "https://m.media-amazon.com/images/I/71A2IVKWd2L._AC_UY500_.jpg",
+      "description": "Carhartt 水洗斜纹工装裤兼具全天舒适与持久耐穿。采用 9.25 盎司 100% 纯棉环锭纺水洗斜纹布，宽松臀部设计……",
+      "specifications": {
+        "类目": "休闲",
+        "型号": "B324"
+      },
+      "tags": [
+        "舒适",
+        "工装裤",
+        "宽松",
+        "耐穿",
+        "纯棉"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B004I5NVFY",
+      "sourceUrl": "https://www.amazon.com/Carhartt-Relaxed-Washed-Twill-Dungaree/dp/B07MNF1MR7",
+      "nameOriginal": "Carhartt Men's Relaxed Fit Twill Utility Work Pant"
+    },
+    {
+      "id": "amz-B004COOROK",
+      "name": "Cherokee 男女款工装裤 前拉链可调节织带抽绳 4100",
+      "brand": "Cherokee Scrubs Mens Child Code",
+      "category": "服饰",
+      "price": 108,
+      "originalPrice": 108,
+      "rating": 4,
+      "reviews": 15422,
+      "sales": 0,
+      "stock": 209,
+      "image": "https://m.media-amazon.com/images/I/61Af6rlyabL.__AC_SX342_SY445_QL70_FMwebp_.jpg",
+      "description": "休闲中性长裤，自然腰型，腰部可调节织带抽绳，一个后袋，一个工装袋带内置手机袋。内长 31 英寸。",
+      "specifications": {
+        "类目": "医护裤",
+        "尺寸": "15 x 12 x 0.33 英寸；1 磅",
+        "型号": "4100"
+      },
+      "tags": [
+        "可调节",
+        "工装裤",
+        "中性",
+        "抽绳",
+        "多口袋"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B004COOROK",
+      "sourceUrl": "https://www.amazon.com/Cherokee-Originals-Unisex-Drawstring-Scrubs/dp/B07R7FDKVV",
+      "nameOriginal": "Cherokee Cargo Pant for Men and Women with Zip Fly Front and Adjustable Webbed Drawstring 4100"
+    },
+    {
+      "id": "amz-B08HQLGH11",
+      "name": "Belle Poque 女士高腰 A 字口袋伞裙中长裙",
+      "brand": "Belle Poque",
+      "category": "服饰",
+      "price": 230,
+      "originalPrice": 302,
+      "rating": 4.3,
+      "reviews": 13291,
+      "sales": 0,
+      "stock": 174,
+      "image": "https://m.media-amazon.com/images/I/5142XOqSwpL._AC_UX679_.jpg",
+      "description": "BELLE POQUE 女士下装 Belle Poque 皮裙 Belle Poque 迷你裙 Belle Poque 短裤 Belle Poque 飘逸裙 颜色 黑色、棕色、绿色 黑色、米色、酒红 黑色、白色、绿色……",
+      "specifications": {
+        "类目": "半身裙",
+        "尺寸": "11.81 x 7.87 x 1.97 英寸",
+        "型号": "BP000799BP"
+      },
+      "tags": [
+        "高腰",
+        "A字",
+        "口袋",
+        "中长裙"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08HQLGH11",
+      "sourceUrl": "https://www.amazon.com/Belle-Poque-Womens-Pockets-Skater/dp/B07XF544DL",
+      "nameOriginal": "Belle Poque Women's High Waist A-Line Pockets Skirt Skater Flared Midi Skirt"
+    },
+    {
+      "id": "amz-B08PK9XYZJ",
+      "name": "K-Swiss 男士 ST329 CMF 运动鞋",
+      "brand": "K-Swiss",
+      "category": "服饰",
+      "price": 533,
+      "originalPrice": 576,
+      "rating": 4.7,
+      "reviews": 13088,
+      "sales": 0,
+      "stock": 377,
+      "image": "https://m.media-amazon.com/images/I/71V33eHSg9L._AC_UX535_.jpg",
+      "description": "ST329 是 K-Swiss 推出的经典网球训练鞋，如今已成为潮流经典。设计耐用，适合日常穿着。",
+      "specifications": {
+        "类目": "时尚运动鞋",
+        "尺寸": "13 x 10 x 5 英寸；2.31 磅",
+        "型号": "03426-466-M"
+      },
+      "tags": [
+        "耐用",
+        "运动鞋",
+        "经典"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08PK9XYZJ",
+      "sourceUrl": "https://www.amazon.com/K-Swiss-Mens-ST329-CMF-Sneaker/dp/B09WH3JT2N",
+      "nameOriginal": "K-Swiss Men's ST329 CMF Sneaker"
+    },
+    {
+      "id": "amz-B01E98CRCW",
+      "name": "Hybrid 女士提臀超舒适弹力紧身瑜伽牛仔裤",
+      "brand": "Hybrid & Company",
+      "category": "服饰",
+      "price": 144,
+      "originalPrice": 180,
+      "rating": 4.1,
+      "reviews": 11698,
+      "sales": 0,
+      "stock": 472,
+      "image": "https://m.media-amazon.com/images/I/71ES7dYqVML._AC_UY550_.jpg",
+      "description": "这款弹力紧身裤设有5个口袋、拉链门襟，多种内长适合各种体型。超弹力氨纶面料带来极致舒适。",
+      "specifications": {
+        "类目": "牛仔裤",
+        "尺寸": "1 x 1 x 1 英寸；1 磅",
+        "型号": "Jeans"
+      },
+      "tags": [
+        "弹力",
+        "舒适",
+        "牛仔裤",
+        "提臀"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01E98CRCW",
+      "sourceUrl": "https://www.amazon.com/Hybrid-Womens-Stretch-Skinny-Jeans/dp/B0BYRY2TG8",
+      "nameOriginal": "Hybrid Women's Butt Lift Super Comfy Stretch Denim Skinny Yoga Jeans"
+    },
+    {
+      "id": "amz-B09PNSHSGS",
+      "name": "The Children's Place 女婴及幼儿打底裤",
+      "brand": "The Children's Place",
+      "category": "服饰",
+      "price": 173,
+      "originalPrice": 288,
+      "rating": 4.6,
+      "reviews": 10899,
+      "sales": 0,
+      "stock": 245,
+      "image": "https://m.media-amazon.com/images/I/81ijq6TOWVL._AC_UX679_.jpg",
+      "description": "100% 纯棉，进口，套穿式闭合，可机洗。全长设计，日常百搭。面料为 94% 棉/6% 氨纶针织。弹性腰带套穿。",
+      "specifications": {
+        "类目": "打底裤",
+        "型号": "3024907"
+      },
+      "tags": [
+        "可机洗",
+        "百搭",
+        "打底裤",
+        "纯棉",
+        "套穿"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B09PNSHSGS",
+      "sourceUrl": "https://www.amazon.com/Childrens-Place-Baby-Girls-Toddler-Leggings/dp/B0BX1MKJSP",
+      "nameOriginal": "The Children's Place Baby-Girls and Toddler Leggings"
+    },
+    {
+      "id": "amz-B09WD9NVG5",
+      "name": "Under Armour 男士 New Freedom Flag T恤",
+      "brand": "Under Armour",
+      "category": "服饰",
+      "price": 139,
+      "originalPrice": 216,
+      "rating": 4.7,
+      "reviews": 10438,
+      "sales": 0,
+      "stock": 395,
+      "image": "https://m.media-amazon.com/images/I/41pWo0t9w6L._AC_UX569_.jpg",
+      "description": "Under Armour 的印花T恤更胜一筹。面料轻盈、柔软、快干。超柔软棉混纺面料提供全天舒适。罗纹领口。",
+      "specifications": {
+        "类目": "T恤",
+        "尺寸": "12 x 8 x 0.5 英寸；5.28 盎司",
+        "型号": "1370810"
+      },
+      "tags": [
+        "舒适",
+        "T恤",
+        "快干",
+        "柔软"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B09WD9NVG5",
+      "sourceUrl": "https://www.amazon.com/Under-Armour-Mens-Freedom-T-Shirt/dp/B08NXH88Q6",
+      "nameOriginal": "Under Armour Men's New Freedom Flag T-Shirt"
+    },
+    {
+      "id": "amz-B08BG7VLLV",
+      "name": "Carhartt 男士宽松版重磅短袖口袋T恤",
+      "brand": "Carhartt",
+      "category": "服饰",
+      "price": 144,
+      "originalPrice": 144,
+      "rating": 4.7,
+      "reviews": 9353,
+      "sales": 0,
+      "stock": 60,
+      "image": "https://m.media-amazon.com/images/I/71XXRwqp+XL._AC_UY879_.jpg",
+      "description": "我们的口袋T恤于1992年首次推出，坚固的棉质设计和简洁外观使其迅速成为辛勤工作者的最爱。历经数十年潮流变迁。",
+      "specifications": {
+        "类目": "上装",
+        "尺寸": "13 x 13 x 2 英寸",
+        "型号": "103296"
+      },
+      "tags": [
+        "T恤",
+        "重磅",
+        "宽松"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08BG7VLLV",
+      "sourceUrl": "https://www.amazon.com/Carhartt-Relaxed-Heavyweight-Short-Sleeve-T-Shirt/dp/B08PR2SHFQ",
+      "nameOriginal": "Carhartt Men's Relaxed Fit Heavyweight Short-Sleeve Pocket T-Shirt"
+    },
+    {
+      "id": "amz-B01N9SFH0B",
+      "name": "Glamorise 女士双层定制控制运动文胸",
+      "brand": "Glamorise",
+      "category": "服饰",
+      "price": 323,
+      "originalPrice": 454,
+      "rating": 4.1,
+      "reviews": 9082,
+      "sales": 0,
+      "stock": 461,
+      "image": "https://m.media-amazon.com/images/I/81WH4HH1OBS._AC_UY550_.jpg",
+      "description": "通过简单的肩带调节，从瑜伽到综合健身都能应对。可调节前片覆盖无缝罩杯，这款大码运动文胸让您掌控压缩力度。",
+      "specifications": {
+        "类目": "运动文胸",
+        "重量": "5.44 盎司",
+        "型号": "1166"
+      },
+      "tags": [
+        "可调节",
+        "运动文胸",
+        "大码"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01N9SFH0B",
+      "sourceUrl": "https://www.amazon.com/Glamorise-Womens-Double-Layer-Custom-Control-Sport/dp/B07KXNQVRF",
+      "nameOriginal": "Glamorise Women's Double-Layer Custom-Control Sport Bra"
+    },
+    {
+      "id": "amz-B01MYUYX33",
+      "name": "GENORTH 小型犬车载座椅 升级版PVC框架 可折叠宠物汽车座椅",
+      "brand": "GENORTH",
+      "category": "服饰",
+      "price": 173,
+      "originalPrice": 173,
+      "rating": 4.4,
+      "reviews": 8718,
+      "sales": 0,
+      "stock": 57,
+      "image": "https://m.media-amazon.com/images/I/81REogpk2VL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "尺寸15×15×10英寸，适配多数轿车、卡车及SUV，建议最大承重11磅（约克夏、吉娃娃等小型犬）。",
+      "specifications": {
+        "类目": "增高座椅及车载座椅",
+        "尺寸": "15.75 x 11.81 x 9.84 英寸；1.25 磅",
+        "型号": "MB009"
+      },
+      "tags": [
+        "可折叠",
+        "宠物车载座椅",
+        "小型犬"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01MYUYX33",
+      "sourceUrl": "https://www.amazon.com/GENORTH-Upgrade-Portable-Booster-Blanket/dp/B01MYUYX33",
+      "nameOriginal": "GENORTH Dog Car Seats for Small Dogs,Upgrade Dog Booster Seat with PVC Frame Construction,Folding Puppy Car Seat for Small Pets"
+    },
+    {
+      "id": "amz-B079FGDSVH",
+      "name": "Amazon Essentials 男童长袖T恤（原Spotted Zebra）多件装",
+      "brand": "Amazon Essentials",
+      "category": "服饰",
+      "price": 104,
+      "originalPrice": 150,
+      "rating": 4.7,
+      "reviews": 7875,
+      "sales": 0,
+      "stock": 230,
+      "image": "https://m.media-amazon.com/images/I/81BxhR-6uVS._AC_UX679_.jpg",
+      "description": "亚马逊自有品牌，多件装混搭款式，色彩鲜艳，让孩子每天都能搭配新造型。",
+      "specifications": {
+        "类目": "T恤",
+        "型号": "B-S17SZ45037"
+      },
+      "tags": [
+        "男童",
+        "长袖T恤",
+        "多件装"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B079FGDSVH",
+      "sourceUrl": "https://www.amazon.com/Amazon-Essentials-Long-Sleeve-Previously-Multipacks/dp/B0C1NTKNP6",
+      "nameOriginal": "Amazon Essentials Boys' Long-Sleeve T-Shirts (Previously Spotted Zebra), Multipacks"
+    },
+    {
+      "id": "amz-B00H4H84XC",
+      "name": "Xlear XyloSweet 非转基因木糖醇甜味剂 天然代糖 颗粒 100包",
+      "brand": "Xlear",
+      "category": "食品",
+      "price": 76,
+      "originalPrice": 84,
+      "rating": 4.6,
+      "reviews": 7071,
+      "sales": 0,
+      "stock": 245,
+      "image": "https://m.media-amazon.com/images/I/51gnklzqS1L._SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "100%纯木糖醇，提取自植物纤维，口感接近有机糖，无填充剂。",
+      "specifications": {
+        "类目": "木糖醇",
+        "重量": "0.4 千克",
+        "尺寸": "5 x 2.75 x 6 英寸；14.11 盎司",
+        "型号": "65524"
+      },
+      "tags": [
+        "有机",
+        "天然",
+        "木糖醇",
+        "代糖"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B00H4H84XC",
+      "sourceUrl": "https://www.amazon.com/Xlear-XyloSweet-Non-GMO-Sweetener-Granules/dp/B0012FZMQO",
+      "nameOriginal": "Xlear XyloSweet Non-GMO Xylitol Sweetener - Natural Sweetener Sugar Substitute, Granules, 100 Packets (Pack of 1)"
+    },
+    {
+      "id": "amz-B09VDKC9YT",
+      "name": "Skechers 女式 Cozy Campfire-Team Toasty 超细纤维仿毛内衬拖鞋",
+      "brand": "Skechers",
+      "category": "食品",
+      "price": 216,
+      "originalPrice": 216,
+      "rating": 4.5,
+      "reviews": 6522,
+      "sales": 0,
+      "stock": 311,
+      "image": "https://m.media-amazon.com/images/I/81iAeD1n8AL.__AC_SY395_SX395_QL70_FMwebp_.jpg",
+      "description": "超细纤维麂皮拖鞋，仿毛内衬，记忆棉缓震。",
+      "specifications": {
+        "类目": "拖鞋",
+        "尺寸": "10 x 15 x 6 英寸；9 盎司",
+        "型号": "32777"
+      },
+      "tags": [
+        "女鞋",
+        "拖鞋",
+        "保暖"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B09VDKC9YT",
+      "sourceUrl": "https://www.amazon.com/Skechers-Womens-Campfire-Team-Toasty-Microfiber-Slipper/dp/B07BY2YJXT",
+      "nameOriginal": "Skechers Women's Cozy Campfire-Team Toasty-Microfiber Slipper with Faux Fur Lining"
+    },
+    {
+      "id": "amz-B015G94Q54",
+      "name": "Adagio Teas ingenuiTEA 底部出水茶壶 透明 16盎司",
+      "brand": "Adagio Teas",
+      "category": "食品",
+      "price": 166,
+      "originalPrice": 166,
+      "rating": 4.7,
+      "reviews": 6062,
+      "sales": 0,
+      "stock": 276,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/71kw5yq-oFL.__AC_SX300_SY300_QL70_ML2_.jpg",
+      "description": "ingenuiTEA是一款出色的散茶冲泡器具，设计巧妙，不像法压壶那样挤压茶叶。",
+      "specifications": {
+        "类目": "茶壶",
+        "重量": "12 盎司",
+        "尺寸": "5.25 x 4 x 6.5 英寸",
+        "型号": "0"
+      },
+      "tags": [
+        "茶壶",
+        "散茶",
+        "透明"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B015G94Q54",
+      "sourceUrl": "https://www.amazon.com/dp/B015G94Q54?language=en_US&currency=USD",
+      "nameOriginal": "Adagio Teas ingenuiTEA Bottom-Dispensing Teapot,clear,16 oz"
+    },
+    {
+      "id": "wmt-126699313",
+      "name": "Pedigree 碎肉丁晚餐 T骨牛排味 湿狗粮 13.2盎司罐装",
+      "brand": "Pedigree",
+      "category": "食品",
+      "price": 13,
+      "originalPrice": 13,
+      "rating": 4.4,
+      "reviews": 3522,
+      "sales": 0,
+      "stock": 442,
+      "image": "https://i5.walmartimages.com/seo/Pedigree-Chopped-Ground-Dinner-T-Bone-Steak-Wet-Dog-Food-13-2-oz-Can_7dbf7818-6216-4ac9-9594-4dce41acdf9a.4bf5b41e9a57b87fa551f37c92bc0f67.jpeg",
+      "description": "Pedigree 碎肉丁晚餐成犬软湿狗粮，T骨牛排风味，13.2盎司罐装。",
+      "specifications": {
+        "类目": "1015000",
+        "型号": "023100118574"
+      },
+      "tags": [
+        "狗粮",
+        "湿粮",
+        "成犬"
+      ],
+      "platform": "Walmart",
+      "sourceId": "126699313",
+      "sourceUrl": "https://www.walmart.com/ip/Pedigree-Chopped-Ground-Dinner-T-Bone-Steak-Wet-Dog-Food-13-2-oz-Can/126699313",
+      "nameOriginal": "Pedigree Chopped Ground Dinner T-Bone Steak Wet Dog Food, 13.2 oz Can"
+    },
+    {
+      "id": "amz-B07B812XX9",
+      "name": "Avia Avi-Union II 女款魔术贴防滑鞋 – 舒适安全工作鞋，适合护理、餐饮和步行",
+      "brand": "AVIA",
+      "category": "食品",
+      "price": 265,
+      "originalPrice": 324,
+      "rating": 4.3,
+      "reviews": 3031,
+      "sales": 0,
+      "stock": 237,
+      "image": "https://m.media-amazon.com/images/I/81Tt6KUYN+L._AC_UX575_.jpg",
+      "description": "上一页 下一页 视频播放器加载中。播放视频 播放 静音 当前时间 0:00/时长 0:30 已加载：41.64% 0:00 流类型 直播 跳至直播，当前在直播之后 剩余…",
+      "specifications": {
+        "类目": "医疗保健与食品服务",
+        "重量": "10 盎司"
+      },
+      "tags": [
+        "防滑",
+        "静音",
+        "舒适"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B07B812XX9",
+      "sourceUrl": "https://www.amazon.com/Avia-Avi-Union-Strap-Shoes-Women/dp/B0BMM56LGT",
+      "nameOriginal": "Avia Avi-Union II Strap Non Slip Shoes for Women – Comfort Safety Shoes for Work, Nursing, Restaurants, & Walking"
+    },
+    {
+      "id": "amz-B00NI4VHL6",
+      "name": "CleanEspresso 2克意式浓缩咖啡机清洁片 型号 BR-040 – 适用于Breville意式浓缩咖啡机",
+      "brand": "CleanEspresso",
+      "category": "食品",
+      "price": 122,
+      "originalPrice": 144,
+      "rating": 4.7,
+      "reviews": 1829,
+      "sales": 0,
+      "stock": 167,
+      "image": "https://m.media-amazon.com/images/I/61ssAJZqJHL.__AC_SY300_SX300_QL70_ML2_.jpg",
+      "description": "关于此商品 2克片剂 – 不要被无法承受清洁循环压力的1克片剂所迷惑。通过去除机器内部的油垢，获得更好喝的意式浓缩咖啡…",
+      "specifications": {
+        "类目": "咖啡与意式浓缩咖啡机清洁产品",
+        "尺寸": "3.5 x 1.5 x 1.5 英寸；3 盎司",
+        "型号": "BR-040"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B00NI4VHL6",
+      "sourceUrl": "https://www.amazon.com/Gram-Espresso-Machine-Cleaning-Tablets/dp/B0725948BY",
+      "nameOriginal": "CleanEspresso 2 Gram Espresso Machine Cleaning Tablets Model BR-040 - For Breville Espresso Machines"
+    },
+    {
+      "id": "wmt-10294885",
+      "name": "Gerber 婴儿零食，谷物与成长泡芙，草莓苹果味，Clean Label Project认证，1.48盎司罐装",
+      "brand": "Gerber",
+      "category": "食品",
+      "price": 20,
+      "originalPrice": 20,
+      "rating": 4.8,
+      "reviews": 1646,
+      "sales": 0,
+      "stock": 171,
+      "image": "https://i5.walmartimages.com/seo/Gerber-Baby-Snacks-Grain-amp-Grow-Puffs-Strawberry-Apple-Clean-Label-Project-1-48-oz-Canister_6ec5f109-a2f8-4ac6-85d3-a172f50c1cc7.ec351acbdbe27b121b4a6dfa9c803d04.jpeg",
+      "description": "适合小手的零食：对于正在学习自主进食的爬行宝宝来说，我们的泡芙婴儿零食是理想选择，易于咀嚼和吞咽，大小正好适合小手指…",
+      "specifications": {
+        "类目": "6373549",
+        "型号": "015000045203"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "10294885",
+      "sourceUrl": "https://www.walmart.com/ip/Gerber-Baby-Snacks-Grain-amp-Grow-Puffs-Strawberry-Apple-Clean-Label-Project-1-48-oz-Canister/10294885",
+      "nameOriginal": "Gerber Baby Snacks, Grain &amp; Grow Puffs, Strawberry Apple, Clean Label Project, 1.48 oz Canister"
+    },
+    {
+      "id": "wmt-5329337627",
+      "name": "(12罐装) Special Kitty 火鸡与内脏晚餐肉泥湿猫粮，22盎司罐装",
+      "brand": "Special Kitty",
+      "category": "食品",
+      "price": 173,
+      "originalPrice": 173,
+      "rating": 4.4,
+      "reviews": 1522,
+      "sales": 0,
+      "stock": 77,
+      "image": "https://i5.walmartimages.com/seo/Special-Kitty-Turkey-Flavor-Pate-Wet-Cat-Food-for-Adult-Kitten-22oz-Can_05f0ffbe-4ce2-4ae8-bb7f-52e2e2c81720.e53f26028952e69967ce137355047720.jpeg",
+      "description": "你的猫对你来说很特别，所以它们的食物也应该如此。这就是我们创造Special Kitty火鸡与内脏晚餐肉泥湿猫粮的原因，22盎司罐装，美味佳肴…",
+      "specifications": {
+        "类目": "3222699",
+        "型号": "469365837117"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "5329337627",
+      "sourceUrl": "https://www.walmart.com/ip/Special-Kitty-Turkey-Giblets-Dinner-Pate-Wet-Cat-Food-22-oz-Can/5329337627",
+      "nameOriginal": "(12 pack) Special Kitty Turkey & Giblets Dinner Pate Wet Cat Food, 22 oz Can"
+    },
+    {
+      "id": "lzd-3373614870_PH-20461483080",
+      "name": "猫狗食欲促进剂 挑食宠物食品顶料 宠物健康软糖护理",
+      "brand": "No Brand",
+      "category": "食品",
+      "price": 13,
+      "originalPrice": 32,
+      "rating": 5,
+      "reviews": 1388,
+      "sales": 6074,
+      "stock": 94,
+      "image": "https://img.lazcdn.com/collect/social-img/59c1fd4b3a5d4f6591a54552dc6fc5e9_DED7EB892BAD4A3EA3DF7D69D9800B3F.jpg_720x720q80.jpg_.webp",
+      "description": "Sneaky Paws狗用食品粉：挑食狗用食品粉是一种适用于狗、猫、幼犬和其他狗的食品补充剂。Dr Shiva狗用快乐肚子：Gummyares宠物挑食…",
+      "specifications": {
+        "类目": "狗干粮"
+      },
+      "tags": [],
+      "platform": "Lazada",
+      "sourceId": "3373614870_PH-20461483080",
+      "sourceUrl": "https://www.lazada.com.ph/products/appetite-booster-stimulant-for-dogs-and-cats-picky-eater-food-topper-pet-healthy-gummy-cares-i3373614870-s20461483080.html",
+      "nameOriginal": "Appetite Booster Stimulant for Dogs and Cats Picky Eater Food Topper Pet Healthy Gummy Cares"
+    },
+    {
+      "id": "wmt-1728596655",
+      "name": "Sheba 完美份量 软肉泥湿猫粮 幼猫综合装，1.32盎司（12包）",
+      "brand": "SHEBA",
+      "category": "食品",
+      "price": 10,
+      "originalPrice": 10,
+      "rating": 4.8,
+      "reviews": 1283,
+      "sales": 0,
+      "stock": 244,
+      "image": "https://i5.walmartimages.com/seo/SHEBA-Perfect-Portions-Wet-Cat-Food-Variety-Pack-for-Kittens-1-32-oz-Trays-24-Pack_ae893824-2bf6-4aca-acbf-26bce66fd931.fd22a33ed0f461e252a5ed65bc14ae5c.jpeg",
+      "description": "100%完整均衡的幼猫营养：这款幼猫湿粮为幼猫提供100%完整均衡的营养，含有平衡的蛋白质和脂肪，有助于强壮身体…",
+      "specifications": {
+        "类目": "1014999",
+        "型号": "023100144276"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "1728596655",
+      "sourceUrl": "https://www.walmart.com/ip/SHEBA-Perfect-Portions-Wet-Cat-Food-Variety-Pack-for-Kittens-1-32-oz-Trays-24-Pack/1728596655",
+      "nameOriginal": "Sheba Perfect Portions Soft Pate Wet Cat Food Variety Pack For Kitten, 1.32 Oz (12 Pack)"
+    },
+    {
+      "id": "amz-B00BI76NR8",
+      "name": "Ruger 奥地利威化饼干 草莓味 2.125盎司（12包）",
+      "brand": "RUGER",
+      "category": "食品",
+      "price": 14,
+      "originalPrice": 17,
+      "rating": 4.4,
+      "reviews": 1161,
+      "sales": 50,
+      "stock": 480,
+      "image": "https://m.media-amazon.com/images/I/51c6AGLgX4S._SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "Ruger草莓奥地利威化饼干自1987年起是美国最畅销的高端威化饼干。这些巧克力威化饼干结合了传统配方与现代先进技术。",
+      "specifications": {
+        "类目": "威化饼干",
+        "尺寸": "7.15 x 5.78 x 3.8 英寸；2.12 盎司",
+        "型号": "1"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B00BI76NR8",
+      "sourceUrl": "https://www.amazon.com/dp/B00BI76NR8?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "Ruger Austrian Wafers Strawberry, 2.125 Ounce (Pack of 12)"
+    },
+    {
+      "id": "wmt-150973791",
+      "name": "Hauteloom Alstead 长毛摩洛哥农舍风 2'7\" x 7'3\" 走廊地毯 波西米亚/全球风 100%聚丙烯 炭灰/米色",
+      "brand": "Hauteloom",
+      "category": "食品",
+      "price": 51,
+      "originalPrice": 569,
+      "rating": 4.8,
+      "reviews": 824,
+      "sales": 0,
+      "stock": 364,
+      "image": "https://i5.walmartimages.com/seo/Hauteloom-Alstead-Shag-Moroccan-Farmhouse-2-7-x-7-3-Runner-Bohemian-Global-100-Polypropylene-Charcoal-Beige-Runner_6eae90cc-c138-4f27-bec6-54de8cd6c2d6.b93cc849031b9ef695ba94edda9120f3.jpeg",
+      "description": "值得信赖的卖家HAUTELOOM：欢迎在下单前后联系卖家咨询。沃尔玛退货政策下轻松退货和快速退款。",
+      "specifications": {
+        "类目": "110894",
+        "型号": "194486410191"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "150973791",
+      "sourceUrl": "https://www.walmart.com/ip/Hauteloom-Alstead-Shag-Moroccan-Farmhouse-2-7-x-7-3-Runner-Bohemian-Global-100-Polypropylene-Charcoal-Beige-Runner/150973791",
+      "nameOriginal": "Hauteloom Alstead Shag Moroccan Farmhouse 2'7\" x 7'3\" Runner Bohemian/Global 100% Polypropylene Charcoal/Beige Runner"
+    },
+    {
+      "id": "wmt-34203165",
+      "name": "Zuke's Mini Naturals 柔软狗狗训练零食 鸭肉味 嫩狗咀嚼零食 16盎司袋装",
+      "brand": "Zuke's",
+      "category": "食品",
+      "price": 12,
+      "originalPrice": 12,
+      "rating": 4.1,
+      "reviews": 758,
+      "sales": 0,
+      "stock": 448,
+      "image": "https://i5.walmartimages.com/seo/Zukes-Mini-Naturals-Duck-Recipe-Dog-Training-Treats_6872ec6d-19f1-4449-944f-4aa5b163bd9b.4977c122ea4f9a9ff597f4c899ba51d8.jpeg",
+      "description": "与Zuke's Mini Naturals鸭肉配方软零食一起无绳生活。Mini Naturals健康狗零食让您无负罪感地给狗狗训练零食。",
+      "specifications": {
+        "类目": "2734845",
+        "型号": "613423330236"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "34203165",
+      "sourceUrl": "https://www.walmart.com/ip/Zukes-Mini-Naturals-Duck-Recipe-Dog-Training-Treats/34203165",
+      "nameOriginal": "Zuke's Mini Naturals Soft Dog Training Treats, Duck Flavor, Tender Dog Chew Snacks, 16 oz Pouch"
+    },
+    {
+      "id": "wmt-35950141",
+      "name": "Purina Beneful Incredibites 小型成年犬湿粮 真牛肉 3盎司罐装（24罐）",
+      "brand": "Beneful",
+      "category": "食品",
+      "price": 20,
+      "originalPrice": 20,
+      "rating": 4.6,
+      "reviews": 637,
+      "sales": 0,
+      "stock": 32,
+      "image": "https://i5.walmartimages.com/seo/Purina-Beneful-Incredibites-Wet-Dog-Food-for-Small-Adult-Dogs-Real-Beef-3-oz-Cans_2ced8239-7916-49bd-93cd-7fd70dc21e8d.6a83ee1486d3dce04e8880e8dbaf7e7a.jpeg",
+      "description": "Purina Beneful Incredibites小型犬湿粮真牛肉3盎司罐装（24罐）小型犬粮由真牛肉和可见的真蔬菜和谷物制成。",
+      "specifications": {
+        "类目": "2734845",
+        "型号": "017800159470"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "35950141",
+      "sourceUrl": "https://www.walmart.com/ip/Purina-Beneful-Incredibites-Wet-Dog-Food-for-Small-Adult-Dogs-Real-Beef-3-oz-Cans/35950141",
+      "nameOriginal": "Purina Beneful Incredibites Wet Dog Food for Small Adult Dogs, Real Beef, 3 oz. Cans (24 Pack)"
+    },
+    {
+      "id": "amz-B07T7KN9NY",
+      "name": "Brentwood MC-109R 1.5杯迷你食物切碎机 红色",
+      "brand": "Brentwood",
+      "category": "食品",
+      "price": 11,
+      "originalPrice": 14,
+      "rating": 4.4,
+      "reviews": 633,
+      "sales": 50,
+      "stock": 489,
+      "image": "https://m.media-amazon.com/images/I/6125H7F2fiL._AC_SL1500_.jpg",
+      "description": "强大的Brentwood电器MC-109R 1-1/2杯迷你食物切碎机为您节省厨房时间和精力。安全简单的操作，非常适合准备蘸料、酱料等。",
+      "specifications": {
+        "类目": "食物处理器",
+        "重量": "1.67 磅",
+        "尺寸": "7.75 x 4.75 x 5.5 英寸",
+        "型号": "MC-109R"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B07T7KN9NY",
+      "sourceUrl": "https://www.amazon.com/dp/B07T7KN9NY?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "Brentwood MC-109R 1.5 Cup Mini Food Chopper, Red"
+    },
+    {
+      "id": "wmt-663403068",
+      "name": "Snickers 趣味尺寸万圣节巧克力棒 18.71盎司袋装",
+      "brand": "SNICKERS",
+      "category": "食品",
+      "price": 43,
+      "originalPrice": 43,
+      "rating": 4.5,
+      "reviews": 613,
+      "sales": 0,
+      "stock": 308,
+      "image": "https://i5.walmartimages.com/seo/Snickers-Fun-Size-Halloween-Chocolate-Candy-Bars-18-71-oz-Bag_07fe29e5-d73f-4478-b0ee-a0b2cc6e50cc.f5905f53228ad594c3ddbdb41824537c.jpeg",
+      "description": "面对现实吧：万圣节太短了。对于所有热爱糖果的家庭和节日成年人来说，这是一年中最棒的一天——我们值得更多。",
+      "specifications": {
+        "类目": "7424637",
+        "型号": "040000574187"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "663403068",
+      "sourceUrl": "https://www.walmart.com/ip/Snickers-Fun-Size-Halloween-Chocolate-Candy-Bars-18-71-oz-Bag/663403068",
+      "nameOriginal": "Snickers Fun Size Halloween Chocolate Candy Bars, 18.71 oz Bag"
+    },
+    {
+      "id": "amz-B01F7QECQE",
+      "name": "ClosetMaid 1036 Cubeicals 收纳架，4格，浓咖啡色",
+      "brand": "ClosetMaid",
+      "category": "家居",
+      "price": 466,
+      "originalPrice": 501,
+      "rating": 4.4,
+      "reviews": 37417,
+      "sales": 0,
+      "stock": 259,
+      "image": "https://m.media-amazon.com/images/I/61VsBKSHzFL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "ClosetMaid 立方收纳架，适合存放爱好用品、玩具、媒体和办公用品。紧凑美观，可搭配配件使用。",
+      "specifications": {
+        "类目": "壁挂衣柜系统",
+        "重量": "21 磅",
+        "尺寸": "11.69\"深 x 12.24\"宽 x 47.56\"高",
+        "型号": "1036"
+      },
+      "tags": [
+        "收纳架",
+        "4格",
+        "紧凑"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01F7QECQE",
+      "sourceUrl": "https://www.amazon.com/ClosetMaid-1036-Cubeicals-Organizer-Espresso/dp/B01F7QECQE",
+      "nameOriginal": "ClosetMaid 1036 Cubeicals Organizer, 4-Cube, Espresso"
+    },
+    {
+      "id": "amz-B01F4OM0ZE",
+      "name": "Presto 03510 陶瓷 FlipSide 比利时华夫饼机，黑色",
+      "brand": "Presto",
+      "category": "家居",
+      "price": 432,
+      "originalPrice": 432,
+      "rating": 4.7,
+      "reviews": 23974,
+      "sales": 0,
+      "stock": 192,
+      "image": "https://m.media-amazon.com/images/I/91CnPwENWBL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "几分钟即可烤出超厚比利时华夫饼。独特旋转设计可180度翻转，均匀铺开面糊，烤出外脆内软的华夫饼。",
+      "specifications": {
+        "类目": "华夫饼机",
+        "重量": "4.94 磅 4.80 磅 1.00 磅 6.57 磅 7.01 磅 0.96 盎司",
+        "尺寸": "11.25\"深 x 11.75\"宽 x 4\"高",
+        "型号": "03510"
+      },
+      "tags": [
+        "华夫饼机",
+        "旋转",
+        "陶瓷"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01F4OM0ZE",
+      "sourceUrl": "https://www.amazon.com/dp/B01F4OM0ZE?language=en_US&currency=USD",
+      "nameOriginal": "Presto 03510 Ceramic FlipSide Belgian Waffle Maker,Black"
+    },
+    {
+      "id": "amz-B00INKVS82",
+      "name": "Avery 3\" Economy View 三环活页夹，圆环，可装8.5\" x 11\"纸张，1个白色活页夹 (5741)",
+      "brand": "AVERY",
+      "category": "家居",
+      "price": 75,
+      "originalPrice": 81,
+      "rating": 4.6,
+      "reviews": 12167,
+      "sales": 0,
+      "stock": 367,
+      "image": "https://m.media-amazon.com/images/I/81XBzO5oRTL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "通用活页夹，正面、书脊和背面均有透明覆膜，可自定义封面设计。内置两个口袋用于收纳，1/2\"…",
+      "specifications": {
+        "类目": "圆环活页夹",
+        "重量": "13.3 盎司",
+        "尺寸": "11.6 x 2.9 x 11.2 英寸",
+        "型号": "05741"
+      },
+      "tags": [
+        "活页夹",
+        "三环",
+        "圆环"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B00INKVS82",
+      "sourceUrl": "https://www.amazon.com/dp/B00INKVS82?language=en_US&currency=USD",
+      "nameOriginal": "Avery 3\" Economy View 3 Ring Binder, Round Ring, Holds 8.5\" x 11\" Paper, 1 White Binder (5741)"
+    },
+    {
+      "id": "amz-B07H4F1W4S",
+      "name": "nuLOOM Wynn 编织室内/室外区域地毯，3x5，棕褐色",
+      "brand": "nuLOOM",
+      "category": "家居",
+      "price": 302,
+      "originalPrice": 605,
+      "rating": 4.4,
+      "reviews": 10710,
+      "sales": 100,
+      "stock": 458,
+      "image": "https://m.media-amazon.com/images/I/910B-VPzlJL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "无论您想提升露台还是客厅，这款休闲编织室内/室外地毯都能完善您的空间。采用耐用合成…",
+      "specifications": {
+        "类目": "区域地毯",
+        "重量": "6 磅",
+        "尺寸": "60\"长 x 36\"宽",
+        "型号": "HJFV01G-305"
+      },
+      "tags": [
+        "耐用",
+        "地毯",
+        "编织",
+        "室内外"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B07H4F1W4S",
+      "sourceUrl": "https://www.amazon.com/nuLOOM-Wynn-Braided-Indoor-Outdoor/dp/B07H4F1W4S?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "nuLOOM Wynn Braided Indoor/Outdoor Area Rug, 3x5, Tan"
+    },
+    {
+      "id": "amz-B07DMBTFDC",
+      "name": "Magpul 狩猎射击两脚架",
+      "brand": "Magpul",
+      "category": "家居",
+      "price": 749,
+      "originalPrice": 823,
+      "rating": 4.7,
+      "reviews": 10010,
+      "sales": 0,
+      "stock": 213,
+      "image": "https://m.media-amazon.com/images/I/614bmo-XG6L.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "军规硬质阳极氧化6061 T-6铝合金，不锈钢内部件，弹簧张力腿可整齐前收并卡入，腿延长可滑动并牢固锁定…",
+      "specifications": {
+        "类目": "单脚架与两脚架",
+        "重量": "0.41 千克",
+        "尺寸": "9.53 x 3.98 x 2.87 英寸"
+      },
+      "tags": [
+        "不锈钢",
+        "两脚架",
+        "狩猎",
+        "射击"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B07DMBTFDC",
+      "sourceUrl": "https://www.amazon.com/Magpul-Bipod-Hunting-Shooting/dp/B0BXCX6K28",
+      "nameOriginal": "Magpul Bipod for Hunting and Shooting"
+    },
+    {
+      "id": "amz-B0053TTXVU",
+      "name": "BIC Gel-Ocity 中性笔，中号可伸缩 (0.7mm)，红色墨水，12支装",
+      "brand": "BIC",
+      "category": "家居",
+      "price": 72,
+      "originalPrice": 79,
+      "rating": 4.5,
+      "reviews": 9272,
+      "sales": 0,
+      "stock": 267,
+      "image": "https://m.media-amazon.com/images/I/71vQl0CO6fL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "Gel-ocity 书写顺滑的可伸缩中性笔，适合各种书写场合。轮廓握柄舒适可控，时尚半透明笔杆…",
+      "specifications": {
+        "类目": "中性墨水圆珠笔",
+        "重量": "4.8 盎司",
+        "尺寸": "1.63 x 6 x 2.75 英寸",
+        "型号": "RLC11-RED"
+      },
+      "tags": [
+        "舒适",
+        "中性笔",
+        "可伸缩",
+        "红色"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B0053TTXVU",
+      "sourceUrl": "https://www.amazon.com/BIC-Gel-ocity-Original-Retractable-12-Count/dp/B0000AQNTF",
+      "nameOriginal": "BIC Gel-Ocity Gel Pens, Medium Point Retractable (0.7mm), Red Ink Gel Pen, 12-Count"
+    },
+    {
+      "id": "amz-B001J221JQ",
+      "name": "Gardena 双龙头连接器",
+      "brand": "Gardena",
+      "category": "家居",
+      "price": 201,
+      "originalPrice": 309,
+      "rating": 4.6,
+      "reviews": 9130,
+      "sales": 0,
+      "stock": 273,
+      "image": "https://m.media-amazon.com/images/I/617XQk74XhL.__AC_SY300_SX300_QL70_FMwebp_.jpg",
+      "description": "GARDENA 双龙头连接器可将两个配件同时连接到一个水龙头上，还可连接两个 GARDENA 浇水定时器。",
+      "specifications": {
+        "类目": "配件",
+        "重量": "7.05 盎司",
+        "尺寸": "3.93 x 3.93 x 1.96 英寸",
+        "型号": "08193-20"
+      },
+      "tags": [
+        "双龙头",
+        "连接器",
+        "园艺"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B001J221JQ",
+      "sourceUrl": "https://www.amazon.com/Gardena-08193-20-Twin-Tap-Connector/dp/B001J221JQ",
+      "nameOriginal": "Gardena Twin-Tap Connector"
+    },
+    {
+      "id": "amz-B01LZ7U33J",
+      "name": "100% 埃及棉枕套 600 支（Blush 标准/大号 白色一对）",
+      "brand": "THREAD SPREAD",
+      "category": "家居",
+      "price": 132,
+      "originalPrice": 132,
+      "rating": 4.3,
+      "reviews": 9083,
+      "sales": 0,
+      "stock": 239,
+      "image": "https://m.media-amazon.com/images/I/71Flo8z3TXL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "优质纯棉枕套，采用 100% 长绒埃及棉，纯棉纱线以缎纹编织，触感柔软顺滑。",
+      "specifications": {
+        "类目": "枕套",
+        "重量": "10.3 盎司",
+        "尺寸": "21\"长 x 32\"宽",
+        "型号": "PillowCover-Q0-Blush"
+      },
+      "tags": [
+        "埃及棉",
+        "枕套",
+        "600支"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01LZ7U33J",
+      "sourceUrl": "https://www.amazon.com/Egyptian-Cotton-Pillowcases-Pillowcase-Standard/dp/B0B1X6C3TP",
+      "nameOriginal": "100% Egyptian Cotton Pillowcases, 600 Thread Count Pillowcase (Blush, Standard / Queen Pillow Case Pair White)"
+    },
+    {
+      "id": "amz-B01EZ9WR34",
+      "name": "Treva 10 英寸便携桌面电池风扇 双速 可折叠倾斜 含电源适配器（石墨色）",
+      "brand": "O2COOL",
+      "category": "家居",
+      "price": 216,
+      "originalPrice": 238,
+      "rating": 4.5,
+      "reviews": 7939,
+      "sales": 0,
+      "stock": 465,
+      "image": "https://m.media-amazon.com/images/I/81AOkgXrowL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "电池供电便携风扇，适合居家、办公或户外使用。10 英寸大小，双速调节，紧凑折叠与倾斜设计，并附带 AC 适配器。",
+      "specifications": {
+        "类目": "台扇",
+        "重量": "2.42 磅",
+        "尺寸": "3.5\"深 x 12\"宽 x 12.4\"高"
+      },
+      "tags": [
+        "便携",
+        "可折叠",
+        "电池供电",
+        "双速"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01EZ9WR34",
+      "sourceUrl": "https://www.amazon.com/O2COOL-10-Inch-Portable-Desktop-Circulation/dp/B013BOC6VC",
+      "nameOriginal": "Treva 10-Inch Portable Desktop Air Circulation Battery Fan, 2 Speed, Compact Folding & Tilt Design, with AC Adapter (Graphite)"
+    },
+    {
+      "id": "amz-B083CBSNQ5",
+      "name": "AsterOutdoor 长方形遮阳帆 12' x 16' 防紫外线 适用于庭院后院草坪花园户外活动 石墨色",
+      "brand": "AsterOutdoor",
+      "category": "家居",
+      "price": 28,
+      "originalPrice": 36,
+      "rating": 4.4,
+      "reviews": 7925,
+      "sales": 50,
+      "stock": 123,
+      "image": "https://m.media-amazon.com/images/I/81OPcDDBpFL.__AC_SY300_SX300_QL70_FMwebp_.jpg",
+      "description": "AsterOutdoor 遮阳帆是时尚有效的遮阳方案，适合大多数户外生活空间，可阻挡 95% 紫外线，让您更舒适。",
+      "specifications": {
+        "类目": "遮阳帆",
+        "重量": "185 克",
+        "尺寸": "192 x 144 x 0.1 英寸",
+        "型号": "Sun Shade Sail Rectangle 12' x 16'"
+      },
+      "tags": [
+        "舒适",
+        "遮阳帆",
+        "防紫外线",
+        "户外"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B083CBSNQ5",
+      "sourceUrl": "https://www.amazon.com/dp/B083CBSNQ5?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "AsterOutdoor Sun Shade Sail Rectangle 12' x 16' UV Block Canopy for Patio Backyard Lawn Garden Outdoor Activities, Graphite"
+    },
+    {
+      "id": "amz-B09SVB5VVB",
+      "name": "CENTOCO 900-416 加长木质马桶盖 重型模压木 Centocore 技术 饼干色",
+      "brand": "CENTOCORE",
+      "category": "家居",
+      "price": 187,
+      "originalPrice": 187,
+      "rating": 4.5,
+      "reviews": 7782,
+      "sales": 0,
+      "stock": 181,
+      "image": "https://m.media-amazon.com/images/I/21o536Kk0UL._SY445_SX342_QL70_FMwebp_.jpg",
+      "description": "Centoco 900 木质马桶盖，采用 Centocore 优质模压木，厚聚丙烯外壳包覆木芯，不易开裂、碎裂、凹陷、变平、剥落或褪色。",
+      "specifications": {
+        "类目": "马桶盖",
+        "重量": "6.37 磅",
+        "尺寸": "18.75 x 14.25 x 2 英寸；6.37 磅",
+        "型号": "900-416"
+      },
+      "tags": [
+        "马桶盖",
+        "木质",
+        "加长型"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B09SVB5VVB",
+      "sourceUrl": "https://www.amazon.com/dp/B09SVB5VVB?language=en_US&currency=USD",
+      "nameOriginal": "CENTOCO 900-416 Elongated Wooden Toilet Seat, Heavy Duty Molded Wood with Centocore Technology, Biscuit"
+    },
+    {
+      "id": "amz-B0C5J54Q7D",
+      "name": "Hansleep 被套套装 全/大号 大号床品 大马士革 轻量床罩 超声波绗缝",
+      "brand": "Hansleep",
+      "category": "家居",
+      "price": 194,
+      "originalPrice": 238,
+      "rating": 4.6,
+      "reviews": 6124,
+      "sales": 0,
+      "stock": 41,
+      "image": "https://m.media-amazon.com/images/I/816oq9aM6mL.__AC_SX300_SY300_QL70_ML2_.jpg",
+      "description": "采用 100% 优质超细纤维聚酯编织，洗涤后依然舒适透气。绗缝缝线与紧密针脚设计，适合全/大号床。",
+      "specifications": {
+        "类目": "被套套装",
+        "重量": "4.95 磅",
+        "尺寸": "14.92 x 7.28 x 7.2 英寸",
+        "型号": "HSUS23PQBAS173FQ"
+      },
+      "tags": [
+        "透气",
+        "轻量",
+        "舒适",
+        "被套套装",
+        "超声波绗缝"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B0C5J54Q7D",
+      "sourceUrl": "https://www.amazon.com/Hansleep-Quilt-Set-Full-Queen/dp/B0C5J54Q7D?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "Hansleep Quilt Set Full Queen - Quilt Queen Size Bedding Set Damask, Lightweight Bedspread Coverlet, Ultrasonic Quilting"
+    },
+    {
+      "id": "amz-B018F3ZEYK",
+      "name": "BRINDLE 防水记忆棉宠物床 - 可拆洗床套 - 4英寸骨科狗猫床 - 适配多数笼子",
+      "brand": "Brindle",
+      "category": "家居",
+      "price": 47,
+      "originalPrice": 58,
+      "rating": 4.6,
+      "reviews": 6099,
+      "sales": 50,
+      "stock": 307,
+      "image": "https://m.media-amazon.com/images/I/61CyUbdRxHS._AC_SL1366_.jpg",
+      "description": "为您的宠物提供一个柔软、舒适且耐用的睡眠场所。BRINDLE 记忆棉宠物床采用2英寸骨科记忆棉层叠在2英寸高密度……",
+      "specifications": {
+        "类目": "床",
+        "重量": "8.8 磅",
+        "尺寸": "30.5 x 8.5 x 8.4 英寸",
+        "型号": "BRLLCB22PB"
+      },
+      "tags": [
+        "防水",
+        "耐用",
+        "舒适",
+        "记忆棉",
+        "可拆洗",
+        "骨科"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B018F3ZEYK",
+      "sourceUrl": "https://www.amazon.com/dp/B018F3ZEYK?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "BRINDLE Waterproof Memory Foam Pet Bed - Removable and Washable Cover - 4 Inch Orthopedic Dog and Cat Bed - Fits Most Crates"
+    },
+    {
+      "id": "amz-B00006IEBL",
+      "name": "Pilot Precise V7 带盖液体墨水走珠笔 细尖 0.7 毫米 黑色 12支装",
+      "brand": "PILOT",
+      "category": "家居",
+      "price": 121,
+      "originalPrice": 198,
+      "rating": 4.6,
+      "reviews": 5187,
+      "sales": 0,
+      "stock": 270,
+      "image": "https://m.media-amazon.com/images/I/415FAPkhAdL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "PILOT Precise V7 走珠笔采用独特的液体墨水配方，保持流畅一致的笔触。凭借专利精密针尖技术，每支笔都有环……",
+      "specifications": {
+        "类目": "圆珠笔",
+        "重量": "6.6 盎司",
+        "尺寸": "1 x 2.8 x 5.75 英寸",
+        "型号": "35346"
+      },
+      "tags": [
+        "走珠笔",
+        "液体墨水",
+        "细尖",
+        "黑色",
+        "12支装"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B00006IEBL",
+      "sourceUrl": "https://www.amazon.com/Pilot-Precise-Stick-Rolling-35346/dp/B00006IEBL?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "Pilot, Precise V7, Capped Liquid Ink Rolling Ball Pens, Fine Point 0.7 mm, Black, Pack of 12"
+    },
+    {
+      "id": "amz-B01K119TPY",
+      "name": "男女款玫瑰修剪手套 - 防刺山羊皮园艺手套带长袖口（中号，棕色）",
+      "brand": "Exemplary Gardens",
+      "category": "家居",
+      "price": 183,
+      "originalPrice": 360,
+      "rating": 4.6,
+      "reviews": 4670,
+      "sales": 0,
+      "stock": 160,
+      "image": "https://m.media-amazon.com/images/I/61E55HZv9SL.__AC_SY300_SX300_QL70_FMwebp_.jpg",
+      "description": "玫瑰园艺可以放松又有趣。然而，如果没有足够的保护，您的手臂会布满划痕。除了疼痛之外，玫瑰刺造成的割伤也……",
+      "specifications": {
+        "类目": "手套",
+        "重量": "5 盎司",
+        "尺寸": "10.6 x 7.2 x 1.1 英寸",
+        "型号": "EXGA01"
+      },
+      "tags": [
+        "防刺",
+        "山羊皮",
+        "园艺",
+        "长袖口",
+        "男女款"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01K119TPY",
+      "sourceUrl": "https://www.amazon.com/Pruning-Goatskin-Leather-Gardening-Gauntlet/dp/B01K119OAY",
+      "nameOriginal": "Rose Pruning Gloves for Men and Women - Thorn Proof Goatskin Leather Gardening Gloves with Gauntlet (Medium, Brown)"
+    },
+    {
+      "id": "wmt-2544735639",
+      "name": "Yalamila WhatsBedding 2件套床上用品套装 被芯 可翻转 粉色 单人床",
+      "brand": "Yalamila",
+      "category": "家居",
+      "price": 23,
+      "originalPrice": 1174,
+      "rating": 4.3,
+      "reviews": 4303,
+      "sales": 0,
+      "stock": 298,
+      "image": "https://i5.walmartimages.com/seo/WhatsBedding-2-Pieces-Bed-in-a-Bag-Comforter-Set-Duvet-Insert-Reversible-Pink-Twin_265ddd4c-de3d-49eb-b0f3-00ee41f4a669.72a53c9a2d5346cd3ce54d86148bddb4.jpeg",
+      "description": "我们的粉色仿羽绒可翻转纯色被芯由100%聚酯纤维制成，并填充优质超细纤维，柔软、透气，适合所有季节。为您提供……",
+      "specifications": {
+        "类目": "3388004",
+        "型号": "768459791084"
+      },
+      "tags": [
+        "透气",
+        "床上用品",
+        "被芯",
+        "可翻转",
+        "粉色",
+        "单人床"
+      ],
+      "platform": "Walmart",
+      "sourceId": "2544735639",
+      "sourceUrl": "https://www.walmart.com/ip/WhatsBedding-2-Pieces-Bed-in-a-Bag-Comforter-Set-Duvet-Insert-Reversible-Pink-Twin/2544735639",
+      "nameOriginal": "Yalamila WhatsBedding 2 Pieces Bed in a Bag Comforter Set Duvet Insert,Reversible,Pink,Twin"
+    },
+    {
+      "id": "amz-B0968YVLQ8",
+      "name": "Under Armour 男士 Charged Assert 9 跑步鞋",
+      "brand": "Under Armour",
+      "category": "运动",
+      "price": 432,
+      "originalPrice": 504,
+      "rating": 4.6,
+      "reviews": 52817,
+      "sales": 0,
+      "stock": 93,
+      "image": "https://m.media-amazon.com/images/I/71YPAghJucL.__AC_SY395_SX395_QL70_FMwebp_.jpg",
+      "description": "这款跑鞋旨在帮助任何人跑得更快——Charged Cushioning® 有助于缓冲冲击，皮革覆面增加耐用稳定性，网眼鞋面让双脚保持凉……",
+      "specifications": {
+        "类目": "公路跑",
+        "尺寸": "12.8 x 8.43 x 4.84 英寸；1.65 磅",
+        "型号": "3024852"
+      },
+      "tags": [
+        "耐用",
+        "跑步",
+        "缓震",
+        "透气",
+        "男士"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B0968YVLQ8",
+      "sourceUrl": "https://www.amazon.com/dp/B0968YVLQ8",
+      "nameOriginal": "Under Armour Men's Charged Assert 9 Running Shoe"
+    },
+    {
+      "id": "amz-B01HD620I8",
+      "name": "Salomon 男士 Speedcross 4 越野跑鞋",
+      "brand": "Salomon",
+      "category": "运动",
+      "price": 738,
+      "originalPrice": 738,
+      "rating": 4.6,
+      "reviews": 21644,
+      "sales": 0,
+      "stock": 88,
+      "image": "https://m.media-amazon.com/images/I/71-h7s7wWlL.__AC_SY395_SX395_QL70_FMwebp_.jpg",
+      "description": "我们标志性且带有激进凸纹的越野跑鞋第4版，专为在技术性松软地面上快速穿行而设计。Salomon 于1947年诞生于法国阿尔卑斯山中心……",
+      "specifications": {
+        "类目": "越野跑",
+        "尺寸": "13 x 9 x 5 英寸；1.6 磅",
+        "型号": "L38313000"
+      },
+      "tags": [
+        "越野跑",
+        "抓地",
+        "男士",
+        "跑鞋"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01HD620I8",
+      "sourceUrl": "https://www.amazon.com/Salomon-Speedcross-Trail-Running-Shoes/dp/B07QL3TX6V",
+      "nameOriginal": "Salomon Men's Speedcross 4 Trail Running Shoes"
+    },
+    {
+      "id": "amz-B08RHPKJCQ",
+      "name": "ATHLIO 1或3件装男士速干短袖压缩衣 运动打底T恤 健身训练上衣",
+      "brand": "Athlio LTD",
+      "category": "运动",
+      "price": 209,
+      "originalPrice": 331,
+      "rating": 4.5,
+      "reviews": 9998,
+      "sales": 0,
+      "stock": 145,
+      "image": "https://m.media-amazon.com/images/I/61+AMQlcdCS._AC_UX425_.jpg",
+      "description": "运动数据说话。我们已成为运动服装市场的先驱，致力于在实用性与功能性之间取得平衡。为此，我们的产品线涵盖…",
+      "specifications": {
+        "类目": "衬衫",
+        "尺寸": "8.5 x 6.7 x 0.6 英寸；3.2 盎司"
+      },
+      "tags": [
+        "速干"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08RHPKJCQ",
+      "sourceUrl": "https://www.amazon.com/ATHLIO-Compression-Sleeve-Baselayer-T-Shirts/dp/B07JNVQS54",
+      "nameOriginal": "ATHLIO 1 or 3 Pack Men's Cool Dry Short Sleeve Compression Shirts, Sports Baselayer T-Shirts Tops, Athletic Workout Shirt"
+    },
+    {
+      "id": "amz-B07W5TLD7C",
+      "name": "WETIKE 网面一脚蹬轻量跑步鞋",
+      "brand": "WETIKE",
+      "category": "运动",
+      "price": 240,
+      "originalPrice": 274,
+      "rating": 4.4,
+      "reviews": 8653,
+      "sales": 0,
+      "stock": 133,
+      "image": "https://m.media-amazon.com/images/I/81psMHPgIiL._AC_UY695_.jpg",
+      "description": "WETIKE 儿童鞋网面运动鞋户外运动一脚蹬休闲跑步鞋袜鞋宽楦（小童/大童）儿童鞋规格 时尚配色：蓝黑白色…",
+      "specifications": {
+        "类目": "运动鞋",
+        "尺寸": "11.02 x 7.87 x 5.91 英寸；2.2 磅"
+      },
+      "tags": [
+        "轻量"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B07W5TLD7C",
+      "sourceUrl": "https://www.amazon.com/Shoes-Girls-Sneakers-Flyknit-Lightweight/dp/B078K4XNXH",
+      "nameOriginal": "WETIKE Mesh Slip On Lightweight Running Sneakers"
+    },
+    {
+      "id": "amz-B08JMD4LMM",
+      "name": "adidas 男士 Racer Tr21 跑步鞋",
+      "brand": "adidas",
+      "category": "运动",
+      "price": 382,
+      "originalPrice": 540,
+      "rating": 4.5,
+      "reviews": 8515,
+      "sales": 0,
+      "stock": 355,
+      "image": "https://m.media-amazon.com/images/I/71J8YYAb1WL._AC_UX695_.jpg",
+      "description": "日常风格融入跑步元素。这款男士adidas运动鞋采用Cloudfoam中底，带来即穿即享的舒适感。织物鞋面柔软耐用，橡胶外底提供…",
+      "specifications": {
+        "类目": "越野跑",
+        "尺寸": "8 x 4 x 7 英寸；2.45 磅",
+        "型号": "LRM15"
+      },
+      "tags": [
+        "耐用",
+        "舒适"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08JMD4LMM",
+      "sourceUrl": "https://www.amazon.com/adidas-Mens-Racer-Tr21-Running/dp/B0BG9F7H5S",
+      "nameOriginal": "adidas Men's Racer Tr21 Running Shoe"
+    },
+    {
+      "id": "amz-B01GVQWVV2",
+      "name": "ASICS 女士 GT-2000 7 跑步鞋",
+      "brand": "ASICS",
+      "category": "运动",
+      "price": 720,
+      "originalPrice": 720,
+      "rating": 4.6,
+      "reviews": 6911,
+      "sales": 0,
+      "stock": 494,
+      "image": "https://m.media-amazon.com/images/I/61H5eqdTZpL.__AC_SX395_SY395_QL70_ML2_.jpg",
+      "description": "用GT-2000 7鞋突破极限，这是GT-2000 7系列的最新升级，专注于提升贴合度、透气性和耐用性。旨在提供最大…",
+      "specifications": {
+        "类目": "公路跑",
+        "尺寸": "12.44 x 6.3 x 4.75 英寸；1.44 磅",
+        "型号": "GT-2000 7 W"
+      },
+      "tags": [
+        "透气",
+        "耐用"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01GVQWVV2",
+      "sourceUrl": "https://www.amazon.com/ASICS-Womens-Gel-Contend-Running-Shoe/dp/B01MYGURYK",
+      "nameOriginal": "ASICS Women's GT-2000 7 Running Shoes"
+    },
+    {
+      "id": "amz-B09BQWLGHB",
+      "name": "Park Tool 魔术扣钳 MLP-1.2",
+      "brand": "Park Tool",
+      "category": "运动",
+      "price": 122,
+      "originalPrice": 142,
+      "rating": 4.9,
+      "reviews": 5694,
+      "sales": 0,
+      "stock": 454,
+      "image": "https://m.media-amazon.com/images/I/61C8q2-rTcL.__AC_SY300_SX300_QL70_ML2_.jpg",
+      "description": "关于此商品 100 美国制造或进口 原版畅销Park魔术扣钳的升级版 许多非Shimano变速链条使用魔术扣…",
+      "specifications": {
+        "类目": "车间工具",
+        "重量": "4.9 盎司",
+        "尺寸": "6.5 x 2.1 x 0.4 英寸",
+        "型号": "373-901"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B09BQWLGHB",
+      "sourceUrl": "https://www.amazon.com/Park-Tool-MLP-1-2-Master-Pliers/dp/B09BQWLGHB",
+      "nameOriginal": "Park Tool Master Link Pliers MLP-1.2"
+    },
+    {
+      "id": "amz-B082NP96XX",
+      "name": "WYOX 凝胶快速拳击手绑带 适用于拳击MMA自由搏击 - 易穿脱 - 加垫指关节带护腕 适合男士女士青少年",
+      "brand": "WYOX",
+      "category": "运动",
+      "price": 130,
+      "originalPrice": 216,
+      "rating": 4.4,
+      "reviews": 4424,
+      "sales": 0,
+      "stock": 219,
+      "image": "https://m.media-amazon.com/images/I/71StxqjgqoL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "凝胶加垫内层UFC MMA泰拳格斗运动拳击手绑带，适合女士和男士，由WYOX出品。WYOX内层格斗拳击手套在提供…的同时保护您的手腕免受伤害",
+      "specifications": {
+        "类目": "手绑带",
+        "重量": "4 盎司",
+        "尺寸": "8.54 x 4.72 x 1.46 英寸"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B082NP96XX",
+      "sourceUrl": "https://www.amazon.com/WYOX-Boxing-Wraps-Gloves-Inner/dp/B0867JPQYG",
+      "nameOriginal": "WYOX Gel Quick Hand Wraps for Boxing MMA Kickboxing - EZ-Off & On - Padded Knuckle with Wrist Wrap Protection for Men Women Youth"
+    },
+    {
+      "id": "amz-B08Z7462W4",
+      "name": "STQ 女式健步鞋 舒适透气 轻便一脚蹬运动鞋 支撑型",
+      "brand": "STQ",
+      "category": "运动",
+      "price": 216,
+      "originalPrice": 504,
+      "rating": 4.3,
+      "reviews": 2285,
+      "sales": 0,
+      "stock": 314,
+      "image": "https://m.media-amazon.com/images/I/715Ejy5dVxL._AC_UY575_.jpg",
+      "description": "STQ 女式一脚蹬运动鞋。这款女式一脚蹬健步鞋设计舒适、贴合稳固，适合日常穿着。具有足弓支撑……",
+      "specifications": {
+        "类目": "健步"
+      },
+      "tags": [
+        "透气",
+        "舒适",
+        "轻便",
+        "一脚蹬",
+        "支撑"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08Z7462W4",
+      "sourceUrl": "https://www.amazon.com/STQ-Sneakers-Support-Comfort-Lightweight/dp/B08D6GXD48",
+      "nameOriginal": "STQ Walking Shoes for Women Comfort Breathable | Lightweight Slip on Sneakers Supportive"
+    },
+    {
+      "id": "amz-B001C67HCK",
+      "name": "Finish Line 柑橘自行车除油剂",
+      "brand": "Finish Line",
+      "category": "运动",
+      "price": 454,
+      "originalPrice": 454,
+      "rating": 4.7,
+      "reviews": 2263,
+      "sales": 0,
+      "stock": 335,
+      "image": "https://m.media-amazon.com/images/I/713uOrCv5vL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "关于此商品：强力安全可生物降解配方，适用于所有塑料和橡胶部件。采用橙皮和大豆提取物制成——无毒。强度足以……",
+      "specifications": {
+        "类目": "自行车润滑油",
+        "重量": "0.01 盎司",
+        "尺寸": "11 x 7 x 4.5 英寸",
+        "型号": "2012"
+      },
+      "tags": [
+        "除油",
+        "可降解",
+        "无毒"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B001C67HCK",
+      "sourceUrl": "https://www.amazon.com/dp/B001C67HCK?th=1&psc=1&currency=USD&language=en_GB",
+      "nameOriginal": "Finish Line Citrus Degreaser Bicycle Degreaser"
+    },
+    {
+      "id": "amz-B08VRJ6F2Q",
+      "name": "ASICS 男式 GT-1000 10 跑鞋",
+      "brand": "Asics",
+      "category": "运动",
+      "price": 648,
+      "originalPrice": 648,
+      "rating": 4.6,
+      "reviews": 2170,
+      "sales": 0,
+      "stock": 391,
+      "image": "https://m.media-amazon.com/images/I/61wReiFg2mL.__AC_SX395_SY395_QL70_FMwebp_.jpg",
+      "description": "工程网眼：弹性网眼鞋面可适应脚型，提供出色贴合感。轻量缓震：我们的 FLYTEFOAM 中底技术柔软轻便……",
+      "specifications": {
+        "类目": "公路跑",
+        "尺寸": "12.44 x 6.3 x 4.75 英寸；1.44 磅",
+        "型号": "1011B001-403"
+      },
+      "tags": [
+        "轻量",
+        "跑步",
+        "缓震",
+        "透气"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08VRJ6F2Q",
+      "sourceUrl": "https://www.amazon.com/ASICS-Mens-GT-1000-Running-Shoes/dp/B08S7GDKBS",
+      "nameOriginal": "ASICS Men's GT-1000 10 Running Shoes"
+    },
+    {
+      "id": "amz-B07X3SXVFG",
+      "name": "ICTIVE 女式长袖健身衫 宽松健身上衣 跑步衫 带拇指孔",
+      "brand": "Fihapyli",
+      "category": "运动",
+      "price": 158,
+      "originalPrice": 216,
+      "rating": 4.4,
+      "reviews": 2102,
+      "sales": 0,
+      "stock": 130,
+      "image": "https://m.media-amazon.com/images/I/61wse+q59kL._AC_UY550_.jpg",
+      "description": "长袖交叉衬衫 长袖网眼后背上衣 健身背心 网眼背心 露背交叉背心 露背肌肉背心 宽松露背上衣 长袖短款上衣 露背……",
+      "specifications": {
+        "类目": "T恤",
+        "尺寸": "0.1 x 0.1 x 0.1 英寸；1.6 盎司",
+        "型号": "600H-6688"
+      },
+      "tags": [
+        "健身",
+        "宽松",
+        "长袖",
+        "拇指孔"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B07X3SXVFG",
+      "sourceUrl": "https://www.amazon.com/Fihapyli-Workout-Running-T-Shirt-Stretchy/dp/B076BRK3JM",
+      "nameOriginal": "ICTIVE Long Sleeve Workout Shirts for Women Loose fit Workout Tops for Women Running Shirts Women with Thumb Hole"
+    },
+    {
+      "id": "amz-B08PCD9HCW",
+      "name": "New Balance 女式 Fresh Foam Sport V2",
+      "brand": "New Balance",
+      "category": "运动",
+      "price": 412,
+      "originalPrice": 576,
+      "rating": 4.3,
+      "reviews": 1546,
+      "sales": 0,
+      "stock": 62,
+      "image": "https://m.media-amazon.com/images/I/81t7FKP2X6L._AC_UX575_.jpg",
+      "description": "New Balance Fresh Foam Sport v2 跑鞋百搭易穿，让你从晨跑轻松过渡到日常出行，舒适又有型。Ground Contact Fre……",
+      "specifications": {
+        "类目": "公路跑",
+        "尺寸": "10 x 15 x 6 英寸；2 磅",
+        "型号": "WSPTSSW2"
+      },
+      "tags": [
+        "百搭",
+        "舒适",
+        "跑步"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08PCD9HCW",
+      "sourceUrl": "https://www.amazon.com/New-Balance-Womens-Fresh-Running/dp/B08BN9X5MB",
+      "nameOriginal": "New Balance Womens Fresh Foam Sport V2"
+    },
+    {
+      "id": "amz-B08JCWNNNW",
+      "name": "Willit 女式加绒打底裤 保暖冬季瑜伽裤 温暖跑步紧身裤 带口袋",
+      "brand": "WILLIT",
+      "category": "运动",
+      "price": 209,
+      "originalPrice": 238,
+      "rating": 4.5,
+      "reviews": 1544,
+      "sales": 0,
+      "stock": 113,
+      "image": "https://m.media-amazon.com/images/I/61wfGzydWYL._AC_UY550_.jpg",
+      "description": "Willit 女式加绒打底裤采用柔软抓绒面料，让你保持温暖舒适。高腰收腹设计可修饰腰腹线条，打造出色……",
+      "specifications": {
+        "类目": "打底裤"
+      },
+      "tags": [
+        "保暖",
+        "舒适",
+        "加绒",
+        "高腰",
+        "带口袋"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08JCWNNNW",
+      "sourceUrl": "https://www.amazon.com/Willit-Leggings-Thermal-Running-Workout/dp/B08M44DPVR",
+      "nameOriginal": "Willit Women's Fleece Lined Leggings Thermal Winter Yoga Pants Warm Running Tights with Pockets"
+    },
+    {
+      "id": "amz-B08LG4YVZD",
+      "name": "Reebok 女式 Nanoflex Tr 综合训练鞋",
+      "brand": "Reebok",
+      "category": "运动",
+      "price": 347,
+      "originalPrice": 347,
+      "rating": 3.8,
+      "reviews": 1440,
+      "sales": 0,
+      "stock": 266,
+      "image": "https://m.media-amazon.com/images/I/71hfgcX-FYL.__AC_SY395_SX395_QL70_ML2_.jpg",
+      "description": "Reebok 是一个源自美国的全球品牌，拥有深厚的健身传统和明确使命：成为全球最佳健身品牌。这并不容易。但如果有一个品牌……",
+      "specifications": {
+        "类目": "健身与综合训练",
+        "尺寸": "8 x 4 x 7 英寸；3 磅",
+        "型号": "LAF53"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B08LG4YVZD",
+      "sourceUrl": "https://www.amazon.com/Reebok-Womens-Nanoflex-Cross-Trainer/dp/B096M1N52J",
+      "nameOriginal": "Reebok Women's Nanoflex Tr Cross Trainer"
+    },
+    {
+      "id": "amz-B08B7SPJB6",
+      "name": "K-Swiss 女式 Tubes 200 训练鞋",
+      "brand": "K-Swiss",
+      "category": "运动",
+      "price": 432,
+      "originalPrice": 432,
+      "rating": 4.5,
+      "reviews": 1390,
+      "sales": 0,
+      "stock": 22,
+      "image": "https://m.media-amazon.com/images/I/617tcRPVsjL._AC_UY695_.jpg",
+      "description": "推出 Tubes Comfort 200，一款采用我们专利 Tubes 系统的训练鞋。该技术通过独立调节的管状结构提供无与伦比的舒适性和缓震性……",
+      "specifications": {
+        "类目": "健身与综合训练",
+        "尺寸": "13 x 10 x 5 英寸；3 磅",
+        "型号": "87112-673-M"
+      },
+      "tags": [
+        "舒适"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B08B7SPJB6",
+      "sourceUrl": "https://www.amazon.com/K-Swiss-Womens-Comfort-Training-Sneaker/dp/B08B8XLFPH",
+      "nameOriginal": "K-Swiss Women's Tubes 200 Training Shoe"
+    },
+    {
+      "id": "amz-B01LMN6D40",
+      "name": "Physicians Formula Murumuru 黄油古铜粉｜奶油微光化妆品｜浅色古铜",
+      "brand": "Physicians Formula",
+      "category": "美妆",
+      "price": 86,
+      "originalPrice": 119,
+      "rating": 4.6,
+      "reviews": 34027,
+      "sales": 0,
+      "stock": 40,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51PncsDJRdL._SX300_SY300_QL70_ML2_.jpg",
+      "description": "借助 Physicians Formula Murumuru 黄油古铜粉，为您的肤色增添一抹温暖。感受 murumuru 黄油、tucuma 黄油和 cupuaçu 黄油的焕活力量……",
+      "specifications": {
+        "类目": "古铜粉",
+        "重量": "0.17 盎司 2.89 盎司 3.04 盎司 0.80 盎司 1.80 盎司",
+        "尺寸": "1.18 x 2.88 x 3.63 英寸；0.17 盎司",
+        "型号": "6675"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B01LMN6D40",
+      "sourceUrl": "https://www.amazon.com/dp/B01LMN6D40?language=en_US&currency=USD",
+      "nameOriginal": "Physicians Formula Murumuru Butter Bronzer| Cream Shimmer Makeup| Light Bronzer"
+    },
+    {
+      "id": "amz-B01AX90IYK",
+      "name": "Diurex Ultra 再 energizing 水丸 - 缓解水肿 - 感觉更好更轻盈 - 80 粒",
+      "brand": "Diurex",
+      "category": "美妆",
+      "price": 52,
+      "originalPrice": 94,
+      "rating": 4.3,
+      "reviews": 14534,
+      "sales": 0,
+      "stock": 222,
+      "image": "https://m.media-amazon.com/images/I/81gtUiCXv5L.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "您正在做所有正确的事情来消除周期性的水分重量，比如避免咸食和保持活跃。DIUREX Ultra 水丸可以帮助重新 energize 您减……的努力",
+      "specifications": {
+        "类目": "利尿剂",
+        "重量": "0.07 千克",
+        "尺寸": "2.13 x 5 x 2.13 英寸；2.33 盎司",
+        "型号": "55080"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B01AX90IYK",
+      "sourceUrl": "https://www.amazon.com/Diurex-Ultra-Formula-80-Pills-Relieves-Puffiness-Menstruation/dp/B00380DYOS",
+      "nameOriginal": "Diurex Ultra Re-Energizing Water Pills - Relieve Water Bloat - Feel Better & Less Heavy - 80 Count"
+    },
+    {
+      "id": "amz-B002ZS23ZA",
+      "name": "Tervis 旅行盖，10 盎司，黑色",
+      "brand": "Tervis",
+      "category": "美妆",
+      "price": 29,
+      "originalPrice": 29,
+      "rating": 4.7,
+      "reviews": 13104,
+      "sales": 0,
+      "stock": 485,
+      "image": "https://m.media-amazon.com/images/I/61wuy8yCZGL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "Tervis 保温饮具提供个性与性能的终极结合，带来纯粹的饮用享受。",
+      "specifications": {
+        "类目": "一次性饮具",
+        "重量": "0.02 磅",
+        "尺寸": "4\"宽 x 4\"高",
+        "型号": "旅行盖"
+      },
+      "tags": [
+        "保温"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B002ZS23ZA",
+      "sourceUrl": "https://www.amazon.com/dp/B002ZS23ZA?language=en_US&currency=USD",
+      "nameOriginal": "Tervis Travel Lid, 10 oz, Black"
+    },
+    {
+      "id": "amz-B00BDJBJDE",
+      "name": "MANIC PANIC After Midnight 染发剂",
+      "brand": "MANIC PANIC",
+      "category": "美妆",
+      "price": 86,
+      "originalPrice": 108,
+      "rating": 4.3,
+      "reviews": 12319,
+      "sales": 0,
+      "stock": 291,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51Br5-W3ZcL._SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "上一页 商店 万圣节商店 访问商店 商店 造型 商店 头发漂白剂 访问商店 商店 新 8 盎司经典罐！访问商店 商店 工具与配件 访问……",
+      "specifications": {
+        "类目": "染发剂",
+        "尺寸": "12 x 12 x 0.39 英寸；4.16 盎司",
+        "型号": "612600110012"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B00BDJBJDE",
+      "sourceUrl": "https://www.amazon.com/dp/B00BDJBJDE?language=en_US&currency=USD",
+      "nameOriginal": "MANIC PANIC After Midnight Hair Dye"
+    },
+    {
+      "id": "amz-B079BFJKWF",
+      "name": "GU Energy 原味运动营养能量胶 24支装 巧克力狂欢",
+      "brand": "GU Energy",
+      "category": "美妆",
+      "price": 209,
+      "originalPrice": 276,
+      "rating": 4.8,
+      "reviews": 10461,
+      "sales": 0,
+      "stock": 152,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/61H-IEgfpaL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "GU 原味运动营养能量胶是能量胶的开创者。1993年，Bill Vaughn 博士研发了世界上第一款能量胶，帮助女儿提升运动表现。",
+      "specifications": {
+        "类目": "咀嚼片与能量胶",
+        "尺寸": "6.75 x 4.5 x 2.5 英寸；1.1 磅",
+        "型号": "123046"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B079BFJKWF",
+      "sourceUrl": "https://www.amazon.com/dp/B079BFJKWF?language=en_US&currency=USD",
+      "nameOriginal": "GU Energy Original Sports Nutrition Energy Gel, 24-Count, Chocolate Outrage"
+    },
+    {
+      "id": "amz-B07Z3CT1D9",
+      "name": "Paul Sebastian 女士香水 DESIGN 淡花香 3.4 液量盎司",
+      "brand": "Paul Sebastian",
+      "category": "美妆",
+      "price": 158,
+      "originalPrice": 346,
+      "rating": 4.6,
+      "reviews": 7987,
+      "sales": 0,
+      "stock": 39,
+      "image": "https://m.media-amazon.com/images/I/21VG3QgnEBL._SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "Paul Sebastian 设计女士香水，优质香氛喷雾 3.4 盎司。",
+      "specifications": {
+        "类目": "淡香精",
+        "尺寸": "1.25 x 1.25 x 6.75 英寸；3.53 盎司",
+        "型号": "DESF4001"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B07Z3CT1D9",
+      "sourceUrl": "https://www.amazon.com/dp/B07Z3CT1D9?language=en_US&currency=USD",
+      "nameOriginal": "Women's Perfume, Fragrance by Paul Sebastian, Day or Night Soft Floral Scent, DESIGN, 3.4 Fl Oz"
+    },
+    {
+      "id": "amz-B0001VUZ3A",
+      "name": "Country Life Target Mins 钙镁钾 500毫克/500毫克/99毫克 180片",
+      "brand": "Country Life",
+      "category": "美妆",
+      "price": 125,
+      "originalPrice": 125,
+      "rating": 4.7,
+      "reviews": 6450,
+      "sales": 0,
+      "stock": 410,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/61ALd4ryGQL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "镁和钾有助于支持心血管健康。Country Life Target-Mins 钙镁钾支持心血管系统并促进骨骼健康。",
+      "specifications": {
+        "类目": "钾",
+        "尺寸": "3 x 3 x 5.5 英寸；1.16 磅",
+        "型号": "02486"
+      },
+      "tags": [],
+      "platform": "Amazon",
+      "sourceId": "B0001VUZ3A",
+      "sourceUrl": "https://www.amazon.com/dp/B0001VUZ3A?language=en_US&currency=USD",
+      "nameOriginal": "Country Life Target Mins Calcium Magnesium Potassium 500mg/500mg/99mg 180-Tablet"
+    },
+    {
+      "id": "wmt-51246983",
+      "name": "SmartyPants 女性复合维生素与欧米伽3鱼油软糖 含D3、C和B12 120粒",
+      "brand": "SmartyPants Vitamins",
+      "category": "美妆",
+      "price": 19,
+      "originalPrice": 19,
+      "rating": 4.4,
+      "reviews": 1885,
+      "sales": 0,
+      "stock": 32,
+      "image": "https://i5.walmartimages.com/seo/SmartyPants-Women-s-Multi-Omegas-3-Fish-Oil-Gummy-Vitamins-with-D3-C-B12-120ct_fdc8bf98-f9ea-42cb-b333-eb87df50c541.8268e1abd4624a753555d8324b4d8316.jpeg",
+      "description": "SmartyPants 女性复合维生素与欧米伽软糖含有超过15种优质营养素，包括欧米伽-3 EPA和DHA必需脂肪酸、维生素D3支持免疫健康、维生素B1。",
+      "specifications": {
+        "类目": "7876423",
+        "型号": "851356004804"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "51246983",
+      "sourceUrl": "https://www.walmart.com/ip/SmartyPants-Women-s-Multi-Omegas-3-Fish-Oil-Gummy-Vitamins-with-D3-C-B12-120ct/51246983",
+      "nameOriginal": "SmartyPants Women's Multi & Omegas 3 Fish Oil Gummy Vitamins with D3, C & B12 - 120ct"
+    },
+    {
+      "id": "lzd-5375830699_ID-14613846604",
+      "name": "Skin Game Kind 水润保湿霜 - 面部保湿霜（皮肤屏障）",
+      "brand": "Skin Game",
+      "category": "美妆",
+      "price": 127,
+      "originalPrice": 134,
+      "rating": 5,
+      "reviews": 1706,
+      "sales": 4527,
+      "stock": 323,
+      "image": "https://img.lazcdn.com/g/p/40c3e44ce6460f40909d7077124acda1.jpg_720x720q80.jpg_.webp",
+      "description": "Skin Game 印尼。skintific 适用于油性和暗沉肌肤。daia 洗衣粉 4 公斤促销装 2 件。多功能水槽沥水架。成人维生素 D。海飞丝洗发水。",
+      "specifications": {
+        "类目": "面部保湿霜"
+      },
+      "tags": [],
+      "platform": "Lazada",
+      "sourceId": "5375830699_ID-14613846604",
+      "sourceUrl": "https://www.lazada.co.id/products/skin-game-kind-watery-moisturizer-pelembab-wajah-skin-barrier-i5375830699-s14613846604.html",
+      "nameOriginal": "Skin Game Kind Watery Moisturizer - Pelembab Wajah (Skin Barrier)"
+    },
+    {
+      "id": "wmt-182202597",
+      "name": "NYX 巨型眼影笔（颜色：#610 - 牡蛎色）",
+      "brand": "NYX Professional Makeup",
+      "category": "美妆",
+      "price": 72,
+      "originalPrice": 72,
+      "rating": 4.2,
+      "reviews": 1316,
+      "sales": 0,
+      "stock": 48,
+      "image": "https://i5.walmartimages.com/seo/NYX-Jumbo-Eye-Pencil-Color-610-Oyster_7030a8ad-865d-4fc1-9e33-f850d5284c9a.31bc8f09d644b3708b2918c65f6e6365.jpeg",
+      "description": "产品介绍：一款可用作眼影的多功能亮泽眼线笔。产品功效：我们的奶油质地巨型眼影笔由矿物油和粉末混合制成，顺滑易涂。",
+      "specifications": {
+        "类目": "5725509",
+        "型号": "800897115081"
+      },
+      "tags": [],
+      "platform": "Walmart",
+      "sourceId": "182202597",
+      "sourceUrl": "https://www.walmart.com/ip/NYX-Jumbo-Eye-Pencil-Color-610-Oyster/182202597",
+      "nameOriginal": "NYX Jumbo Eye Pencil (Color : #610 - Oyster)"
+    },
+    {
+      "id": "lzd-4409612977_PH-24811155525",
+      "name": "【买一送一】Far Away 香水 花香调 淡香水 持久留香 女士香水 50ML",
+      "brand": "No Brand",
+      "category": "美妆",
+      "price": 16,
+      "originalPrice": 25,
+      "rating": 4.8,
+      "reviews": 1088,
+      "sales": 6557,
+      "stock": 154,
+      "image": "https://img.lazcdn.com/g/p/845d9f95dc0543504265518aed6f0cb1.jpg_720x720q80.jpg_.webp",
+      "description": "探索 Far Away 香水的魅力，持久花香调，专为女性设计。这款淡香水采用 50ML 瓶装，兼具优雅与便携。",
+      "specifications": {
+        "类目": "女士"
+      },
+      "tags": [
+        "便携",
+        "花香",
+        "持久",
+        "女士",
+        "淡香水"
+      ],
+      "platform": "Lazada",
+      "sourceId": "4409612977_PH-24811155525",
+      "sourceUrl": "https://www.lazada.com.ph/products/buy-1-take-1far-away-perfume-floral-fragrance-eau-de-toilette-long-lasting-for-women-perfume-50ml-i4409612977-s24811155525.html",
+      "nameOriginal": "【BUY 1 TAKE 1】Far Away Perfume Floral Fragrance EAU DE Toilette Long Lasting for Women Perfume 50ML"
+    },
+    {
+      "id": "amz-B002LMWRSS",
+      "name": "Nature's Way 甜菜根，每份 1,000 毫克，100 粒素食胶囊",
+      "brand": "Nature's Way",
+      "category": "美妆",
+      "price": 61,
+      "originalPrice": 76,
+      "rating": 4.4,
+      "reviews": 1047,
+      "sales": 0,
+      "stock": 64,
+      "image": "https://images-na.ssl-images-amazon.com/images/W/WEBP_402378-T1/images/I/61N2PDXdznL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
+      "description": "甜菜根富含植物营养素，是当今市场上较受欢迎的植物之一。甜菜根支持抗氧化途径和自由基清除活性。*",
+      "specifications": {
+        "类目": "膳食纤维",
+        "尺寸": "2.1 x 2.1 x 4.1 英寸；2.24 盎司",
+        "型号": "10400"
+      },
+      "tags": [
+        "抗氧化",
+        "素食",
+        "膳食纤维"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B002LMWRSS",
+      "sourceUrl": "https://www.amazon.com/dp/B002LMWRSS?language=en_US&currency=USD",
+      "nameOriginal": "Nature's Way Beet Root, 1,000 mg per serving, 100 Vegetarian Capsules"
+    },
+    {
+      "id": "amz-B01LMP2MG6",
+      "name": "GU Energy Roctane 超耐力能量胶，24 支装，樱桃青柠味",
+      "brand": "GU Energy",
+      "category": "美妆",
+      "price": 353,
+      "originalPrice": 449,
+      "rating": 4.7,
+      "reviews": 966,
+      "sales": 0,
+      "stock": 202,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/61id7yxV8TL.__AC_SY300_SX300_QL70_FMwebp_.jpg",
+      "description": "GU Roctane 超耐力能量胶是 GU 原版运动能量胶的高强度产品。专为极限和长时间耐力活动设计，GU Roctane…",
+      "specifications": {
+        "类目": "咀嚼片与能量胶",
+        "尺寸": "6.75 x 4.5 x 2.5 英寸；1.69 磅",
+        "型号": "123068"
+      },
+      "tags": [
+        "能量胶",
+        "耐力",
+        "运动"
+      ],
+      "platform": "Amazon",
+      "sourceId": "B01LMP2MG6",
+      "sourceUrl": "https://www.amazon.com/dp/B01LMP2MG6?language=en_US&currency=USD",
+      "nameOriginal": "GU Energy Roctane Ultra Endurance Energy Gel, 24-Count, Cherry Lime"
+    },
+    {
+      "id": "wmt-5193241215",
+      "name": "NYX Professional Makeup Brow Powder Louder 眉笔，柔棕色，1 支，柔棕色，0.04 盎司",
+      "brand": "NYX Professional Makeup",
+      "category": "美妆",
+      "price": 57,
+      "originalPrice": 57,
+      "rating": 4.6,
+      "reviews": 925,
+      "sales": 0,
+      "stock": 33,
+      "image": "https://i5.walmartimages.com/seo/NYX-Professional-Makeup-Brow-Powder-Louder-Brow-Pencil-Soft-Brown-1-Count-Soft-Brown-0-04-oz_07cf4504-9705-4e4f-b3cb-1c98f807fa54.ce088ced873497ed0476e3c9ddee0791.jpeg",
+      "description": "认识我们的新款 Powder Louder 眉笔！丰盈眉毛，提升节奏！轻松打造饱满形状，适合任何氛围的色调。丰盈、羽化并增厚您的眉形…",
+      "specifications": {
+        "类目": "5725509",
+        "型号": "800897257477"
+      },
+      "tags": [
+        "眉笔",
+        "丰盈",
+        "柔棕色"
+      ],
+      "platform": "Walmart",
+      "sourceId": "5193241215",
+      "sourceUrl": "https://www.walmart.com/ip/NYX-Professional-Makeup-Brow-Powder-Louder-Brow-Pencil-Soft-Brown-1-Count-Soft-Brown-0-04-oz/5193241215",
+      "nameOriginal": "NYX Professional Makeup Brow Powder Louder, Brow Pencil, Soft Brown, 1 Count, Soft Brown, 0.04 oz"
+    },
+    {
+      "id": "wmt-674437651",
+      "name": "Vanity Fair 女士 Beauty Back 显小文胸 款式-76-080",
+      "brand": "Vanity Fair",
+      "category": "美妆",
+      "price": 27,
+      "originalPrice": 317,
+      "rating": 4.5,
+      "reviews": 821,
+      "sales": 0,
+      "stock": 115,
+      "image": "https://i5.walmartimages.com/seo/Vanity-Fair-Womens-Beauty-Back-Minimizer-Bra-Style-76-080_0c4fb2cf-a22d-4496-9495-e75d476f8466.956c1066960c5decff18aa28596db47c.jpeg",
+      "description": "这款文胸可缩小胸围最多 1 1/2 英寸，3 列 2 排钩眼后扣，无缝弹力超细纤维，双层钢圈罩杯提供塑形和支撑，光滑…",
+      "specifications": {
+        "类目": "1225395",
+        "型号": "083626156443"
+      },
+      "tags": [
+        "弹力",
+        "显小",
+        "文胸",
+        "支撑"
+      ],
+      "platform": "Walmart",
+      "sourceId": "674437651",
+      "sourceUrl": "https://www.walmart.com/ip/Vanity-Fair-Womens-Beauty-Back-Minimizer-Bra-Style-76-080/674437651",
+      "nameOriginal": "Vanity Fair Womens Beauty Back Minimizer Bra Style-76-080"
+    },
+    {
+      "id": "lzd-2909661821_MY-16264412739",
+      "name": "迷你纳米喷雾补水仪 面部喷雾 30ML 蒸脸器 美容喷雾 USB 可充电 保湿喷雾补水仪",
+      "brand": "No brands",
+      "category": "美妆",
+      "price": 11,
+      "originalPrice": 11,
+      "rating": 4.8,
+      "reviews": 708,
+      "sales": 9788,
+      "stock": 409,
+      "image": "https://img.lazcdn.com/g/p/c1ff3ab5ac854e895fb820d0a8197dec.jpg_720x720q80.jpg_.webp",
+      "description": "廉价可爱纳米喷雾 Rm 1：2 - 纳米喷雾机（无毒、无味、防震），防漏。纳米喷雾多雾：整洁、更强、比纳米更有效…",
+      "specifications": {
+        "类目": "面部护肤工具"
+      },
+      "tags": [
+        "可充电",
+        "防震",
+        "补水",
+        "便携",
+        "纳米喷雾"
+      ],
+      "platform": "Lazada",
+      "sourceId": "2909661821_MY-16264412739",
+      "sourceUrl": "https://www.lazada.com.my/products/mini-nano-water-mist-sprayer-face-mist-30ml-facial-steamer-beauty-spray-usb-rechargeable-penyembur-air-i2909661821-s16264412739.html",
+      "nameOriginal": "Mini Nano Water Mist Sprayer Face Mist 30ML Facial Steamer Beauty Spray USB Rechargeable Penyembur Air 保湿喷雾补水仪"
+    },
+    {
+      "id": "bk-0593105419",
+      "name": "Where the Crawdads Sing",
+      "brand": "Delia Owens",
+      "category": "图书",
+      "price": 180,
+      "originalPrice": 180,
+      "rating": 4.8,
+      "reviews": 196572,
+      "sales": 0,
+      "stock": 158,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/516gRgupVeL._SX218_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Delia Owens；亚马逊图书类目：文学与小说 / 类型小说；评分 4.8 分（196572 条评价）；可选版本：Kindle、有声书、精装、平装。",
+      "specifications": {
+        "作者": "Delia Owens",
+        "类目": "类型小说",
+        "装帧": "Kindle / 有声书 / 精装 / 平装",
+        "重量": "12.3 盎司",
+        "尺寸": "5.07 x 1.14 x 5.89 英寸"
+      },
+      "tags": [
+        "小说"
+      ],
+      "platform": "Amazon",
+      "sourceId": "0593105419",
+      "sourceUrl": "https://www.amazon.com/dp/0593105419",
+      "nameOriginal": "Where the Crawdads Sing"
+    },
+    {
+      "id": "bk-0525559477",
+      "name": "The Midnight Library: A Novel",
+      "brand": "Matt Haig",
+      "category": "图书",
+      "price": 96,
+      "originalPrice": 187,
+      "rating": 4.3,
+      "reviews": 122000,
+      "sales": 0,
+      "stock": 220,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51Ifl1zXhJL._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Matt Haig；亚马逊图书类目：科幻与奇幻 / 科幻；评分 4.3 分（122000 条评价）；可选版本：Kindle、有声书、平装、有声 CD。",
+      "specifications": {
+        "作者": "Matt Haig",
+        "类目": "科幻",
+        "装帧": "Kindle / 有声书 / 平装 / 有声 CD",
+        "重量": "14.4 盎司",
+        "尺寸": "5.83 x 1.05 x 8.55 英寸"
+      },
+      "tags": [
+        "小说",
+        "科幻",
+        "奇幻"
+      ],
+      "platform": "Amazon",
+      "sourceId": "0525559477",
+      "sourceUrl": "https://www.amazon.com/dp/0525559477",
+      "nameOriginal": "The Midnight Library: A Novel"
+    },
+    {
+      "id": "bk-1250301696",
+      "name": "The Silent Patient",
+      "brand": "Alex Michaelides",
+      "category": "图书",
+      "price": 94,
+      "originalPrice": 194,
+      "rating": 4.5,
+      "reviews": 92537,
+      "sales": 0,
+      "stock": 84,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/41bsvxNUSdL._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Alex Michaelides；亚马逊图书类目：悬疑、惊悚与悬念 / 惊悚与悬念；评分 4.5 分（92537 条评价）；可选版本：Kindle、有声书、平装、有声 CD。",
+      "specifications": {
+        "作者": "Alex Michaelides",
+        "类目": "惊悚与悬念",
+        "装帧": "Kindle / 有声书 / 平装 / 有声 CD",
+        "重量": "1.15 磅",
+        "尺寸": "6.59 x 1.26 x 9.38 英寸"
+      },
+      "tags": [
+        "悬疑"
+      ],
+      "platform": "Amazon",
+      "sourceId": "1250301696",
+      "sourceUrl": "https://www.amazon.com/dp/1250301696",
+      "nameOriginal": "The Silent Patient"
+    },
+    {
+      "id": "bk-0062976583",
+      "name": "The Boy, the Mole, the Fox and the Horse",
+      "brand": "Charlie Mackesy",
+      "category": "图书",
+      "price": 75,
+      "originalPrice": 166,
+      "rating": 4.8,
+      "reviews": 87406,
+      "sales": 0,
+      "stock": 77,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/418D9yYGB3L._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Charlie Mackesy；亚马逊图书类目：漫画与图像小说 / 图像小说；评分 4.8 分（87406 条评价）；可选版本：Kindle、有声书、有声 CD。",
+      "specifications": {
+        "作者": "Charlie Mackesy",
+        "类目": "图像小说",
+        "装帧": "Kindle / 有声书 / 有声 CD",
+        "重量": "14.4 盎司",
+        "尺寸": "6 x 0.62 x 8 英寸"
+      },
+      "tags": [
+        "漫画",
+        "小说"
+      ],
+      "platform": "Amazon",
+      "sourceId": "0062976583",
+      "sourceUrl": "https://www.amazon.com/dp/0062976583",
+      "nameOriginal": "The Boy, the Mole, the Fox and the Horse"
+    },
+    {
+      "id": "bk-1250178606",
+      "name": "The Four Winds: A Novel",
+      "brand": "Kristin Hannah",
+      "category": "图书",
+      "price": 101,
+      "originalPrice": 209,
+      "rating": 4.5,
+      "reviews": 84324,
+      "sales": 0,
+      "stock": 287,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/514hnJtIdIS._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Kristin Hannah；亚马逊图书类目：文学与小说 / 类型小说；评分 4.5 分（84324 条评价）；可选版本：Kindle、有声书、平装、有声 CD。",
+      "specifications": {
+        "作者": "Kristin Hannah",
+        "类目": "类型小说",
+        "装帧": "Kindle / 有声书 / 平装 / 有声 CD",
+        "重量": "1.62 磅",
+        "尺寸": "6.62 x 1.41 x 9.99 英寸"
+      },
+      "tags": [
+        "小说"
+      ],
+      "platform": "Amazon",
+      "sourceId": "1250178606",
+      "sourceUrl": "https://www.amazon.com/dp/1250178606",
+      "nameOriginal": "The Four Winds: A Novel"
+    },
+    {
+      "id": "bk-0312577222",
+      "name": "The Nightingale: A Novel",
+      "brand": "Kristin Hannah",
+      "category": "图书",
+      "price": 80,
+      "originalPrice": 209,
+      "rating": 4.8,
+      "reviews": 80180,
+      "sales": 0,
+      "stock": 282,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51ws1gOKqdL._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Kristin Hannah；亚马逊图书类目：文学与小说 / 类型小说；评分 4.8 分（80180 条评价）；可选版本：Kindle、有声书、平装、大众市场平装、有声 CD。",
+      "specifications": {
+        "作者": "Kristin Hannah",
+        "类目": "类型小说",
+        "装帧": "Kindle / 有声书 / 平装 / 大众市场平装",
+        "重量": "1.55 磅",
+        "尺寸": "6.62 x 1.5 x 9.63 英寸"
+      },
+      "tags": [
+        "小说"
+      ],
+      "platform": "Amazon",
+      "sourceId": "0312577222",
+      "sourceUrl": "https://www.amazon.com/dp/0312577222",
+      "nameOriginal": "The Nightingale: A Novel"
+    },
+    {
+      "id": "bk-0349701474",
+      "name": "The Vanishing Half：入围2021年女性小说奖",
+      "brand": "Brit Bennett",
+      "category": "图书",
+      "price": 120,
+      "originalPrice": 120,
+      "rating": 4.4,
+      "reviews": 78423,
+      "sales": 0,
+      "stock": 250,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51uIHS3KfdL._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Brit Bennett；亚马逊图书类目：LGBTQ+ Books / Literature & Fiction；评分 4.4 分（78423 条评价）；可选版本：Kindle、Audiobook、Hardcover、Audio CD。",
+      "specifications": {
+        "作者": "Brit Bennett",
+        "类目": "文学与小说",
+        "装帧": "Kindle / 有声书 / 精装 / 有声CD",
+        "重量": "10.7 盎司",
+        "尺寸": "4.96 x 1.18 x 7.72 英寸"
+      },
+      "tags": [
+        "小说"
+      ],
+      "platform": "Amazon",
+      "sourceId": "0349701474",
+      "sourceUrl": "https://www.amazon.com/dp/0349701474",
+      "nameOriginal": "The Vanishing Half: Shortlisted for the Women's Prize 2021"
+    },
+    {
+      "id": "bk-031670704X",
+      "name": "Midnight Sun",
+      "brand": "Stephenie Meyer",
+      "category": "图书",
+      "price": 101,
+      "originalPrice": 202,
+      "rating": 4.8,
+      "reviews": 77749,
+      "sales": 0,
+      "stock": 439,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/41P0fRGbETL._SY291_BO1,204,203,200_QL40_ML2_.jpg",
+      "description": "作者 Stephenie Meyer；亚马逊图书类目：Teen & Young Adult / Science Fiction & Fantasy；评分 4.8 分（77749 条评价）；可选版本：Kindle、Audiobook、Paperback、Audio CD。",
+      "specifications": {
+        "作者": "Stephenie Meyer",
+        "类目": "科幻与奇幻",
+        "装帧": "Kindle / 有声书 / 平装 / 有声CD",
+        "重量": "2.05 磅",
+        "尺寸": "6.6 x 2.45 x 9.35 英寸"
+      },
+      "tags": [
+        "小说",
+        "科幻",
+        "奇幻"
+      ],
+      "platform": "Amazon",
+      "sourceId": "031670704X",
+      "sourceUrl": "https://www.amazon.com/dp/031670704X",
+      "nameOriginal": "Midnight Sun"
+    },
+    {
+      "id": "bk-1878424319",
+      "name": "The Four Agreements：个人自由的实用指南（托尔特克智慧书）",
+      "brand": "Don Miguel Ruiz",
+      "category": "图书",
+      "price": 42,
+      "originalPrice": 93,
+      "rating": 4.7,
+      "reviews": 69648,
+      "sales": 0,
+      "stock": 198,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51n1v-iqXBL._SY291_BO1,204,203,200_QL40_ML2_.jpg",
+      "description": "作者 Don Miguel Ruiz；亚马逊图书类目：Self-Help / Personal Transformation；评分 4.7 分（69648 条评价）；可选版本：Kindle、Audiobook、Hardcover、Audio CD。",
+      "specifications": {
+        "作者": "Don Miguel Ruiz",
+        "类目": "个人成长",
+        "装帧": "Kindle / 有声书 / 精装 / 有声CD",
+        "重量": "6.2 盎司",
+        "尺寸": "6 x 0.21 x 9 英寸"
+      },
+      "tags": [
+        "自我提升"
+      ],
+      "platform": "Amazon",
+      "sourceId": "1878424319",
+      "sourceUrl": "https://www.amazon.com/dp/1878424319",
+      "nameOriginal": "The Four Agreements: A Practical Guide to Personal Freedom (A Toltec Wisdom Book)"
+    },
+    {
+      "id": "bk-0241988268",
+      "name": "The Thursday Murder Club：创纪录的星期日泰晤士报第一名畅销书",
+      "brand": "Richard Osman",
+      "category": "图书",
+      "price": 141,
+      "originalPrice": 141,
+      "rating": 4.3,
+      "reviews": 67564,
+      "sales": 0,
+      "stock": 179,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51B1gVTuEdS._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Richard Osman；亚马逊图书类目：Mystery, Thriller & Suspense / Thrillers & Suspense；评分 4.3 分（67564 条评价）；可选版本：Kindle、Audiobook、Hardcover、Audio CD。",
+      "specifications": {
+        "作者": "Richard Osman",
+        "类目": "惊悚与悬疑",
+        "装帧": "Kindle / 有声书 / 精装 / 有声CD",
+        "重量": "9.8 盎司",
+        "尺寸": "5.08 x 0.94 x 7.8 英寸"
+      },
+      "tags": [
+        "悬疑"
+      ],
+      "platform": "Amazon",
+      "sourceId": "0241988268",
+      "sourceUrl": "https://www.amazon.com/dp/0241988268",
+      "nameOriginal": "The Thursday Murder Club: The Record-Breaking Sunday Times Number One Bestseller"
+    },
+    {
+      "id": "bk-0385545967",
+      "name": "A Time for Mercy（Jake Brigance）",
+      "brand": "John Grisham",
+      "category": "图书",
+      "price": 86,
+      "originalPrice": 216,
+      "rating": 4.6,
+      "reviews": 65351,
+      "sales": 0,
+      "stock": 253,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51Q4FT2AIfL._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 John Grisham；亚马逊图书类目：Mystery, Thriller & Suspense / Thrillers & Suspense；评分 4.6 分（65351 条评价）；可选版本：Kindle、Audiobook、Paperback、Mass Market Paperback、Audio CD。",
+      "specifications": {
+        "作者": "John Grisham",
+        "类目": "惊悚与悬疑",
+        "装帧": "Kindle / 有声书 / 平装 / 大众市场平装",
+        "重量": "1.75 磅",
+        "尺寸": "6.5 x 1.5 x 9.6 英寸"
+      },
+      "tags": [
+        "悬疑"
+      ],
+      "platform": "Amazon",
+      "sourceId": "0385545967",
+      "sourceUrl": "https://www.amazon.com/dp/0385545967",
+      "nameOriginal": "A Time for Mercy (Jake Brigance)"
+    },
+    {
+      "id": "bk-0545261244",
+      "name": "The Wonky Donkey",
+      "brand": "Craig Smith",
+      "category": "图书",
+      "price": 38,
+      "originalPrice": 58,
+      "rating": 4.8,
+      "reviews": 64835,
+      "sales": 0,
+      "stock": 164,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51cHCkvvKiL._SX218_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Craig Smith；亚马逊图书类目：Children's Books / Animals；评分 4.8 分（64835 条评价）；可选版本：Kindle、Spiral-bound、Board book。",
+      "specifications": {
+        "作者": "Craig Smith",
+        "类目": "动物",
+        "装帧": "Kindle / 螺旋装订 / 纸板书",
+        "重量": "2.56 盎司",
+        "尺寸": "8.8 x 0.2 x 8.6 英寸"
+      },
+      "tags": [
+        "童书"
+      ],
+      "platform": "Amazon",
+      "sourceId": "0545261244",
+      "sourceUrl": "https://www.amazon.com/dp/0545261244",
+      "nameOriginal": "The Wonky Donkey"
+    },
+    {
+      "id": "bk-1641526270",
+      "name": "My First Learn to Write Workbook：儿童控笔、描线、字母练习",
+      "brand": "Crystal Radke",
+      "category": "图书",
+      "price": 33,
+      "originalPrice": 65,
+      "rating": 4.8,
+      "reviews": 64649,
+      "sales": 0,
+      "stock": 205,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51ABc0hukNL._SX218_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Crystal Radke；亚马逊图书类目：儿童图书 / 教育与参考；评分 4.8 分（64649 条评价）；可选版本：螺旋装订。",
+      "specifications": {
+        "作者": "Crystal Radke",
+        "类目": "教育与参考",
+        "装帧": "螺旋装订",
+        "重量": "10.4 盎司",
+        "尺寸": "8.4 x 0.3 x 10.8 英寸"
+      },
+      "tags": [
+        "童书",
+        "写作",
+        "教育"
+      ],
+      "platform": "Amazon",
+      "sourceId": "1641526270",
+      "sourceUrl": "https://www.amazon.com/dp/1641526270",
+      "nameOriginal": "My First Learn to Write Workbook: Practice for Kids with Pen Control, Line Tracing, Letters, and More!"
+    },
+    {
+      "id": "bk-0060887966",
+      "name": "The Alchemist - 礼品版",
+      "brand": "Paulo Coelho",
+      "category": "图书",
+      "price": 270,
+      "originalPrice": 270,
+      "rating": 4.7,
+      "reviews": 64522,
+      "sales": 0,
+      "stock": 21,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/41RV3UHnwsL._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Paulo Coelho；亚马逊图书类目：参考 / 写作、研究与出版指南；评分 4.7 分（64522 条评价）；可选版本：Kindle、有声书、平装、大众市场平装、有声 CD。",
+      "specifications": {
+        "作者": "Paulo Coelho",
+        "类目": "写作、研究与出版指南",
+        "装帧": "Kindle / 有声书 / 平装 / 大众市场平装",
+        "重量": "1.26 磅",
+        "尺寸": "5.5 x 0.71 x 8.25 英寸"
+      },
+      "tags": [
+        "写作"
+      ],
+      "platform": "Amazon",
+      "sourceId": "0060887966",
+      "sourceUrl": "https://www.amazon.com/dp/0060887966",
+      "nameOriginal": "The Alchemist - Gift Edition"
+    },
+    {
+      "id": "bk-1612680178",
+      "name": "Rich Dad Poor Dad：富人教给孩子而穷人和中产不教的金钱观",
+      "brand": "Robert T. Kiyosaki",
+      "category": "图书",
+      "price": 105,
+      "originalPrice": 129,
+      "rating": 4.7,
+      "reviews": 63996,
+      "sales": 0,
+      "stock": 0,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51u8ZRDCVoL._SY291_BO1,204,203,200_QL40_FMwebp_.jpg",
+      "description": "作者 Robert T. Kiyosaki；亚马逊图书类目：商业与理财 / 个人理财；评分 4.7 分（63996 条评价）；可选版本：Kindle、有声书、大众市场平装、MP3 CD。",
+      "specifications": {
+        "作者": "Robert T. Kiyosaki",
+        "类目": "个人理财",
+        "装帧": "Kindle / 有声书 / 大众市场平装 / MP3 CD",
+        "重量": "13.4 盎司",
+        "尺寸": "6 x 1 x 8.75 英寸"
+      },
+      "tags": [
+        "理财"
+      ],
+      "platform": "Amazon",
+      "sourceId": "1612680178",
+      "sourceUrl": "https://www.amazon.com/dp/1612680178",
+      "nameOriginal": "Rich Dad Poor Dad: What the Rich Teach Their Kids About Money That the Poor and Middle Class Do Not!"
+    },
+    {
+      "id": "bk-1250209765",
+      "name": "American Dirt（奥普拉读书俱乐部）：小说",
+      "brand": "Jeanine Cummins",
+      "category": "图书",
+      "price": 121,
+      "originalPrice": 202,
+      "rating": 4.6,
+      "reviews": 61053,
+      "sales": 0,
+      "stock": 368,
+      "image": "https://images-na.ssl-images-amazon.com/images/I/51hwe011M+L._SY344_BO1,204,203,200_.jpg",
+      "description": "作者 Jeanine Cummins；亚马逊图书类目：文学与小说 / 类型小说；评分 4.6 分（61053 条评价）；可选版本：Kindle、有声书、平装、大众市场平装、有声 CD。",
+      "specifications": {
+        "作者": "Jeanine Cummins",
+        "类目": "类型小说",
+        "装帧": "Kindle / 有声书 / 平装 / 大众市场平装",
+        "重量": "1.3 磅",
+        "尺寸": "6.58 x 1.42 x 9.59 英寸"
+      },
+      "tags": [
+        "小说"
+      ],
+      "platform": "Amazon",
+      "sourceId": "1250209765",
+      "sourceUrl": "https://www.amazon.com/dp/1250209765",
+      "nameOriginal": "American Dirt (Oprah's Book Club): A Novel"
+    }
+  ],
+  "localizedAt": "2026-09-24T08:30:45.248Z",
+  "localizeNote": "商品文案（名称/描述/标签/规格值）已本地化为中文；价格、评分、评论数、图片、ASIN 为原始真实数据；销量仅 Amazon / Lazada 有真实字段，其余来源记 0 并改展示评价数"
+}

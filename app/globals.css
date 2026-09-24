@@ -1,0 +1,192 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* Tailwind v4：class 策略暗色模式（html.dark） */
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   设计令牌（Design Tokens）
+   - 中性色 6 档 + 1 个强调色（活力橙 #FF6B35）
+   - 间距遵循 8pt 栅格（Tailwind 默认 4px 基准）
+   - 圆角分级：小控件 6px / 按钮 8px / 卡片 12px / 气泡 16px
+   - 阴影仅 2 级，只用于表达真实层级
+   ============================================================ */
+:root {
+  /* 中性色 6 档：n0 最浅 -> n900 最深 */
+  --n0: #ffffff;
+  --n50: #f8f9fa;
+  --n100: #f1f3f5;
+  --n200: #e5e7eb;
+  --n400: #9ba1a9;
+  --n600: #6b7280;
+  --n900: #1a1d21;
+
+  /* 强调色：活力橙 */
+  --brand: #ff6b35;
+  /* 深橙：橙色文字（价格/链接）在浅底上达到 AA（4.59:1） */
+  --brand-ink: #d2440a;
+  /* 橙色浅底（标签/选中态背景） */
+  --brand-soft: #fff1ea;
+  /* 品牌色上的前景色：深墨色，对比度 5.96:1（AA） */
+  --brand-contrast: #1a1d21;
+
+  --background: var(--n50);
+  --surface: var(--n0);
+  --surface-muted: var(--n100);
+  --sidebar: #ffffff;
+  --foreground: var(--n900);
+  --muted-foreground: var(--n600);
+  --border: var(--n200);
+  --border-strong: #d5d9de;
+
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-contrast);
+  --primary-ink: var(--brand-ink);
+  --primary-soft: var(--brand-soft);
+
+  --success: #1f7a4d;
+  --success-soft: #e8f5ee;
+  --warning: #9a5b00;
+  --warning-soft: #fdf3e2;
+  --danger: #b42318;
+  --danger-soft: #fdeceb;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-bubble: 16px;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-raised: 0 6px 20px rgba(0, 0, 0, 0.12);
+
+  --font-sans: 'Inter', 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC',
+    'Microsoft YaHei', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.dark {
+  --n0: #262a2f;
+  --n50: #1e2125;
+  --n100: #2b3036;
+  --n200: #363b42;
+  --n400: #8b9199;
+  --n600: #9ba1a9;
+  --n900: #f2f3f5;
+
+  --background: #1e2125;
+  --surface: #262a2f;
+  --surface-muted: #2b3036;
+  --sidebar: #17191c;
+  --foreground: #f2f3f5;
+  --muted-foreground: #9ba1a9;
+  --border: #363b42;
+  --border-strong: #454b53;
+
+  --primary-ink: #ff8a5c;
+  --primary-soft: #3a251b;
+
+  --success: #5fd39a;
+  --success-soft: #1b2f26;
+  --warning: #e3b341;
+  --warning-soft: #33290f;
+  --danger: #ff8b80;
+  --danger-soft: #3a201e;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-raised: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-sidebar: var(--sidebar);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-bubble: var(--radius-bubble);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+
+  --font-sans: var(--font-sans);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--primary-soft);
+    color: var(--primary-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  /* 统一滚动条：细、克制、无渐变 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--n400);
+    background-clip: content-box;
+  }
+}
+
+@utility panel-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
