@@ -123,16 +123,16 @@
 
 | # | 现象 | 定位 | 影响 | 复现 |
 | --- | --- | --- | --- | --- |
-| C1 | 条件串出现重复词（实测「图书 · 小说 · 小说」） | `describeFilters`（[ruleParser.ts](file:///d:/TraeProjects/A-eshop/lib/agent/ruleParser.ts#L301-L316)）按 品类 → keywords → tags 依次拼接，**不做跨列表去重**；题材词在两份列表里同时出现时就会重复 | 纯展示层；检索结果不受影响（命中 8 件一致） | 同一 thread 先走 LLM 路径（把「小说」写进 keywords）→ 切无 Key 再发同一问（规则路径把「小说」归 tags）→ 合并后重复 |
+| C1 | 条件串出现重复词（实测「图书 · 小说 · 小说」） | `describeFilters`（`lib/agent/ruleParser.ts`）按 品类 → keywords → tags 依次拼接，**不做跨列表去重**；题材词在两份列表里同时出现时就会重复 | 纯展示层；检索结果不受影响（命中 8 件一致） | 同一 thread 先走 LLM 路径（把「小说」写进 keywords）→ 切无 Key 再发同一问（规则路径把「小说」归 tags）→ 合并后重复 |
 | C2 | 意图解析面板字段名不统一：同一条链路上 LLM 路径显示「关键词 小说」、规则路径显示「功能 小说」 | 两种解析器对同一题材词的归类不同（keywords vs tags），面板按各自字段渲染 | 纯展示层；可能被审查者追问 | 同一问法分别在有 Key / 无 Key 下各发一次 |
-| C3 | LLM 失败时时间线原样显示服务商错误文本，其中含服务商掩码后的密钥末位 | `parseIntent` 把 `llmError` 截 80 字写进 `sourceText`（[parseIntent.ts](file:///d:/TraeProjects/A-eshop/lib/agent/nodes/parseIntent.ts#L169-L175)） | 低风险：由服务商掩码，只露末 4 位；好处是现场能立刻看出失败原因。实测用**测试用无效值**（`invalid-planb-rehearsal`），未涉及真实密钥 | 把 `LLM_API_KEY` 置为无效值后重启 |
+| C3 | LLM 失败时时间线原样显示服务商错误文本，其中含服务商掩码后的密钥末位 | `parseIntent` 把 `llmError` 截 80 字写进 `sourceText`（`lib/agent/nodes/parseIntent.ts`） | 低风险：由服务商掩码，只露末 4 位；好处是现场能立刻看出失败原因。实测用**测试用无效值**（`invalid-planb-rehearsal`），未涉及真实密钥 | 把 `LLM_API_KEY` 置为无效值后重启 |
 
 ### 6.3 已解释、非缺陷（评审时可能被问到）
 
 | 现象 | 解释 |
 | --- | --- |
 | 干净状态首轮没有「记起你的偏好」 | 画像为空 → 无记忆可带出；本轮搜索会写入「浏览」信号，第 2 步起才会出现该条目 |
-| 输入里有「小说」却说「本轮输入未给出品类/关键词」 | 判据是**规则解析出的当前输入条件**（[parseIntent.ts](file:///d:/TraeProjects/A-eshop/lib/agent/nodes/parseIntent.ts#L191)）：题材词（小说）归 tags，既不算品类也不算关键词——脚本第 1 步的注释已写明这条判据 |
+| 输入里有「小说」却说「本轮输入未给出品类/关键词」 | 判据是**规则解析出的当前输入条件**（`lib/agent/nodes/parseIntent.ts` 的 `inputHasScope`）：题材词（小说）归 tags，既不算品类也不算关键词——脚本第 1 步的注释已写明这条判据 |
 | 时间线「按轮重置」，看不到上一轮的条目 | 设计如此：前端每轮 `timeline: []`（`store/use-agent-store.ts`），服务端 `toolCallLog` 也是本轮裁剪。**演示时每一步都看当轮时间线**，不要去找历史条目 |
 | 实时价与快照价完全相同（¥376.4 / ¥99 / ¥237.8） | 真实结果：快照构建时刻与现在相隔不久；脚本第 9 步的「诚实说明」已写 |
 
