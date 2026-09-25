@@ -13,6 +13,12 @@
  *   node scripts/build-real-catalog.mjs --per=20        # 想缩小目录时显式传 --per
  *   node --env-file=.env.local scripts/build-real-catalog.mjs --source=justoneapi --per=4
  *
+ * 跨产物继承：目标产物已存在时，写盘前按「id + 英文原文一致」把上一版**已本地化**的
+ * 文案字段（name / description / tags / specifications / nameOriginal）接回新构建结果上，
+ * 并在构建输出里打印「继承已本地化 N 条、待翻译 M 条」。因此「build → localize」两步
+ * 就是完整流程、**不需要任何手工补救**：重建既不会丢掉已验收的中文文案，
+ * 也不会白跑一次全量重译（见 docs/project-status.md §8 第 23 条）。
+ *
  * 币种处理：价格字段按 currency 查固定汇率表折算成人民币；汇率表未覆盖的币种直接跳过，
  * 而不是当成美元处理（否则 93500 IDR 会被当成 93500 美元判越界）。
  *
@@ -23,7 +29,10 @@
  *         部分来源缺失的库存件数（由「是否有货」信号 + id 哈希派生）——
  *           **仅作为内部可用性模型（缺货不可加购 / 加购上限），界面不展示件数**；
  *         图书简介（该数据集的 description 是 A+ 页面原始 CSS，不可用，改为用
- *                 作者/类目/评分/版本等真实字段拼装）
+ *                 作者/类目/评分/版本等真实字段拼装）；
+ *         少数商品的描述（综合源的 description 命中 A+ 页 CSS 特征时同样不可用，
+ *                 改用品牌/类目/商品参数等真实字段拼装，与图书简介同一套规则；
+ *                 产物里带 `descriptionDerived: true` 标记，件数写进 note）
  *   不编造：来源没有销量字段时 sales 记 0（界面改展示真实评价数），
  *           不用「评价数 × 系数」估算一个假的销量（见 normalizeRow 注释）
  */
@@ -36,7 +45,11 @@ import {
   CURRENCY_TO_CNY,
   PRICE_CNY_MAX,
   PRICE_CNY_MIN,
+  buildDerivedDescription,
   clean,
+  describeWithoutSourceDescription,
+  inheritLocalizedFields,
+  isAplusCss,
   perCategoryFromArgv,
   stableHash,
   stripInvisible,
@@ -517,6 +530,23 @@ function normalizeRow(row, headerIndex, source) {
     ...(clean(pick('model')) ? { 型号: clean(pick('model')) } : {}),
   };
 
+  // 源描述可能是亚马逊 A+ 详情页的整段 CSS（实测 2 件：5977 / 20747 字符）——
+  // 「长度 ≥ 60」的门挡不住它，本地化后只会译出几个可见字（「来自品牌」4 字）。
+  // 选择**降级而不是丢弃**（价格 / 图片 / 规格 / 评分都是真实的，丢弃会改变件数），
+  // 换成本项目既有的派生文案规则（与图书简介同一套拼装，见 catalog-shared.mjs）。
+  const ratingRounded = Number(ratingValue.toFixed(1));
+  const reviewsCount = reviews === null ? 0 : Math.round(reviews);
+  const descriptionDerived = isAplusCss(description);
+  const descriptionText = descriptionDerived
+    ? describeWithoutSourceDescription({
+        brand,
+        category,
+        specifications,
+        rating: ratingRounded,
+        reviews: reviewsCount,
+      })
+    : truncate(description, 180);
+
   return {
     product: {
       id,
@@ -525,8 +555,8 @@ function normalizeRow(row, headerIndex, source) {
       category,
       price,
       originalPrice,
-      rating: Number(ratingValue.toFixed(1)),
-      reviews: reviews === null ? 0 : Math.round(reviews),
+      rating: ratingRounded,
+      reviews: reviewsCount,
       // 来源没有销量字段时记 0，**不**用「评价数 × 系数」估算。
       // 之前这里写的是 Math.round((reviews ?? 0) * 1.6)：估算值会被界面当成
       // 「销量 3.4万」展示、被 LLM 当成事实引用、还被写进对比表与决策推荐，
@@ -535,7 +565,10 @@ function normalizeRow(row, headerIndex, source) {
       sales: sales !== null && sales > 0 ? Math.round(sales) : 0,
       stock,
       image,
-      description: truncate(description, 180),
+      description: descriptionText,
+      // 标记「该描述是派生文案」：字段分级表与产物 note 靠它保持诚实，
+      // 也是跨产物继承的「描述基准」判据（基准变了就不继承旧中文描述）
+      ...(descriptionDerived ? { descriptionDerived: true } : {}),
       specifications,
       tags: [],
       platform: source.platform,
@@ -589,6 +622,9 @@ function parseFormats(value) {
  *
  * 因此简介改为用**真实字段**拼装：作者、类目、评分与评价数、可选版本、首次上架时间。
  * 只陈述数据里确实存在的字段，不编造剧情梗概或营销卖点。
+ *
+ * 拼装规则本身在 `catalog-shared.mjs` 的 `buildDerivedDescription`——
+ * 与「A+ CSS 降级描述」共用同一份（两处各写一套拼接格式，文案风格立刻分叉）。
  */
 function buildBookDescription({ author, categories, rating, reviews, formats, firstAvailable }) {
   const parts = [];
@@ -600,7 +636,7 @@ function buildBookDescription({ author, categories, rating, reviews, formats, fi
   const formatNames = formats.map((item) => item.name).slice(0, 5);
   if (formatNames.length > 0) parts.push(`可选版本：${formatNames.join('、')}`);
   if (firstAvailable) parts.push(`首次上架 ${firstAvailable}`);
-  return truncate(`${parts.join('；')}。`, 180);
+  return buildDerivedDescription(parts);
 }
 
 /**
@@ -740,6 +776,27 @@ function isSameBook(a, b) {
   return shorter.length >= 12 && longer.startsWith(shorter);
 }
 
+/**
+ * 读取上一版产物里的商品（跨产物继承的输入）。
+ *
+ * 文件不存在 = 首次构建，返回空数组；解析失败时告警并同样退化为空数组——
+ * 产物损坏时宁可全量重译一次，也不能让构建中断，但必须在日志里说清发生了什么。
+ */
+async function readPreviousProducts(path) {
+  try {
+    const parsed = JSON.parse(await readFile(path, 'utf8'));
+    if (Array.isArray(parsed?.products)) return parsed.products;
+    console.warn('  [继承] 上一版产物缺少 products 数组，本次按全量重建（待翻译 = 全部）');
+    return [];
+  } catch (error) {
+    // 首次构建走 ENOENT 这一支（正常路径，不告警）
+    if (error?.code !== 'ENOENT') {
+      console.warn(`  [继承] 上一版产物读取失败（${error?.message ?? error}），本次按全量重建（待翻译 = 全部）`);
+    }
+    return [];
+  }
+}
+
 /* ---------- 主流程 ---------- */
 const buckets = Object.fromEntries(CATEGORIES.map((category) => [category, []]));
 const seen = new Set();
@@ -794,15 +851,26 @@ for (const source of SOURCES) {
   });
 }
 
-const products = [];
+const fresh = [];
 for (const category of CATEGORIES) {
-  products.push(...buckets[category].sort((a, b) => b.reviews - a.reviews).slice(0, PER_CATEGORY));
+  fresh.push(...buckets[category].sort((a, b) => b.reviews - a.reviews).slice(0, PER_CATEGORY));
 }
 
-if (products.length === 0) throw new Error('没有解析出任何商品，数据集结构可能已变化');
+if (fresh.length === 0) throw new Error('没有解析出任何商品，数据集结构可能已变化');
 
 const outPath = resolve(dirname(fileURLToPath(import.meta.url)), '../data/real-catalog.json');
 await mkdir(dirname(outPath), { recursive: true });
+
+/**
+ * 跨产物继承：目标产物已存在时，写盘前按「id + 英文原文一致」把上一版已本地化的
+ * 文案字段接回来（纯函数在 catalog-shared.mjs，单测在 lib/catalog/catalog-shared.test.ts）。
+ *
+ * 不继承的后果实测过：重建丢掉上一轮 localize 写的全部中文与 nameOriginal，
+ * 「跳过已本地化条目」拿到的是全量英文条目 → 420 条全量重译（70 批 / 221.5 秒），
+ * 且已验收文案漂移（112 件里只有 16 件逐字未变）。
+ */
+const previousProducts = await readPreviousProducts(outPath);
+const { products, inherited, pending } = inheritLocalizedFields(fresh, previousProducts);
 
 // 真实性说明里的「哪些平台有真实销量」必须从数据里算出来，不能手写：
 // 手写过一版写的是「Amazon/Lazada/Shopee」，但实测 Shopee 的 sold 字段
@@ -814,6 +882,14 @@ const salesClaim =
   platformsWithSales.length > 0
     ? `销量为 ${platformsWithSales.join(' / ')} 提供的真实字段`
     : '所有来源均无销量字段';
+
+// 「有几件商品的描述是 A+ CSS 降级来的」同样从数据里算，不手写：
+// 件数会随数据集变化（本轮实测 2 件），写死就会变成下一版元信息撒谎。
+const derivedDescriptionCount = products.filter((product) => product.descriptionDerived).length;
+const derivedClaim =
+  derivedDescriptionCount > 0
+    ? `；另有 ${derivedDescriptionCount} 件商品的源描述是亚马逊 A+ 页 CSS（不可用），已按真实字段降级为派生文案（与图书简介同源规则）`
+    : '';
 
 await writeFile(
   outPath,
@@ -827,7 +903,7 @@ await writeFile(
       // 真实性边界必须写准：上一版这里声称「销量」也是真实数据，但 Walmart 与
       // 大部分 Amazon 商品的销量其实是「评价数 × 1.6」估算出来的，元信息在撒谎。
       // 现在改为逐字段说明来源，且「哪些平台有销量」由数据算出（见 salesClaim）。
-      note: `标题/品牌/价格/原价/评分/评论数/图片/类目/商品参数/ASIN 为真实平台数据；${salesClaim}，其余来源无销量字段记 0（界面改展示真实评价数）；库存只有「有货/紧张/缺货」等级来自真实信号，件数为派生值且界面不展示；人民币价格按固定汇率折算；图书简介为派生文案`,
+      note: `标题/品牌/价格/原价/评分/评论数/图片/类目/商品参数/ASIN 为真实平台数据；${salesClaim}，其余来源无销量字段记 0（界面改展示真实评价数）；库存只有「有货/紧张/缺货」等级来自真实信号，件数为派生值且界面不展示；人民币价格按固定汇率折算；图书简介为派生文案${derivedClaim}`,
       count: products.length,
       products,
     },
@@ -849,3 +925,8 @@ console.log(`商品总数：${products.length}`);
 for (const category of CATEGORIES) {
   console.log(`  ${category}：候选 ${buckets[category].length} → 保留 ${Math.min(PER_CATEGORY, buckets[category].length)}`);
 }
+console.log(
+  previousProducts.length > 0
+    ? `继承已本地化 ${inherited} 条（id + 英文原文一致），待翻译 ${pending} 条`
+    : `继承已本地化 0 条（首次构建：无上一版产物），待翻译 ${pending} 条`,
+);

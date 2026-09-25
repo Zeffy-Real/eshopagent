@@ -18,3 +18,20 @@ export function truncate(text: string, max: number): string;
 export function stableHash(seed: string): number;
 export function deriveStock(id: string): number;
 export function isProductLike(value: unknown): boolean;
+
+export function isAplusCss(text: unknown): boolean;
+export function buildDerivedDescription(parts: readonly unknown[]): string;
+export function describeWithoutSourceDescription(input: {
+  brand?: unknown;
+  category?: unknown;
+  specifications?: Record<string, unknown> | null;
+  rating?: unknown;
+  reviews?: unknown;
+}): string;
+
+export const LOCALIZED_FIELDS: readonly string[];
+export function isLocalizedProduct(product: unknown): boolean;
+export function inheritLocalizedFields<T extends { id: string; name: string }>(
+  freshProducts: T[],
+  previousProducts: readonly unknown[],
+): { products: T[]; inherited: number; pending: number };

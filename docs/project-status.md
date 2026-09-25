@@ -2,10 +2,10 @@
 
 > 用途：供审查（review）使用。描述**当前真实状态**，包括已完成、已验证、未验证与已知问题，不做美化。
 >
-> - 数据快照生成时间：2026-09-24 06:30 UTC
-> - 文案本地化时间：2026-09-24 06:31 UTC
-> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `eeb8c49`；本次同步内容为**目录扩容（112 → 420 件）+ 界面新增『数据快照』只读面板**（2026-09-25）
-> - 校验状态：`tsc --noEmit` 0 错误；**334 个单测全绿（22 个文件）**；`next build` 通过（首页 418 kB / First Load 554 kB）
+> - 数据快照生成时间：2026-09-25 05:18 UTC
+> - 文案本地化时间：2026-09-25 05:18 UTC
+> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `e4de303`；本次同步内容为**跨产物继承（关 §8 第 23 条）+ A+ CSS 描述降级（关 §8 第 22 条）**（2026-09-25 收尾轮）
+> - 校验状态：`tsc --noEmit` 0 错误；**345 个单测全绿（23 个文件）**；`next build` 通过（首页 419 kB / First Load 555 kB）
 
 ---
 
@@ -32,10 +32,10 @@
 | Agent 框架 | `@langchain/langgraph` 1.4（StateGraph + SqliteSaver checkpoint + interrupt） |
 | LLM 封装 | `@langchain/openai` 1.5（ChatOpenAI，`baseURL` 兼容 DeepSeek / 通义千问 / OpenAI） |
 | 流式 | LangGraph `streamEvents()` → 后端 SSE → 前端 `fetch` + `ReadableStream` |
-| 源码规模 | **122 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`，其中 22 个单测文件）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
+| 源码规模 | **123 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`，其中 23 个单测文件）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
 | 页面与接口 | `app` 下 2 个页面（`/`、`/_not-found`）+ 2 个 API 路由 |
 | Agent 节点 | **9 个**（`lib/agent/nodes/`，含条件触发的 `enrichLiveData`） |
-| 测试 | **334 个单测用例**（Vitest，22 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射、实时补充节点六条判定与静默失败、条件串去重与 LLM 失败文本清洗、目录字段分级与派生统计）；无组件/E2E 自动化测试 |
+| 测试 | **345 个单测用例**（Vitest，23 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射、实时补充节点六条判定与静默失败、条件串去重与 LLM 失败文本清洗、目录字段分级与派生统计、**跨产物继承的判据与边界、A+ CSS 描述降级的拼装与长度合格性**）；无组件/E2E 自动化测试 |
 | 版本控制 | git 仓库，远端 `https://github.com/Zeffy-Real/eshopagent` |
 
 ---
@@ -134,13 +134,13 @@ scripts/
 
 | 字段 | 来源 |
 | --- | --- |
-| 标题 / 品牌（图书为作者） / 描述 / 类目 / 商品参数 / 图片 / ASIN·SKU | **真实**，来自数据集原始字段 |
+| 标题 / 品牌（图书为作者） / 类目 / 商品参数 / 图片 / ASIN·SKU | **真实**，来自数据集原始字段 |
 | 价格 / 原价 | **真实**（各平台原币种），按固定汇率表折算为人民币展示 |
 | 评分 / 评论数 | **真实**；缺失时如实显示「暂无评分」，不编造分数 |
 | 销量 | **真实但覆盖率有限**：仅 Amazon `bought_past_month`（204/1000 行有值）与 Lazada `number_sold` 为真字段；Shopee `sold` 全为 0、Walmart 无该列 → 一律记 `sales: 0`，界面改展示真实评价数 |
 | 库存状态（有货/缺货） | **真实**信号（`availability` / `is_available` / `in_stock`） |
 | 库存件数 | ✅ **派生且界面不展示**（已修）：真实数据源里没有任何一件商品带真实库存件数（只有 Shopee 有 `stock` 字段，实测当前目录里 20 件 Shopee 商品该列全为 0 或空，因此都走了派生路径），件数全部由 `21 + hash % 480` 派生。现仅作为**内部可用性模型**（缺货不可加购、加购上限、缺货惩罚），界面一律只展示「有货 / 库存紧张 / 缺货」等级 |
-| 图书简介 | ⚠️ **派生文案**：源数据 `description` 是亚马逊 A+ 页面原始 CSS，不可用，改为用真实字段（作者/类目/评分/可选版本）拼装 |
+| 描述 / 图书简介 | ⚠️ **派生文案**（少数条目）：源数据 `description` 是亚马逊 A+ 页面原始 CSS，不可用，改为用真实字段拼装——图书用作者/类目/评分/可选版本，综合源命中 A+ CSS 的 2 件用品牌/类目/商品参数/评分，**同一套拼装规则**（`scripts/catalog-shared.mjs` 的 `buildDerivedDescription`）；产物带 `descriptionDerived` 标记与 note 说明 |
 | 中文文案 | **本地化**：商品名/描述/标签/规格值由 LLM 翻译（品牌与型号保留原文），价格/评分/图片/ASIN 不动 |
 
 **原则：没有数据就显示没有，不用估算值填满界面。**
@@ -301,11 +301,11 @@ confirmOrder   → generateReply → END
 | 项 | 方法 | 结果 |
 | --- | --- | --- |
 | 类型 | `npx tsc --noEmit` | ✅ 0 错误 |
-| 单测 | `npm test`（Vitest，22 个文件） | ✅ 334 / 334 通过 |
+| 单测 | `npm test`（Vitest，23 个文件） | ✅ 345 / 345 通过 |
 | 跨重启持久化 | 建会话 → 杀进程（确认端口无监听）→ 重启 → 同 sessionId 追问指代 | ✅ 恢复上一轮上下文（时间线显示「历史 366 字」），指代解析为 refine 并收紧价格 |
 | 内存态回落 | `CHECKPOINT_BACKEND=memory` 独立用例 | ✅ 不建连接、会话管理安全跳过、checkpointer 仍可用、不产生 sqlite 文件 |
-| 构建 | `npm run build` | ✅ 通过；首页 418 kB / First Load 554 kB；共享 103 kB（较上一版 +6 kB，来自内联的 justoneapi 目录产物） |
-| 目录不变量 | 脚本扫描 420 件商品（价格/评分/评论数/销量/库存/原价/图片/描述/标签/规格） | ✅ 扩容后 0 异常；本地化后 2 处异常（2 件来自新增尾部的商品描述翻译后过短，根因见 §8 第 22 条） |
+| 构建 | `npm run build` | ✅ 通过；首页 419 kB / First Load 555 kB；共享 103 kB（较上一版 +6 kB，来自内联的 justoneapi 目录产物） |
+| 目录不变量 | 脚本扫描 420 件商品（价格/评分/评论数/销量/库存/原价/图片/描述/标签/规格） | ✅ 扩容后 0 异常；本地化后曾 2 处异常（描述过短，根因见 §8 第 22 条）→ **已修（2026-09-25 收尾轮）：A+ CSS 降级后重扫 0 异常** |
 | 图书数据 | 逐条核对 16 本（扩容前） | ✅ 真实书名、作者、价格、评分、评论数、封面、题材标签齐全，无近重复 |
 | 端到端（浏览器） | 3 轮对话 + 完整下单流程 | ✅ 通过 |
 | — 图书检索 | 发「推荐几本小说」（扩容前） | ✅ 命中 8 本真实书籍，回复总数与商品区一致（8 = 8）；扩容到 420 件后重测：命中 30 件、展示前 12 件（见 §7.1 扩容后重测行） |
@@ -354,10 +354,14 @@ confirmOrder   → generateReply → END
 | 宽屏真实视口几何（补充轮） | `agent-browser` CLI 驱动本地 Chrome（`set viewport 1440 900 2`）——真实视口，不再是 iframe 推算 | ✅ 三栏 `380 / 700 / 360`、均 `position: static`（top 56、高 844）；`scrollWidth = 1440`，无横向溢出；对比表 `width 309`（表头列宽 54/87/88/81、10 行参数、**3 个绿底最优格**、父容器无横向滚动、右边界 1415 < 1440）；对比表与推理时间线矩形**无交叠**。整页图与对比表图入库：`docs/rehearsal/main-ui.jpg`、`docs/rehearsal/compare-table.png` |
 | 目录扩容（本轮，420 件） | `npm run catalog:build -- --per=60`（默认值已与产物对齐） | ✅ 420 件、7 品类各 60；平台 Amazon 280 / Walmart 61 / Lazada 59 / Shopee 20；文件 451 KB；构建 6.8 s；丢弃原因分布见构建输出（图书 缺少图片 722 / Walmart 类目未映射 753 等） |
 | — 逐字比对（扩容是否纯追加） | `.cache/compare-first16.mjs`（临时脚本）对比旧 112 件产物 | ✅ 每品类前 16 件 **id 112/112 一致**、**未本地化字段 1456/1456 逐字一致**（价格/评分/评论数/销量/库存/原价/图片/平台/来源 id 等），证明 `--per` 只影响「取多少」不影响「谁被接受」 |
-| — 目录不变量扫描（两次） | `.cache/catalog-invariants.mjs` | ✅ 扩容后 0 异常；⚠️ 本地化后 2 异常（描述过短，见 §8 第 22 条） |
-| — 增量本地化（本轮改动） | `scripts/localize-catalog.mjs` 增加「跳过已带 nameOriginal 的条目」判定 | ⚠️ 实测**没省到**：构建会丢掉上一轮的本地化结果（中文文案与 nameOriginal 都是 localize 写的），所以「build → localize」完整流水线第一次跑仍是全量：420 条 / **70 批** / **221.5 秒（3.7 分钟）** / 0 失败批次；增量判定只在「同一份产物上重复跑」时生效（有效期已写进 README） |
-| — 已验收文案的保全（112 件） | 全量重译后比对 `.cache/real-catalog.112.json` | ⚠️ 首次比对**只有 16/112 逐字未变**（name 66、description 92、tags 65、specifications 20 处被改写）；已按裁定用 `.cache/restore-approved.mjs` 逐字还原 → 复核 **112/112 逐字未变**（仅当英文原文一致才还原，112 件全部满足） |
+| — 目录不变量扫描（两次） | `.cache/catalog-invariants.mjs` | ✅ 扩容后 0 异常；⚠️ 本地化后 2 异常（描述过短，详见 §8 第 22 条）→ **已修（2026-09-25 收尾轮）**：A+ CSS 降级后重扫 **0 异常** |
+| — 增量本地化 | `scripts/localize-catalog.mjs` 增加「跳过已本地化条目」判定 | ⚠️ 当时**没省到**：构建会丢掉上一轮的本地化结果（见 §8 第 23 条），完整流水线第一次跑仍是全量 **70 批 / 221.5 秒** → **已修（2026-09-25 收尾轮）**：`catalog:build` 增加跨产物继承，重跑 build → localize = 继承 420 条 / **0 批** / **0.38 秒** |
+| — 已验收文案的保全（112 件） | 全量重译后比对 `.cache/real-catalog.112.json` | ⚠️ 当时首次比对**只有 16/112 逐字未变**（name 66、description 92、tags 65、specifications 20 处被改写），靠一次性脚本 `.cache/restore-approved.mjs` 逐字还原 → **已修（2026-09-25 收尾轮）**：继承上线后重跑 build → localize，420 件 `products` 与重跑前**逐字未变**（含 112 件已验收），一次性脚本不再被依赖（README 已写明流程只需 build → localize 两步） |
 | — 计数敏感步骤重测（扩容后，SSE 直连，0 计费） | 第 1 / 3 / 6 步 | ✅ 第 1 步「推荐几本小说」：命中 **30 件**、展示前 12 件（原 8/8）；第 6 步「新会话 + 推荐点什么」：命中 **60 件**、展示前 12 件（原 16/12）、「记起你的偏好：图书（来源：成交）」照旧；⚠️ 第 3 步「对比前 3 件」**前 3 件变了**（Beneath a Scarlet Sky / American Dirt / Troubled Blood，原为 American Dirt / The Vanishing Half / Where the Crawdads Sing）——原因：检索排序是相关性打分而非目录的评论数排序，「扩的是尾部」只对构建成立、对检索排序不成立 |
+| 跨产物继承（2026-09-25 收尾轮，关 §8 第 23 条） | 真流程：`npm run catalog:build -- --per=60` → `npm run catalog:localize`（数据集走 `.cache/datasets` 缓存，0 计费） | ✅ 构建输出 `继承已本地化 420 条（id + 英文原文一致），待翻译 0 条`；localize 输出 `已本地化 420 条（跳过判据：带 nameOriginal 标记）、待本地化 0 条` → **实际 LLM 批次 0 / 0.38 秒**；`git diff --stat data/real-catalog.json` = **2 行**（只有 `generatedAt` / `localizedAt` 两个时间戳），`products` 数组深度相等；派生标签 0 处变化 |
+| A+ CSS 描述降级（2026-09-25 收尾轮，关 §8 第 22 条） | build + localize 再跑一轮 | ✅ 2 件（`amz-B0009IY8U6` / `amz-B00I35Z6JY`）描述由「来自品牌」4 字 /「来自制造商。」6 字 → 派生文案（本地化后 **88 / 81 字**）；件数仍 **420**（不丢商品）；除这 2 件外 **418 件逐字未变**（逐字段 diff 只有 2 件 × 4 字段：name / description / descriptionDerived / tags）；**1 批（2 条）/ 2.54 秒 / 0 失败**；同流程再跑一轮 = 继承 420 / 0 批（描述基准 guard 不会让这 2 件每轮重译） |
+| 本地化判据修正（2026-09-25 收尾轮） | 扫描 420 件产物的 `nameOriginal` | ✅ 发现 40 件（37 图书 + 2 Lazada + 1 Amazon）的译名与英文原文**逐字相同**（书名、品牌+型号，模型按提示词保留原文）——旧判据「`nameOriginal` ≠ `name`」把它们误判成未本地化，会让每次重建都重译这 40 件；判据改为「带 `nameOriginal` 标记」（该字段只有 localize 写入，批次失败不会留半个标记），单测锁定 |
+| 继承与降级的单测（2026-09-25 收尾轮） | `lib/catalog/catalog-shared.test.ts`（新增 11 条） | ✅ 继承 8 条：英文原文一致→继承 / 不一致→不继承 / 旧产物缺该 id→不继承 / 首次构建→全不继承 / 译名与原文相同（上面 40 件的真实形态）→仍继承 / 描述基准变化（A+ CSS 降级）→不继承 / 缺标记→不继承 / **继承不改价格·原价·评分·评论数·销量·库存·图片·平台·来源 id（键集合也锁死）**；A+ CSS 降级 3 条：命中→派生（断言拼装结果逐字）/ 正常描述（含 `From the Manufacturer` 前缀）→不误判 / 派生结果过 `isProductLike` 且长度落在扫描区间 10–200（含退化情形） |
 
 ### 7.2 未验证 / 验证受限
 
@@ -408,8 +412,8 @@ confirmOrder   → generateReply → END
 | 19 | ~~条件串可能重复一个词~~（2026-09-25 彩排实测 `图书 · 小说 · 小说`） | 展示层 | ✅ **已修（2026-09-25 补充轮，commit `561e772`）**：`describeFilters`（`lib/agent/ruleParser.ts`）改为按「首次出现」保序做**跨列表**去重（品类 / keywords / tags / brands），**只清洗展示结果、不改 filters 本身**；单测 3 条锁定（`lib/agent/ruleParser.test.ts`）。真机复现：快照里 keywords 与 tags 各存一份「小说」时，时间线渲染为 `图书 · 小说`。⚠️ 需知道的耦合：该函数同时被 `refineSearch` 当作「条件是否变化」的等价比对，去重只影响「同词重复」这种退化写法——`relaxFilters` / `loosenFilters` 都不会在列表之间搬词（函数注释已写明） |
 | 20 | **无 Key 时意图面板字段名与 LLM 路径不一致**（「功能 小说」vs「关键词 小说」） | 展示层 | ⛔️ **决策：不改（2026-09-25 补充轮评估后）**。理由：根因是**解析语义**（同一个词进哪个桶），改它超出「只动展示标签」的授权；而只把 tags 的标签改成「关键词」会让两份列表同时非空时出现**两行同名标签**——正是任务要求「停下」的情形。结论：保持现状，[demo-script.md](./demo-script.md) 第 8 步已加备注避免现场被问住 |
 | 21 | ~~LLM 失败时时间线原样显示服务商错误文本~~（含服务商掩码后的密钥末位） | 安全（低） | ✅ **已修（2026-09-25 补充轮，commit `561e772`）**：新增 `sanitizeLlmError`（`lib/agent/nodes/parseIntent.ts`），把 `Your api key: ****abcd is invalid` 一类片段整体换成「服务商鉴权失败」，**保留 401 / request_id** 等可诊断信息；单测 3 条（含「普通失败文本不误伤」）。真机复现：时间线不含密钥末位、不含 `api key` 字样。口径与「token 不进日志 / 文档 / commit」一致——UI 时间线同样是被截图与被讲述的界面 |
-| 22 | **2 件商品本地化后描述过短**（`amz-B0009IY8U6` 4 字、`amz-B00I35Z6JY` 6 字，形如「来自品牌」） | 数据质量 | 根因：这两条**源数据的 `description` 本身是亚马逊 A+ 页 CSS**（`From the brand /* … brand-story.cfg */`，实测 5977 / 20747 字符），构建期只按「长度 ≥ 60」把门，于是 CSS 混进了目录；本地化后 LLM 只译出可见的那几个字。图书源早已因同样原因改用派生简介，但综合源没这道门。**本轮未修**（会改变「谁被接受」，需你确认）：建议加一道与图书源同源的判定（命中 `aplus-v2` / `brand-story.cfg` / `display:block` 即丢弃），代价是重跑一次 build + localize（用增量判定只需 1 批） |
-| 23 | **构建会丢掉上一轮的本地化结果** | 工程化 | 中文文案与 `nameOriginal` 都是 `localize-catalog.mjs` 写进产物的，`catalog:build` 重新生成时不会保留，因此「跳过已本地化条目」在 build → localize 流水线里第一次跑等于全量重译（实测 420 条 = 70 批）。已用「按 id + 英文原文一致才还原」的方式保住已验收的 112 件；若要根治，需要让 build 保留上一版已本地化字段（跨产物合并），属下一步设计 |
+| 22 | ~~2 件商品本地化后描述过短~~（`amz-B0009IY8U6` 4 字、`amz-B00I35Z6JY` 6 字，形如「来自品牌」） | 数据质量 | ✅ **已修（2026-09-25 收尾轮，commit `{HASH}`）**：根因是这两条的**源 `description` 本身就是亚马逊 A+ 页 CSS**（实测 5977 / 20747 字符），构建期「长度 ≥ 60」的门挡不住。按裁定**降级而不是丢弃**：`normalizeRow` 命中 A+ 页 CSS 特征（`aplus-v2` / `brand-story.cfg` / `display:block`）时把描述换成派生文案（品牌 + 类目 + 商品参数 + 评分/评价数，与图书简介共用 `buildDerivedDescription`），产物带 `descriptionDerived` 标记、件数写进 note。件数仍 420、扫描 0 异常、其余 418 件逐字未变。**只认 CSS 特征、不认 `From the Manufacturer` 前缀**——实测综合样本里 9 件以该前缀开头但正文可读，按前缀判会把好描述误降级 |
+| 23 | ~~构建会丢掉上一轮的本地化结果~~ | 工程化 | ✅ **已修（2026-09-25 收尾轮，commit `{HASH}`）**：`catalog:build` 写盘前按「**id 相同 + 英文原文逐字一致**」把上一版的 `name` / `description` / `tags` / `specifications` / `nameOriginal` 继承到新构建结果（纯函数 `inheritLocalizedFields`，在 `scripts/catalog-shared.mjs`），构建输出打印「继承已本地化 N 条，待翻译 M 条」；`localize` 的跳过判据与它共用同一份实现。实测 420 件产物重跑 build → localize = 继承 420 条 / **0 批 LLM 调用 / 0.38 秒**，`products` 逐字未变 → 不再依赖一次性脚本 `.cache/restore-approved.mjs`。**边界**：上游改了标题的条目会被重译一次（判据要求英文原文一致，这是刻意的——标题变了，旧中文文案不再对应）；描述基准变化（A+ CSS 降级）的条目同样重译一次 |
 
 ---
 

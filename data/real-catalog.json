@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-25T04:28:56.818Z",
+  "generatedAt": "2026-09-25T05:18:15.230Z",
   "source": "https://github.com/luminati-io/eCommerce-dataset-samples + https://github.com/luminati-io/Amazon-popular-books-dataset",
   "platforms": [
     "Amazon",
@@ -23,7 +23,7 @@
     "EUR": 7.8,
     "GBP": 9.2
   },
-  "note": "标题/品牌/价格/原价/评分/评论数/图片/类目/商品参数/ASIN 为真实平台数据；销量为 Amazon / Lazada 提供的真实字段，其余来源无销量字段记 0（界面改展示真实评价数）；库存只有「有货/紧张/缺货」等级来自真实信号，件数为派生值且界面不展示；人民币价格按固定汇率折算；图书简介为派生文案",
+  "note": "标题/品牌/价格/原价/评分/评论数/图片/类目/商品参数/ASIN 为真实平台数据；销量为 Amazon / Lazada 提供的真实字段，其余来源无销量字段记 0（界面改展示真实评价数）；库存只有「有货/紧张/缺货」等级来自真实信号，件数为派生值且界面不展示；人民币价格按固定汇率折算；图书简介为派生文案；另有 2 件商品的源描述是亚马逊 A+ 页 CSS（不可用），已按真实字段降级为派生文案（与图书简介同源规则）",
   "count": 420,
   "products": [
     {
@@ -3218,7 +3218,7 @@
     },
     {
       "id": "amz-B0009IY8U6",
-      "name": "Minnetonka 女式后拉链短靴",
+      "name": "Minnetonka 女款后拉链短靴",
       "brand": "Minnetonka",
       "category": "服饰",
       "price": 504,
@@ -3228,16 +3228,17 @@
       "sales": 0,
       "stock": 178,
       "image": "https://m.media-amazon.com/images/I/41bb37-urPL.__AC_SX395_SY395_QL70_FMwebp_.jpg",
-      "description": "来自品牌",
+      "description": "品牌 Minnetonka；类目：踝靴与短靴；尺寸 14.9 x 12.4 x 5 英寸，重 5.6 盎司；型号 Back Zipper；评分 4.2 分（1788 条评价）。",
+      "descriptionDerived": true,
       "specifications": {
         "类目": "踝靴与短靴",
         "尺寸": "14.9 x 12.4 x 5 英寸；5.6 盎司",
         "型号": "Back Zipper"
       },
       "tags": [
+        "踝靴",
         "短靴",
-        "后拉链",
-        "女式"
+        "后拉链"
       ],
       "platform": "Amazon",
       "sourceId": "B0009IY8U6",
@@ -6306,7 +6307,7 @@
     },
     {
       "id": "amz-B00I35Z6JY",
-      "name": "Avery ID 标签 Sure Feed 技术 永久粘性 1.25\" x 1.75\" 480 枚 (6570)",
+      "name": "Avery 身份标签，Sure Feed 技术，永久粘胶，1.25\" x 1.75\"，480 枚（6570）",
       "brand": "AVERY",
       "category": "家居",
       "price": 96,
@@ -6316,7 +6317,8 @@
       "sales": 0,
       "stock": 40,
       "image": "https://m.media-amazon.com/images/I/71FBLSWrKjL.__AC_SX300_SY300_QL70_FMwebp_.jpg",
-      "description": "来自制造商。",
+      "description": "品牌 AVERY；类目：多用途标签；重量 5.3 盎司；尺寸 12.09 x 9.44 x 0.18 英寸；型号 06570；评分 4.8 分（717 条评价）。",
+      "descriptionDerived": true,
       "specifications": {
         "类目": "多用途标签",
         "重量": "5.3 盎司",
@@ -6325,7 +6327,8 @@
       },
       "tags": [
         "标签",
-        "永久粘性"
+        "永久粘胶",
+        "多用途"
       ],
       "platform": "Amazon",
       "sourceId": "B00I35Z6JY",
@@ -11507,6 +11510,6 @@
       "nameOriginal": "Atomic Habits: An Easy & Proven Way to Build Good Habits & Break Bad Ones"
     }
   ],
-  "localizedAt": "2026-09-25T04:33:49.345Z",
+  "localizedAt": "2026-09-25T05:18:15.623Z",
   "localizeNote": "商品文案（名称/描述/标签/规格值）已本地化为中文；价格、评分、评论数、图片、ASIN 为原始真实数据；销量仅 Amazon / Lazada 有真实字段，其余来源记 0 并改展示评价数"
 }

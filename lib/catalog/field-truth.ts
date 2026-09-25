@@ -49,7 +49,12 @@ export const FIELD_TRUTH: FieldTruthRow[] = [
     detail: '内部可用性模型：真实有货信号 + 商品 id 哈希派生 21–500；界面只展示等级，不展示件数',
   },
   { field: '图片', level: 'real', detail: '源数据原始图片链接（平台 CDN）' },
-  { field: '描述', level: 'localized', detail: '源数据商品描述，LLM 译为中文并截断到 180 字' },
+  {
+    field: '描述',
+    level: 'localized',
+    detail:
+      '源数据商品描述，LLM 译为中文并截断到 180 字；少数商品的源描述是亚马逊 A+ 页 CSS（不可用），已降级为派生文案（与图书简介同源规则）',
+  },
   {
     field: '图书简介',
     level: 'derived',

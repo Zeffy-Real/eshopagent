@@ -15,12 +15,17 @@
  *   node --env-file=.env.local scripts/localize-catalog.mjs           # 本地化并覆盖写回
  *   node --env-file=.env.local scripts/localize-catalog.mjs --dry-run # 只打印结果不写文件
  *
+ * 增量：已本地化的条目（带 `nameOriginal` 标记）自动跳过。
+ * `catalog:build` 会在写盘前把这些字段从上一版产物继承过来，因此「build → localize」
+ * 这条完整流水线只翻新增 / 基准变化的条目，**不需要任何手工补救**。
+ *
  * 失败处理：任一批次失败或字段缺失时，该字段保留英文原文，不会因为翻译失败丢数据。
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isLocalizedProduct } from './catalog-shared.mjs';
 
 const BATCH_SIZE = 6;
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -184,22 +189,24 @@ const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 const products = catalog.products;
 
 /**
- * 增量判定：已本地化的条目（带 nameOriginal 且与当前 name 不同）直接跳过。
+ * 增量判定用的是 `catalog-shared.mjs` 的 `isLocalizedProduct`——与 `catalog:build`
+ * 的继承判据是**同一份实现**（两处各写一套口径必然漂移）：带 `nameOriginal` 标记即跳过。
  *
  * 为什么必须增量：全量重译会改写已经验收过的中文文案（演示脚本里逐字引用了若干回复与
  * 商品名），也会白花 token；而失败批次下一次运行还能自动补上。
  * 判据只用数据里已有的信号（nameOriginal），不引入语言检测依赖。
  */
-function isLocalized(product) {
-  const original = typeof product.nameOriginal === 'string' ? product.nameOriginal.trim() : '';
-  return original !== '' && original !== product.name;
-}
-
-const pending = products.filter((product) => !isLocalized(product));
+const pending = products.filter((product) => !isLocalizedProduct(product));
+// 统计口径与 build 的「继承已本地化 N 条，待翻译 M 条」对齐：让「这次为什么只翻了 N 条」
+// 在日志里自证，而不是靠人回忆上一轮发生过什么。
 console.log(
-  `商品 ${products.length} 条：已本地化 ${products.length - pending.length} 条（跳过）、` +
-    `待本地化 ${pending.length} 条，批次大小 ${BATCH_SIZE}`,
+  `商品 ${products.length} 条：已本地化 ${products.length - pending.length} 条` +
+    `（跳过判据：带 nameOriginal 标记）、待本地化 ${pending.length} 条，批次大小 ${BATCH_SIZE}`,
 );
+if (pending.length > 0) {
+  // 待本地化的条目必然是「没有标记」的：批次失败时条目整体不动，不会留下半个标记
+  console.log(`  待本地化原因：${pending.length} 条均缺 nameOriginal 标记（首次构建 / 上次处理失败）`);
+}
 
 const byId = new Map(products.map((product) => [product.id, product]));
 let translated = 0;
