@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AgentStateSnapshot } from '@/lib/agent/events';
+import { selectReplyProductIds } from '@/lib/agent/sse';
+import { makeProduct } from '@/lib/test-utils/factories';
 import { useAgentStore } from '@/store/use-agent-store';
 
 /**
@@ -15,6 +18,35 @@ function sseResponse(frames: string[]): Response {
     frames.map((frame) => `data: ${frame}\n\n`).join(''),
     { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
   );
+}
+
+/** 一份最小可用的状态快照载荷（只覆盖与本组用例相关的字段） */
+function snapshotPayload(overrides: Partial<AgentStateSnapshot> = {}): AgentStateSnapshot {
+  return {
+    intent: 'search',
+    searchFilters: {},
+    conditionText: '',
+    searchResults: [],
+    replyProductIds: [],
+    liveOverrides: {},
+    liveFetchedAt: null,
+    compareTargets: [],
+    comparison: null,
+    cart: [],
+    toolCallLog: [],
+    pendingOrder: null,
+    reply: '',
+    profilePatch: [],
+    profileGeneration: 0,
+    llmEnabled: true,
+    ...overrides,
+  };
+}
+
+/** 取最后一条 Agent 气泡 */
+function lastAgentMessage() {
+  const agents = useAgentStore.getState().messages.filter((message) => message.role === 'agent');
+  return agents[agents.length - 1];
 }
 
 beforeEach(() => {
@@ -77,5 +109,86 @@ describe('sendMessage：同一时刻只允许一个在途请求', () => {
         .messages.filter((message) => message.role === 'user')
         .map((message) => message.content),
     ).toEqual(['第一条', '第二条']);
+  });
+});
+
+describe('内联卡商品：模板路径与 LLM 路径产出同一 id 列表', () => {
+  const results = [
+    makeProduct({ id: 'p-1', name: '第一件' }),
+    makeProduct({ id: 'p-2', name: '第二件' }),
+    makeProduct({ id: 'p-3', name: '第三件' }),
+    makeProduct({ id: 'p-4', name: '第四件' }),
+  ];
+  const expected = selectReplyProductIds(results);
+
+  it('模板路径（无 token，兜底回复）→ 气泡挂上本轮前 3 件', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            JSON.stringify({
+              type: 'state',
+              payload: snapshotPayload({ reply: '为你找到 4 件商品', searchResults: results, replyProductIds: expected }),
+            }),
+            '{"type":"done"}',
+          ]),
+        ),
+      ),
+    );
+
+    await useAgentStore.getState().sendMessage('推荐几件商品');
+
+    const reply = lastAgentMessage();
+    expect(reply?.content).toBe('为你找到 4 件商品');
+    expect(reply?.productIds).toEqual(expected);
+    expect(expected).toEqual(['p-1', 'p-2', 'p-3']);
+  });
+
+  it('LLM 流式路径 → 同一列表补到 token 建好的气泡上，且不新建第二个气泡', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            JSON.stringify({ type: 'token', content: '这几件都不错' }),
+            JSON.stringify({
+              type: 'state',
+              payload: snapshotPayload({ reply: '这几件都不错', searchResults: results, replyProductIds: expected }),
+            }),
+            '{"type":"done"}',
+          ]),
+        ),
+      ),
+    );
+
+    await useAgentStore.getState().sendMessage('推荐几件商品');
+
+    const agents = useAgentStore.getState().messages.filter((message) => message.role === 'agent');
+    expect(agents).toHaveLength(1);
+    expect(agents[0]?.content).toBe('这几件都不错');
+    // 与模板路径**同一个** id 列表（都来自 selectReplyProductIds 的下发值）
+    expect(agents[0]?.productIds).toEqual(expected);
+  });
+
+  it('本轮没有商品（闲聊 / 加购下单 / 对比轮）→ 不挂卡片（productIds 缺省）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            JSON.stringify({ type: 'token', content: '你好呀' }),
+            JSON.stringify({ type: 'state', payload: snapshotPayload({ reply: '你好呀' }) }),
+            '{"type":"done"}',
+          ]),
+        ),
+      ),
+    );
+
+    await useAgentStore.getState().sendMessage('你好');
+
+    const reply = lastAgentMessage();
+    expect(reply?.content).toBe('你好呀');
+    expect(reply?.productIds).toBeUndefined();
   });
 });

@@ -10,7 +10,7 @@ import {
 import type { AgentApp } from '@/lib/agent/graph';
 import type { AgentStateValue } from '@/lib/agent/state';
 import { messageText } from '@/lib/agent/utils';
-import type { Order } from '@/lib/types';
+import type { Order, Product } from '@/lib/types';
 
 /**
  * 把 LangGraph 的 streamEvents 事件流转成 SSE。
@@ -52,6 +52,25 @@ function chunkText(content: unknown): string {
 }
 
 /**
+ * 单轮回复最多挂几张内联卡。
+ *
+ * 3 是模板路径的历史取值（原实现写死 `searchResults.slice(0, 3)`）——这里抽出来是为了
+ * 让 LLM 路径与模板路径共用**同一个**选取规则，顺带把「3」从魔法数字变成一个可引用的常量。
+ */
+export const REPLY_INLINE_LIMIT = 3;
+
+/**
+ * 「本轮该展示哪几件商品」的**唯一实现**（模板路径与 LLM 路径共用，经快照字段下发）。
+ *
+ * 规则：取本轮检索结果的前 `REPLY_INLINE_LIMIT` 件。
+ * 只在本轮确有商品时返回非空——闲聊、加购/下单、对比轮的 `searchResults` 为空数组，
+ * 因此气泡不会挂上与本轮无关的卡片。
+ */
+export function selectReplyProductIds(searchResults: Product[]): string[] {
+  return searchResults.slice(0, REPLY_INLINE_LIMIT).map((product) => product.id);
+}
+
+/**
  * 构造前端状态快照。
  *
  * toolCallLog 只保留本轮（runStartedAt 之后）的条目：图会跨轮累积日志，
@@ -84,6 +103,8 @@ export function toSnapshot(
     searchFilters: state.searchFilters,
     conditionText: describeFilters(state.searchFilters),
     searchResults: state.searchResults,
+    // 本轮回复挂哪几张内联卡：由 selectReplyProductIds 统一选取（模板路径与 LLM 路径同源）
+    replyProductIds: selectReplyProductIds(state.searchResults),
     // 实时覆盖随快照整体下发：前端三处渲染（卡片 / 弹窗 / 对比表）按 id 取用，
     // 与快照一样是「整体替换」，前端不需要额外 reducer
     liveOverrides: state.liveOverrides,

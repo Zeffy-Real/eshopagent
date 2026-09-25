@@ -123,6 +123,26 @@ function finalizeReply(
   });
 }
 
+/**
+ * 把本轮的展示商品挂到回复气泡上。
+ *
+ * 两条路径共用这一个入口、且 id 列表只有一个来源（服务端快照的 `replyProductIds`，
+ * 由 `selectReplyProductIds` 选出）：
+ *   - LLM 流式路径：气泡由首个 token 建好，收尾时在这里补齐卡片；
+ *   - 模板路径（无 token）：气泡在 `applySnapshot` 里新建，直接把列表写进消息。
+ * 空列表（闲聊 / 加购下单 / 对比轮）不改动任何消息，因此气泡不会挂无关卡片。
+ */
+function withReplyProducts(
+  messages: ChatMessage[],
+  replyId: string,
+  productIds: string[],
+): ChatMessage[] {
+  if (productIds.length === 0) return messages;
+  return messages.map((message) =>
+    message.id === replyId ? { ...message, productIds } : message,
+  );
+}
+
 function startTypewriter(
   messageId: string,
   set: (partial: Partial<AgentState>) => void,
@@ -476,6 +496,8 @@ function applySnapshot(
   const state = get();
   // toolCallLog 已由服务端裁剪为「本轮」条目，前端直接使用
   const timeline = payload.toolCallLog;
+  // 本轮该挂的内联卡商品（唯一来源：服务端按 selectReplyProductIds 选好随快照下发）
+  const replyProductIds = payload.replyProductIds;
 
   // 服务端购物车为准：UI 里的增减也会在下一轮请求中回传，此处同步展示
   useCartStore.getState().setItems(payload.cart);
@@ -510,7 +532,14 @@ function applySnapshot(
         // 缓冲可能已被消费完（定时器已停），必须重启才会继续揭示
         if (shouldAnimate()) startTypewriter(activeBubble.id, set, get);
       }
-      set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled, userProfile });
+      set({
+        snapshot: payload,
+        timeline,
+        llmEnabled: payload.llmEnabled,
+        userProfile,
+        // LLM 流式路径的气泡由首个 token 建好，卡片在这里补齐
+        messages: withReplyProducts(messages, activeBubble.id, replyProductIds),
+      });
       return;
     }
 
@@ -526,10 +555,14 @@ function applySnapshot(
       timeline,
       llmEnabled: payload.llmEnabled,
       userProfile,
-      messages: messages.map((message) =>
-        message.id === staleReplyId
-          ? { ...message, content: payload.reply, streaming: false }
-          : message,
+      messages: withReplyProducts(
+        messages.map((message) =>
+          message.id === staleReplyId
+            ? { ...message, content: payload.reply, streaming: false }
+            : message,
+        ),
+        staleReplyId,
+        replyProductIds,
       ),
     });
     return;
@@ -541,7 +574,14 @@ function applySnapshot(
     lastMessage.role === 'agent' &&
     lastMessage.content === payload.reply;
   if (isDuplicate) {
-    set({ snapshot: payload, timeline, llmEnabled: payload.llmEnabled, userProfile });
+    set({
+      snapshot: payload,
+      timeline,
+      llmEnabled: payload.llmEnabled,
+      userProfile,
+      // 同一轮被推多次快照：已建好的气泡同样要补齐卡片（幂等）
+      messages: withReplyProducts(messages, lastMessage.id, replyProductIds),
+    });
     return;
   }
 
@@ -565,7 +605,8 @@ function applySnapshot(
         createdAt: Date.now(),
         // 非逐字路径下这条就是最终文案，直接标记完成；逐字路径等本轮结束再收尾
         streaming: !instant,
-        productIds: payload.searchResults.slice(0, 3).map((product) => product.id),
+        // 本轮展示的商品（服务端唯一实现选出）：空列表时不写这个字段，消息不带卡片
+        ...(replyProductIds.length > 0 ? { productIds: replyProductIds } : {}),
       },
     ],
   });

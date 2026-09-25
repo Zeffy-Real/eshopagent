@@ -132,7 +132,7 @@ lib/catalog/products.ts  ── 按需 import() ──► 对话内联卡按 id 
 - **为什么这样切**：客户端原先静态 import 目录（`category-bar` / `product-panel` / `catalog-section` / `message-bubble` 四处），整份目录被内联进首屏 bundle——实测 First Load JS 555 kB，目录占约 **127 kB**。改完之后 **555 → 423 kB**（首屏 10 个 chunk 里搜不到任何商品 id，目录只出现在按需 chunk 里）。
 - **源感知天然成立**：载荷由服务端按 `CATALOG_SOURCE` 现算，real / mock / justoneapi 各自显示自己的件数、分布与覆盖率（real 420 件 · 各品类 60；mock 50 件 · 10/8/7/7/10/5/3；justoneapi 28 件 · 各 4），不需要第二份产物，也不可能与中栏徽标的口径不一致。
 - **两处「按 id 找商品」**：详情弹窗的商品由调用方传入（就是当前渲染的那张卡片对象，已叠加实时覆盖，所以弹窗里的「实时 · HH:mm」与卡片一致）；对话内联卡走按需 chunk，加载期间显示**与卡片同高的占位**（实测卡片 62px），chunk 到达后渲染，**失败则静默少几张卡片**（不报错、不显示「找不到」）。
-- **已知边界**：内联卡从「首帧就有」变成「chunk 到达后出现」（首次约几十毫秒，之后命中模块缓存）；`productIds` 目前只在**非流式（模板/规则兜底）回复**里写入，因此 LLM 流式回复下本来就不显示内联卡（既有行为，见 `docs/project-status.md` §8）。
+- **已知边界**：内联卡从「首帧就有」变为「chunk 到达后出现」（首次约几十毫秒，之后命中模块缓存）。**内联卡两条路径都会挂**：模板回复与 LLM 流式回复都读服务端快照里的 `replyProductIds`——由 `selectReplyProductIds` 唯一选出（本轮检索结果前 3 件，与模板路径的历史取值一致），闲聊 / 本轮没有商品的轮次不带卡。
 
 **跨产物继承（重建不丢已验收文案）**：`catalog:build` 在写盘前，把上一版产物里**已本地化**的五个字段（`name` / `description` / `tags` / `specifications` / `nameOriginal`）接回新构建结果，并在输出里打印继承条数：
 

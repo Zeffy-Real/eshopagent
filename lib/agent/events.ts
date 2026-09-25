@@ -63,6 +63,14 @@ export interface AgentStateSnapshot {
   pendingOrder: Order | null;
   /** 最新一条 Agent 回复（Markdown） */
   reply: string;
+  /**
+   * 本轮回复该挂的内联卡商品 id（「这一轮在聊哪几件」）。
+   *
+   * 选取规则在 `lib/agent/sse.ts` 的 `selectReplyProductIds`（**唯一实现**）：
+   * 模板路径（无 token 的兜底回复）与 LLM 流式路径都读这个字段，不各算一套。
+   * 只在本轮确有检索结果时非空——闲聊 / 加购下单 / 对比轮为空数组，气泡不挂无关卡片。
+   */
+  replyProductIds: string[];
   /** 本轮画像信号（前端幂等合并进本地画像；每轮由 parseIntent 重置） */
   profilePatch: ProfileSignal[];
   /** 客户端画像 generation 的原样回显：前端据此丢弃「清除画像」之前发出的在途 patch */

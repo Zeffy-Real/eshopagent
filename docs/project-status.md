@@ -4,8 +4,8 @@
 >
 > - 数据快照生成时间：2026-09-25 05:18 UTC
 > - 文案本地化时间：2026-09-25 05:18 UTC
-> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `0dc23a7`；本次同步内容为**客户端 bundle 瘦身（服务端持有全量目录，客户端只留轻量数据 + 按需 chunk）**（2026-09-25 收尾轮 2）
-> - 校验状态：`tsc --noEmit` 0 错误；**355 个单测全绿（24 个文件）**；`next build` 通过（首页 287 kB / First Load 423 kB）
+> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `55ac172`；本次同步内容为**内联卡在 LLM 路径下不出现的修复（关 §8 第 25 条）并冻结**（2026-09-25 冻结轮）
+> - 校验状态：`tsc --noEmit` 0 错误；**363 个单测全绿（25 个文件）**；`next build` 通过（首页 287 kB / First Load 423 kB）
 
 ---
 
@@ -32,10 +32,10 @@
 | Agent 框架 | `@langchain/langgraph` 1.4（StateGraph + SqliteSaver checkpoint + interrupt） |
 | LLM 封装 | `@langchain/openai` 1.5（ChatOpenAI，`baseURL` 兼容 DeepSeek / 通义千问 / OpenAI） |
 | 流式 | LangGraph `streamEvents()` → 后端 SSE → 前端 `fetch` + `ReadableStream` |
-| 源码规模 | **126 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`，其中 24 个单测文件）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
+| 源码规模 | **127 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`，其中 25 个单测文件）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
 | 页面与接口 | `app` 下 2 个页面（`/`、`/_not-found`）+ 2 个 API 路由 |
 | Agent 节点 | **9 个**（`lib/agent/nodes/`，含条件触发的 `enrichLiveData`） |
-| 测试 | **355 个单测用例**（Vitest，24 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射、实时补充节点六条判定与静默失败、条件串去重与 LLM 失败文本清洗、目录字段分级与派生统计、跨产物继承的判据与边界、A+ CSS 描述降级的拼装与长度合格性、**客户端轻量载荷的派生一致性、内联卡按 id 解析与静默失败、详情弹窗的实时覆盖解析**）；无组件/E2E 自动化测试 |
+| 测试 | **363 个单测用例**（Vitest，25 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射、实时补充节点六条判定与静默失败、条件串去重与 LLM 失败文本清洗、目录字段分级与派生统计、跨产物继承的判据与边界、A+ CSS 描述降级的拼装与长度合格性、客户端轻量载荷的派生一致性、内联卡按 id 解析与静默失败、详情弹窗的实时覆盖解析、**内联卡选取规则与两条路径产出同一 id 列表**）；无组件/E2E 自动化测试 |
 | 版本控制 | git 仓库，远端 `https://github.com/Zeffy-Real/eshopagent` |
 
 ---
@@ -301,7 +301,7 @@ confirmOrder   → generateReply → END
 | 项 | 方法 | 结果 |
 | --- | --- | --- |
 | 类型 | `npx tsc --noEmit` | ✅ 0 错误 |
-| 单测 | `npm test`（Vitest，24 个文件） | ✅ 355 / 355 通过 |
+| 单测 | `npm test`（Vitest，25 个文件） | ✅ 363 / 363 通过 |
 | 跨重启持久化 | 建会话 → 杀进程（确认端口无监听）→ 重启 → 同 sessionId 追问指代 | ✅ 恢复上一轮上下文（时间线显示「历史 366 字」），指代解析为 refine 并收紧价格 |
 | 内存态回落 | `CHECKPOINT_BACKEND=memory` 独立用例 | ✅ 不建连接、会话管理安全跳过、checkpointer 仍可用、不产生 sqlite 文件 |
 | 构建 | `npm run build` | ✅ 通过；首页 **287 kB / First Load 423 kB**（客户端目录瘦身前是 419 / 555）；共享 103 kB（含内联的 justoneapi 目录产物——它只在服务端与按需 chunk 里） |
@@ -367,6 +367,9 @@ confirmOrder   → generateReply → END
 | — 服务端注入载荷的源感知（浏览器实读） | `agent-browser` CLI 驱动 Chrome（1440×900）读中栏 chip 与右栏「数据快照」面板；切源后重启 dev | ✅ real：chip 各 **60**、面板 `real · 冻结快照` / **420 件 · 7 品类** / 平台 Amazon 280 · Walmart 61 · Lazada 59 · Shopee 20 / 覆盖率 销量 88-420、评分 420-420、划线价 279-420；mock：chip **10 · 8 · 7 · 7 · 10 · 5 · 3**、面板 `mock · 内置演示数据` / **50 件** / 覆盖率 **50-50-50**；justoneapi：chip 各 **4**、面板 `justoneapi · 实时源产物` / **28 件** / 平台 京东 28 / 覆盖率 0-28-0-28-0-28。三源数字与各自产物一致 → 载荷确实是按当前源现算，没有任何写死计数 |
 | — 内联卡与详情弹窗（浏览器） | ① 无效 Key 触发非流式（模板）回复 → 内联卡；② real 源点开卡片详情 | ✅ ① 回复内联卡渲染 2 张（`Troubled Blood … ¥104` / `The Guest List：小说 ¥94`），且网络日志出现 **`_app-pages-browser_lib_catalog_products_ts.js` 按需请求 200**（每次新页面上下文只在有内联卡时请求）→ 目录走按需 chunk；② 弹窗内容完整（名称/品牌/类目/价格 ¥104 / 划线价 ¥209 / 派生图书简介 / 标签 / 规格 5 行），`实时 ·` 计数 0 —— 与卡片一致（real 源本无实时覆盖）。⚠️ 未验到：chunk 请求被 `network route --abort/--body` 拦截（模块脚本请求不被该机制拦截），因此「加载中同高占位」只有构造性证据（占位与卡片同 `p-2` + `size-11` + `gap-2.5`，实测卡片高 **62px**）；失败路径由单测锁定（lookup 抛错 → null、loader catch → 空数组） |
 | — 客户端解析单测（2026-09-25 收尾轮 2） | `lib/catalog/client-products.test.ts`（8 条）+ `field-truth.test.ts`（+2 条） | ✅ 载荷：与直接读目录算出的计数/覆盖率/平台分布逐项相等，换一份目录（3 件构造数据）时数字跟着变（证明非写死）；内联卡：命中→商品、未命中→null、lookup 抛错→null 不抛错、一批 id 保序跳过未命中、空列表不触发 chunk import；弹窗：**传入已叠加覆盖的对象 → 解析结果价格=覆盖价 199、id 不变**（「实时」标注不丢）、无覆盖时原样、id 为 null/未命中 → null；会话缓存：从内联卡点开也能解析 |
+| 内联卡修复（2026-09-25 冻结轮，关 §8 第 25 条） | 判定：读初始提交注释 / `applySnapshot` 四分支 / 全仓检索；修法：`selectReplyProductIds` 唯一实现 + 快照 `replyProductIds` + store 两处消费 | ✅ **判定为实现遗漏**（依据见 §8 第 25 条）。真机 0 计费逐气泡取证：LLM 正常的两轮回复各挂 **3 张**且 = 中栏前 3 件（`Beneath a Scarlet Sky` / `American Dirt` / `Troubled Blood`，顺序一致）；干净会话发「你好」→ 回复是「没有检索到相关商品…」、**0 张**；无效 Key 模板路径 → **3 张** = 该轮中栏前 3 件。⚠️ **一处如实记录**：模板路径与 LLM 路径的卡片**数量一致（各 3 张）、列表各不相同**——因为两条路径的**解析器**不同（规则解析 vs LLM 解析），检索结果的排序本来就不一样；「共用同一函数」由单测锁定（同一份 `replyProductIds` 喂两条路径 → 同一 id 列表），不是靠两次真机的列表巧合 |
+| — 内联卡点击与「实时」标注（冻结轮，0 计费） | ① 点内联卡 → 弹窗；② 中栏换列表后点**旧**内联卡；③ 注入伪造 `liveOverrides` 到持久化快照后刷新 | ✅ ① 弹窗内容完整（作者/类目/评分/派生简介/规格 5 行）、无覆盖时 `实时 ·` 计数 0（与卡片一致）；② 中栏已换成耳机类结果，点旧书卡仍开弹窗（走**会话缓存**分支，§8 第 24 条 ③ 的缓解生效）；③ 卡片与弹窗**同时**显示 `¥1 实时 · 15:01` → 覆盖价与标注在弹窗里都没丢（注入的是客户端自有数据，零计费、事后已清理） |
+| — 修复单测（冻结轮） | `lib/agent/sse.test.ts`（5 条）+ `store/use-agent-store.test.ts`（+3 条） | ✅ 选取规则：有商品取前 3（顺序与检索结果一致）/ 不足 3 取全部 / 无商品空数组；`toSnapshot` 下发的 `replyProductIds` 就是 `selectReplyProductIds(searchResults)`；store 两路径：模板回复 3 张、LLM token 气泡补 3 张且**不新建第二个气泡**、无商品时 `productIds` 缺省 |
 
 ### 7.2 未验证 / 验证受限
 
@@ -420,7 +423,7 @@ confirmOrder   → generateReply → END
 | 22 | ~~2 件商品本地化后描述过短~~（`amz-B0009IY8U6` 4 字、`amz-B00I35Z6JY` 6 字，形如「来自品牌」） | 数据质量 | ✅ **已修（2026-09-25 收尾轮，commit `ccb0497`）**：根因是这两条的**源 `description` 本身就是亚马逊 A+ 页 CSS**（实测 5977 / 20747 字符），构建期「长度 ≥ 60」的门挡不住。按裁定**降级而不是丢弃**：`normalizeRow` 命中 A+ 页 CSS 特征（`aplus-v2` / `brand-story.cfg` / `display:block`）时把描述换成派生文案（品牌 + 类目 + 商品参数 + 评分/评价数，与图书简介共用 `buildDerivedDescription`），产物带 `descriptionDerived` 标记、件数写进 note。件数仍 420、扫描 0 异常、其余 418 件逐字未变。**只认 CSS 特征、不认 `From the Manufacturer` 前缀**——实测综合样本里 9 件以该前缀开头但正文可读，按前缀判会把好描述误降级 |
 | 23 | ~~构建会丢掉上一轮的本地化结果~~ | 工程化 | ✅ **已修（2026-09-25 收尾轮，commit `ccb0497`）**：`catalog:build` 写盘前按「**id 相同 + 英文原文逐字一致**」把上一版的 `name` / `description` / `tags` / `specifications` / `nameOriginal` 继承到新构建结果（纯函数 `inheritLocalizedFields`，在 `scripts/catalog-shared.mjs`），构建输出打印「继承已本地化 N 条，待翻译 M 条」；`localize` 的跳过判据与它共用同一份实现——**判据语义：`nameOriginal` 存在 = 该条目已本地化过（该字段只有 localize 写入；批次失败不留半个标记）**，仅此一处定义（代码注释在 `isLocalizedProduct`）。实测 420 件产物重跑 build → localize = 继承 420 条 / **0 批 LLM 调用 / 0.38 秒**，`products` 逐字未变 → 不再依赖一次性脚本 `.cache/restore-approved.mjs`。**边界**：上游改了标题的条目会被重译一次（判据要求英文原文一致，这是刻意的——标题变了，旧中文文案不再对应）；描述基准变化（A+ CSS 降级）的条目同样重译一次 |
 | 24 | **客户端不再持有全量目录**（本轮瘦身的代价，压下了 132 kB） | 架构边界 | 详情弹窗的商品来自「调用方传入的渲染中对象 / 会话内已解析列表」，内联卡按 id 解析走**按需 chunk**（`lib/catalog/client-products.ts`）。由此：① 内联卡从「首帧就有」变为「chunk 到达后出现」（有与卡片同高的占位，实测卡片 **62px**）；② chunk 加载失败时内联卡静默缺失（不报错、不显示「找不到」——与项目既有的「实时补充失败静默」同一口径）；③ 若某个 id 既不在渲染列表也不在会话缓存（正常交互到不了，只能由外部构造），弹窗不打开——今天它会从全量目录里查到。想恢复 ③ 的完全等价，要把弹窗数据源改成服务端接口（引入加载态）或把内联卡商品写进消息对象（改 store 形状），都超出本轮「只动客户端数据流」的授权 |
-| 25 | **`productIds` 只在非流式回复里写入**（既有行为，本轮实测发现） | 能力边界 | `store/use-agent-store.ts` 里 `productIds` 只有一个写入点（最终文案路径）：LLM **流式**回复的气泡由 `token` 事件创建、不带 `productIds`，因此**LLM 路径下对话区没有内联卡**，只有模板/规则兜底回复有。本轮浏览器实测：real 源（LLM 正常）两轮回复均无内联卡、无效 Key（模板）回复有 2 张。修复需要把检索结果随首个 token 一起下发（改 SSE 载荷与 store 形状），超出本轮范围，**记录不改** |
+| 25 | ~~`productIds` 只在非流式回复里写入（LLM 路径没有内联卡）~~ | 能力边界 | ✅ **已修（2026-09-25 冻结轮）**：**判定为实现遗漏**——依据：初始提交里那句注释写的是「逐字路径**等本轮结束再收尾**」，但 `finalizeReply` 只处理文本、没补该字段；同一个 `applySnapshot` 的 4 个分支只有 1 个写了它；全仓（含 docs 与 decisions）**没有一句**说明「LLM 路径不带卡片」；模板回复同样逐字列出了商品却也挂了卡（「冗余」这个理由不成立）。修法：选取规则收敛到 `lib/agent/sse.ts` 的 `selectReplyProductIds`（本轮检索结果**前 3 件**，与模板路径历史取值一致），随快照 `replyProductIds` 下发；store 在 LLM 气泡收尾时补齐、模板路径创建时写入——**节点逻辑与 store 形状都没动**。真机（0 计费）：real 源 LLM 正常的两轮回复各挂 **3 张**（逐气泡取证，= 中栏前 3 件）；干净会话发「你好」**0 张**（该轮无商品）；无效 Key 模板路径 **3 张** = 该轮中栏前 3 件；点内联卡详情弹窗正常；再往持久化快照注入伪造 `liveOverrides`（客户端自有数据、零计费）→ **卡片与弹窗都显示 `¥1 实时 · 15:01`**，覆盖价与标注在弹窗里都没丢。单测 8 条：选取规则（有/不足/无）、`toSnapshot` 下发值、两条路径同一列表、无商品不挂卡 |
 
 ---
 
