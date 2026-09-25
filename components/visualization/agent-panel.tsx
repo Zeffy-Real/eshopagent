@@ -3,6 +3,7 @@
 import {
   Brain,
   ChevronRight,
+  Database,
   ListTree,
   ShoppingCart,
   SlidersHorizontal,
@@ -13,6 +14,7 @@ import {
 import { PanelHeader } from '@/components/common/panel-header';
 import { PanelSection } from '@/components/common/panel-section';
 import { CartSection } from '@/components/visualization/cart-section';
+import { CatalogSection } from '@/components/visualization/catalog-section';
 import { CompareSection } from '@/components/visualization/compare-section';
 import { DecisionSection } from '@/components/visualization/decision-section';
 import { IntentSection } from '@/components/visualization/intent-section';
@@ -28,10 +30,10 @@ import { useUiStore } from '@/store/use-ui-store';
 /**
  * Agent 操作可视化面板（右栏）。
  *
- * 六段内容全部由 Agent 执行过程中推送的状态与事件驱动：
- * 推理时间线（node/tool 事件）、意图解析（searchFilters）、
+ * 七段内容：推理时间线（node/tool 事件）、意图解析（searchFilters）、
  * 对比分析（comparison）、决策推荐（comparison 派生）、购物车（cart）、
- * 你的偏好（localStorage 里的跨会话画像，同一浏览器下有效）。
+ * 你的偏好（localStorage 里的跨会话画像，同一浏览器下有效）、
+ * 数据快照（商品目录的来源 / 规模 / 字段真实性分级，**只读**，与中栏徽标同一口径）。
  */
 export function AgentPanel() {
   const setRightPanelOpen = useUiStore((s) => s.setRightPanelOpen);
@@ -96,6 +98,11 @@ export function AgentPanel() {
 
           <PanelSection icon={Brain} title="你的偏好">
             <ProfileSection />
+          </PanelSection>
+
+          {/* 数据快照放在最后：它是「关于这份数据」的静态说明，不是当轮推理的一部分 */}
+          <PanelSection icon={Database} title="数据快照">
+            <CatalogSection />
           </PanelSection>
         </div>
       </ScrollArea>

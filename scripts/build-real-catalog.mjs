@@ -9,8 +9,9 @@
  *      用于补实「图书」品类（综合样本里图书只有 2 条，撑不起一个品类）
  *
  * 用法：
- *   node scripts/build-real-catalog.mjs                 # 默认每个品类保留 14 条
- *   node scripts/build-real-catalog.mjs --per=20
+ *   node scripts/build-real-catalog.mjs                 # 默认每个品类保留 60 条（与当前产物一致）
+ *   node scripts/build-real-catalog.mjs --per=20        # 想缩小目录时显式传 --per
+ *   node --env-file=.env.local scripts/build-real-catalog.mjs --source=justoneapi --per=4
  *
  * 币种处理：价格字段按 currency 查固定汇率表折算成人民币；汇率表未覆盖的币种直接跳过，
  * 而不是当成美元处理（否则 93500 IDR 会被当成 93500 美元判越界）。
@@ -48,10 +49,20 @@ const REPO = 'luminati-io/eCommerce-dataset-samples';
 const BOOKS_REPO = 'luminati-io/Amazon-popular-books-dataset';
 const API_HEADERS = { 'User-Agent': 'eshop-catalog-builder', Accept: 'application/vnd.github+json' };
 
-const PER_CATEGORY = perCategoryFromArgv(process.argv);
-
 /** 数据源：`real`（默认，HF 公开抓取快照）| `justoneapi`（京东实时，需 JUSTONEAPI_TOKEN） */
 const SOURCE = (process.argv.find((arg) => arg.startsWith('--source=')) ?? '--source=real').split('=')[1];
+
+/**
+ * 每品类保留件数。
+ *
+ * 默认值与**当前产物保持一致**：`data/real-catalog.json` 是 `--per=60` 的产物
+ * （7 品类 × 60 = 420 件），若默认还是 14，照抄 README 里的 `npm run catalog:build`
+ * 会把目录从 420 件缩回 98 件 —— 默认值与产物不一致本身就是个坑，这里对齐。
+ *
+ * 实时源（justoneapi）保持保守默认 14：它的每件商品都要一次计费详情调用，
+ * 不带参数就跑会一次烧掉 400+ 次配额。
+ */
+const PER_CATEGORY = perCategoryFromArgv(process.argv, SOURCE === 'justoneapi' ? 14 : 60);
 
 /* ---------- 源分支 ---------- */
 // 京东实时源与 HF 快照源的流程没有交集（一个走 HTTP 调用、一个读数据集 CSV），

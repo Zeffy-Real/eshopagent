@@ -182,14 +182,31 @@ async function translateBatch(items, attempt = 1) {
 
 const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 const products = catalog.products;
-console.log(`待本地化商品：${products.length} 条，批次大小 ${BATCH_SIZE}`);
+
+/**
+ * 增量判定：已本地化的条目（带 nameOriginal 且与当前 name 不同）直接跳过。
+ *
+ * 为什么必须增量：全量重译会改写已经验收过的中文文案（演示脚本里逐字引用了若干回复与
+ * 商品名），也会白花 token；而失败批次下一次运行还能自动补上。
+ * 判据只用数据里已有的信号（nameOriginal），不引入语言检测依赖。
+ */
+function isLocalized(product) {
+  const original = typeof product.nameOriginal === 'string' ? product.nameOriginal.trim() : '';
+  return original !== '' && original !== product.name;
+}
+
+const pending = products.filter((product) => !isLocalized(product));
+console.log(
+  `商品 ${products.length} 条：已本地化 ${products.length - pending.length} 条（跳过）、` +
+    `待本地化 ${pending.length} 条，批次大小 ${BATCH_SIZE}`,
+);
 
 const byId = new Map(products.map((product) => [product.id, product]));
 let translated = 0;
 let fallback = 0;
 
-for (let offset = 0; !TAGS_ONLY && offset < products.length; offset += BATCH_SIZE) {
-  const batch = products.slice(offset, offset + BATCH_SIZE);
+for (let offset = 0; !TAGS_ONLY && offset < pending.length; offset += BATCH_SIZE) {
+  const batch = pending.slice(offset, offset + BATCH_SIZE);
   const index = Math.floor(offset / BATCH_SIZE) + 1;
   process.stdout.write(`  批次 ${index}（${batch.length} 条）… `);
 

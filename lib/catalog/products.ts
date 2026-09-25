@@ -30,6 +30,10 @@ export interface CatalogMeta {
   provider: string;
   /** 真实数据的生成时间（mock 为空） */
   generatedAt: string | null;
+  /** 文案本地化时间（未本地化或 mock 为空） */
+  localizedAt: string | null;
+  /** 上游数据集 / 接口地址（产物里的 source 字段原样透出；mock 为空） */
+  origin: string | null;
   /** 数据真实性说明 */
   note: string | null;
 }
@@ -82,6 +86,7 @@ export function isProductLike(value: unknown): value is Product {
 interface RawCatalog {
   products?: unknown[];
   generatedAt?: string;
+  localizedAt?: string;
   source?: string;
   note?: string;
   platforms?: string[];
@@ -166,6 +171,8 @@ export const CATALOG_META: CatalogMeta = {
   count: productsOf(CATALOG_SOURCE).length,
   provider: providerOf(CATALOG_SOURCE),
   generatedAt: CATALOG_SOURCE === 'mock' ? null : (rawOf(CATALOG_SOURCE).generatedAt ?? null),
+  localizedAt: CATALOG_SOURCE === 'mock' ? null : (rawOf(CATALOG_SOURCE).localizedAt ?? null),
+  origin: CATALOG_SOURCE === 'mock' ? null : (rawOf(CATALOG_SOURCE).source ?? null),
   note: CATALOG_SOURCE === 'mock' ? null : (rawOf(CATALOG_SOURCE).note ?? null),
 };
 

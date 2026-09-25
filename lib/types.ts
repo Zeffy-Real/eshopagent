@@ -44,6 +44,13 @@ export interface Product {
   /** 核心参数（对比表格使用） */
   specifications: Record<string, string>;
   tags: string[];
+  /**
+   * 来源平台名（如 Amazon / Walmart / 京东）。
+   *
+   * 目录产物里每件商品都带这个字段（构建期按来源写入，README 的「平台分布」用的就是它）；
+   * 内置的 mock 数据可能没有，因此是可选的——「数据快照」面板按它统计平台分布。
+   */
+  platform?: string;
 }
 
 export interface CartItem {
