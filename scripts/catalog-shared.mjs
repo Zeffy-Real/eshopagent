@@ -187,7 +187,8 @@ export function describeWithoutSourceDescription({ brand, category, specificatio
 export const LOCALIZED_FIELDS = ['name', 'description', 'tags', 'specifications', 'nameOriginal'];
 
 /**
- * 已本地化判定 = 条目带 `nameOriginal` 标记（`localize-catalog.mjs` 是唯一写入者）。
+ * 已本地化判定：**`nameOriginal` 存在 = 该条目已本地化过**（该字段只有 localize 写入；
+ * 批次失败不留半个标记）。
  *
  * 判据必须用**标记的存在性**，不能用「nameOriginal ≠ name」：
  * 实测 420 件里有 40 件（37 图书 + 2 Lazada + 1 Amazon 的品牌/型号标题）的译名

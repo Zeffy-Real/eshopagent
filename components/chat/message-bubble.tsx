@@ -1,16 +1,37 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { InlineProductCard } from '@/components/chat/inline-product-card';
 import { Markdown } from '@/components/chat/markdown';
 import { Logo } from '@/components/ui/logo';
-import { getProductById } from '@/lib/catalog/products';
+import { Skeleton } from '@/components/ui/skeleton';
+import { loadInlineProducts } from '@/lib/catalog/client-products';
+import type { Product } from '@/lib/types';
 import type { ChatMessage } from '@/store/use-agent-store';
 import { cn } from '@/lib/utils';
 
 export interface MessageBubbleProps {
   message: ChatMessage;
+}
+
+/**
+ * 内联卡的加载占位：结构照抄 `InlineProductCard`（同一套 `p-2` + `size-11` + `gap-2.5`），
+ * 因此高度一致——目录 chunk 到达前后不会发生布局跳动。
+ */
+function InlineCardSkeleton() {
+  return (
+    <div
+      aria-hidden
+      className="flex w-full items-center gap-2.5 rounded-[var(--radius-md)] border border-border bg-surface p-2"
+    >
+      <Skeleton className="size-11 shrink-0 rounded-[var(--radius-sm)]" />
+      <span className="min-w-0 flex-1 space-y-1.5">
+        <Skeleton className="block h-3.5 w-3/5 rounded" />
+        <Skeleton className="block h-4 w-2/5 rounded" />
+      </span>
+    </div>
+  );
 }
 
 function formatTime(timestamp: number): string {
@@ -23,9 +44,29 @@ function formatTime(timestamp: number): string {
 /** 对话气泡：用户右对齐、Agent 左对齐，Agent 侧支持 Markdown 与内联商品卡片 */
 function MessageBubbleBase({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
-  const products = (message.productIds ?? [])
-    .map((id) => getProductById(id))
-    .filter((product) => product !== undefined);
+  const idsKey = (message.productIds ?? []).join(',');
+  /**
+   * 内联卡的商品**按需解析**：目录模块在独立 chunk 里（客户端不再静态 import 全量目录，
+   * 见 `lib/catalog/client-products.ts`）。`null` = 解析中（渲染同高占位）；
+   * `[]` = 这条消息没有关联商品，或 chunk 加载失败——两种情况都只是不渲染卡片，不报错。
+   */
+  const [products, setProducts] = useState<Product[] | null>(null);
+
+  useEffect(() => {
+    if (idsKey === '') {
+      setProducts([]);
+      return;
+    }
+    let alive = true;
+    void loadInlineProducts(idsKey.split(',')).then((list) => {
+      if (alive) setProducts(list);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [idsKey]);
+
+  const loading = products === null && idsKey !== '';
 
   return (
     <motion.div
@@ -74,7 +115,15 @@ function MessageBubbleBase({ message }: MessageBubbleProps) {
           />
         )}
 
-        {products.length > 0 && (
+        {loading && (
+          <div className="w-full space-y-1.5">
+            {idsKey.split(',').map((id) => (
+              <InlineCardSkeleton key={id} />
+            ))}
+          </div>
+        )}
+
+        {products !== null && products.length > 0 && (
           <div className="w-full space-y-1.5">
             {products.map((product) => (
               <InlineProductCard key={product.id} product={product} />

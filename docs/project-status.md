@@ -4,8 +4,8 @@
 >
 > - 数据快照生成时间：2026-09-25 05:18 UTC
 > - 文案本地化时间：2026-09-25 05:18 UTC
-> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `e4de303`；本次同步内容为**跨产物继承（关 §8 第 23 条）+ A+ CSS 描述降级（关 §8 第 22 条）**（2026-09-25 收尾轮）
-> - 校验状态：`tsc --noEmit` 0 错误；**345 个单测全绿（23 个文件）**；`next build` 通过（首页 419 kB / First Load 555 kB）
+> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `0dc23a7`；本次同步内容为**客户端 bundle 瘦身（服务端持有全量目录，客户端只留轻量数据 + 按需 chunk）**（2026-09-25 收尾轮 2）
+> - 校验状态：`tsc --noEmit` 0 错误；**355 个单测全绿（24 个文件）**；`next build` 通过（首页 287 kB / First Load 423 kB）
 
 ---
 
@@ -32,10 +32,10 @@
 | Agent 框架 | `@langchain/langgraph` 1.4（StateGraph + SqliteSaver checkpoint + interrupt） |
 | LLM 封装 | `@langchain/openai` 1.5（ChatOpenAI，`baseURL` 兼容 DeepSeek / 通义千问 / OpenAI） |
 | 流式 | LangGraph `streamEvents()` → 后端 SSE → 前端 `fetch` + `ReadableStream` |
-| 源码规模 | **123 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`，其中 23 个单测文件）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
+| 源码规模 | **126 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`，其中 24 个单测文件）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
 | 页面与接口 | `app` 下 2 个页面（`/`、`/_not-found`）+ 2 个 API 路由 |
 | Agent 节点 | **9 个**（`lib/agent/nodes/`，含条件触发的 `enrichLiveData`） |
-| 测试 | **345 个单测用例**（Vitest，23 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射、实时补充节点六条判定与静默失败、条件串去重与 LLM 失败文本清洗、目录字段分级与派生统计、**跨产物继承的判据与边界、A+ CSS 描述降级的拼装与长度合格性**）；无组件/E2E 自动化测试 |
+| 测试 | **355 个单测用例**（Vitest，24 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射、实时补充节点六条判定与静默失败、条件串去重与 LLM 失败文本清洗、目录字段分级与派生统计、跨产物继承的判据与边界、A+ CSS 描述降级的拼装与长度合格性、**客户端轻量载荷的派生一致性、内联卡按 id 解析与静默失败、详情弹窗的实时覆盖解析**）；无组件/E2E 自动化测试 |
 | 版本控制 | git 仓库，远端 `https://github.com/Zeffy-Real/eshopagent` |
 
 ---
@@ -301,10 +301,10 @@ confirmOrder   → generateReply → END
 | 项 | 方法 | 结果 |
 | --- | --- | --- |
 | 类型 | `npx tsc --noEmit` | ✅ 0 错误 |
-| 单测 | `npm test`（Vitest，23 个文件） | ✅ 345 / 345 通过 |
+| 单测 | `npm test`（Vitest，24 个文件） | ✅ 355 / 355 通过 |
 | 跨重启持久化 | 建会话 → 杀进程（确认端口无监听）→ 重启 → 同 sessionId 追问指代 | ✅ 恢复上一轮上下文（时间线显示「历史 366 字」），指代解析为 refine 并收紧价格 |
 | 内存态回落 | `CHECKPOINT_BACKEND=memory` 独立用例 | ✅ 不建连接、会话管理安全跳过、checkpointer 仍可用、不产生 sqlite 文件 |
-| 构建 | `npm run build` | ✅ 通过；首页 419 kB / First Load 555 kB；共享 103 kB（较上一版 +6 kB，来自内联的 justoneapi 目录产物） |
+| 构建 | `npm run build` | ✅ 通过；首页 **287 kB / First Load 423 kB**（客户端目录瘦身前是 419 / 555）；共享 103 kB（含内联的 justoneapi 目录产物——它只在服务端与按需 chunk 里） |
 | 目录不变量 | 脚本扫描 420 件商品（价格/评分/评论数/销量/库存/原价/图片/描述/标签/规格） | ✅ 扩容后 0 异常；本地化后曾 2 处异常（描述过短，根因见 §8 第 22 条）→ **已修（2026-09-25 收尾轮）：A+ CSS 降级后重扫 0 异常** |
 | 图书数据 | 逐条核对 16 本（扩容前） | ✅ 真实书名、作者、价格、评分、评论数、封面、题材标签齐全，无近重复 |
 | 端到端（浏览器） | 3 轮对话 + 完整下单流程 | ✅ 通过 |
@@ -362,6 +362,11 @@ confirmOrder   → generateReply → END
 | A+ CSS 描述降级（2026-09-25 收尾轮，关 §8 第 22 条） | build + localize 再跑一轮 | ✅ 2 件（`amz-B0009IY8U6` / `amz-B00I35Z6JY`）描述由「来自品牌」4 字 /「来自制造商。」6 字 → 派生文案（本地化后 **88 / 81 字**）；件数仍 **420**（不丢商品）；除这 2 件外 **418 件逐字未变**（逐字段 diff 只有 2 件 × 4 字段：name / description / descriptionDerived / tags）；**1 批（2 条）/ 2.54 秒 / 0 失败**；同流程再跑一轮 = 继承 420 / 0 批（描述基准 guard 不会让这 2 件每轮重译） |
 | 本地化判据修正（2026-09-25 收尾轮） | 扫描 420 件产物的 `nameOriginal` | ✅ 发现 40 件（37 图书 + 2 Lazada + 1 Amazon）的译名与英文原文**逐字相同**（书名、品牌+型号，模型按提示词保留原文）——旧判据「`nameOriginal` ≠ `name`」把它们误判成未本地化，会让每次重建都重译这 40 件；判据改为「带 `nameOriginal` 标记」（该字段只有 localize 写入，批次失败不会留半个标记），单测锁定 |
 | 继承与降级的单测（2026-09-25 收尾轮） | `lib/catalog/catalog-shared.test.ts`（新增 11 条） | ✅ 继承 8 条：英文原文一致→继承 / 不一致→不继承 / 旧产物缺该 id→不继承 / 首次构建→全不继承 / 译名与原文相同（上面 40 件的真实形态）→仍继承 / 描述基准变化（A+ CSS 降级）→不继承 / 缺标记→不继承 / **继承不改价格·原价·评分·评论数·销量·库存·图片·平台·来源 id（键集合也锁死）**；A+ CSS 降级 3 条：命中→派生（断言拼装结果逐字）/ 正常描述（含 `From the Manufacturer` 前缀）→不误判 / 派生结果过 `isProductLike` 且长度落在扫描区间 10–200（含退化情形） |
+| 客户端 bundle 瘦身（2026-09-25 收尾轮 2） | `npm run build` 前后对比（先停 dev） | ✅ 首页 419 → **287 kB**、First Load JS 555 → **423 kB**（−132 kB / −23.8%）；探针实测「目录完全退出客户端」的理论值 428 kB，实际 423 kB（还少了 provider 层的重复数据） |
+| — 首屏 chunk 取证 | 构建产物：`.next/server/app/index.html` 里的 10 个首屏 chunk 逐个检索商品 id（`bk-`/`amz-` 前缀） | ✅ **0 命中**；含商品 id 的只有按需 chunk `713.c3c0ea1ced5e54dc.js`（410 KB 原始），且 `app/page` chunk 里存在对它的 dynamic import 引用 → 目录确实退出了首屏，只按需下载 |
+| — 服务端注入载荷的源感知（浏览器实读） | `agent-browser` CLI 驱动 Chrome（1440×900）读中栏 chip 与右栏「数据快照」面板；切源后重启 dev | ✅ real：chip 各 **60**、面板 `real · 冻结快照` / **420 件 · 7 品类** / 平台 Amazon 280 · Walmart 61 · Lazada 59 · Shopee 20 / 覆盖率 销量 88-420、评分 420-420、划线价 279-420；mock：chip **10 · 8 · 7 · 7 · 10 · 5 · 3**、面板 `mock · 内置演示数据` / **50 件** / 覆盖率 **50-50-50**；justoneapi：chip 各 **4**、面板 `justoneapi · 实时源产物` / **28 件** / 平台 京东 28 / 覆盖率 0-28-0-28-0-28。三源数字与各自产物一致 → 载荷确实是按当前源现算，没有任何写死计数 |
+| — 内联卡与详情弹窗（浏览器） | ① 无效 Key 触发非流式（模板）回复 → 内联卡；② real 源点开卡片详情 | ✅ ① 回复内联卡渲染 2 张（`Troubled Blood … ¥104` / `The Guest List：小说 ¥94`），且网络日志出现 **`_app-pages-browser_lib_catalog_products_ts.js` 按需请求 200**（每次新页面上下文只在有内联卡时请求）→ 目录走按需 chunk；② 弹窗内容完整（名称/品牌/类目/价格 ¥104 / 划线价 ¥209 / 派生图书简介 / 标签 / 规格 5 行），`实时 ·` 计数 0 —— 与卡片一致（real 源本无实时覆盖）。⚠️ 未验到：chunk 请求被 `network route --abort/--body` 拦截（模块脚本请求不被该机制拦截），因此「加载中同高占位」只有构造性证据（占位与卡片同 `p-2` + `size-11` + `gap-2.5`，实测卡片高 **62px**）；失败路径由单测锁定（lookup 抛错 → null、loader catch → 空数组） |
+| — 客户端解析单测（2026-09-25 收尾轮 2） | `lib/catalog/client-products.test.ts`（8 条）+ `field-truth.test.ts`（+2 条） | ✅ 载荷：与直接读目录算出的计数/覆盖率/平台分布逐项相等，换一份目录（3 件构造数据）时数字跟着变（证明非写死）；内联卡：命中→商品、未命中→null、lookup 抛错→null 不抛错、一批 id 保序跳过未命中、空列表不触发 chunk import；弹窗：**传入已叠加覆盖的对象 → 解析结果价格=覆盖价 199、id 不变**（「实时」标注不丢）、无覆盖时原样、id 为 null/未命中 → null；会话缓存：从内联卡点开也能解析 |
 
 ### 7.2 未验证 / 验证受限
 
@@ -414,6 +419,8 @@ confirmOrder   → generateReply → END
 | 21 | ~~LLM 失败时时间线原样显示服务商错误文本~~（含服务商掩码后的密钥末位） | 安全（低） | ✅ **已修（2026-09-25 补充轮，commit `561e772`）**：新增 `sanitizeLlmError`（`lib/agent/nodes/parseIntent.ts`），把 `Your api key: ****abcd is invalid` 一类片段整体换成「服务商鉴权失败」，**保留 401 / request_id** 等可诊断信息；单测 3 条（含「普通失败文本不误伤」）。真机复现：时间线不含密钥末位、不含 `api key` 字样。口径与「token 不进日志 / 文档 / commit」一致——UI 时间线同样是被截图与被讲述的界面 |
 | 22 | ~~2 件商品本地化后描述过短~~（`amz-B0009IY8U6` 4 字、`amz-B00I35Z6JY` 6 字，形如「来自品牌」） | 数据质量 | ✅ **已修（2026-09-25 收尾轮，commit `ccb0497`）**：根因是这两条的**源 `description` 本身就是亚马逊 A+ 页 CSS**（实测 5977 / 20747 字符），构建期「长度 ≥ 60」的门挡不住。按裁定**降级而不是丢弃**：`normalizeRow` 命中 A+ 页 CSS 特征（`aplus-v2` / `brand-story.cfg` / `display:block`）时把描述换成派生文案（品牌 + 类目 + 商品参数 + 评分/评价数，与图书简介共用 `buildDerivedDescription`），产物带 `descriptionDerived` 标记、件数写进 note。件数仍 420、扫描 0 异常、其余 418 件逐字未变。**只认 CSS 特征、不认 `From the Manufacturer` 前缀**——实测综合样本里 9 件以该前缀开头但正文可读，按前缀判会把好描述误降级 |
 | 23 | ~~构建会丢掉上一轮的本地化结果~~ | 工程化 | ✅ **已修（2026-09-25 收尾轮，commit `ccb0497`）**：`catalog:build` 写盘前按「**id 相同 + 英文原文逐字一致**」把上一版的 `name` / `description` / `tags` / `specifications` / `nameOriginal` 继承到新构建结果（纯函数 `inheritLocalizedFields`，在 `scripts/catalog-shared.mjs`），构建输出打印「继承已本地化 N 条，待翻译 M 条」；`localize` 的跳过判据与它共用同一份实现。实测 420 件产物重跑 build → localize = 继承 420 条 / **0 批 LLM 调用 / 0.38 秒**，`products` 逐字未变 → 不再依赖一次性脚本 `.cache/restore-approved.mjs`。**边界**：上游改了标题的条目会被重译一次（判据要求英文原文一致，这是刻意的——标题变了，旧中文文案不再对应）；描述基准变化（A+ CSS 降级）的条目同样重译一次 |
+| 24 | **客户端不再持有全量目录**（本轮瘦身的代价，压下了 132 kB） | 架构边界 | 详情弹窗的商品来自「调用方传入的渲染中对象 / 会话内已解析列表」，内联卡按 id 解析走**按需 chunk**（`lib/catalog/client-products.ts`）。由此：① 内联卡从「首帧就有」变为「chunk 到达后出现」（有与卡片同高的占位，实测卡片 **62px**）；② chunk 加载失败时内联卡静默缺失（不报错、不显示「找不到」——与项目既有的「实时补充失败静默」同一口径）；③ 若某个 id 既不在渲染列表也不在会话缓存（正常交互到不了，只能由外部构造），弹窗不打开——今天它会从全量目录里查到。想恢复 ③ 的完全等价，要把弹窗数据源改成服务端接口（引入加载态）或把内联卡商品写进消息对象（改 store 形状），都超出本轮「只动客户端数据流」的授权 |
+| 25 | **`productIds` 只在非流式回复里写入**（既有行为，本轮实测发现） | 能力边界 | `store/use-agent-store.ts` 里 `productIds` 只有一个写入点（最终文案路径）：LLM **流式**回复的气泡由 `token` 事件创建、不带 `productIds`，因此**LLM 路径下对话区没有内联卡**，只有模板/规则兜底回复有。本轮浏览器实测：real 源（LLM 正常）两轮回复均无内联卡、无效 Key（模板）回复有 2 张。修复需要把检索结果随首个 token 一起下发（改 SSE 载荷与 store 形状），超出本轮范围，**记录不改** |
 
 ---
 

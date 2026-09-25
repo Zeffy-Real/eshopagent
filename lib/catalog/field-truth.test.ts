@@ -3,12 +3,15 @@ import rawCatalog from '@/data/real-catalog.json';
 import {
   FIELD_TRUTH,
   FIELD_TRUTH_LEVEL_LABEL,
+  buildCatalogClientPayload,
   computeCatalogCoverage,
+  computeCategoryCounts,
   computePlatformCounts,
   type FieldTruthLevel,
 } from '@/lib/catalog/field-truth';
-import { PRODUCTS } from '@/lib/catalog/products';
+import { CATALOG_META, PRODUCTS, getFeaturedProducts } from '@/lib/catalog/products';
 import { makeProduct } from '@/lib/test-utils/factories';
+import type { CatalogMeta } from '@/lib/catalog/products';
 
 /**
  * 「数据快照」面板的数据源：分级表 + 派生统计。
@@ -95,5 +98,56 @@ describe('覆盖率与分布：从数据派生，不写死', () => {
     for (const platform of rawPlatforms) {
       expect(platforms.map((item) => item.platform)).toContain(platform);
     }
+  });
+});
+
+describe('buildCatalogClientPayload：服务端注入客户端的轻量数据', () => {
+  const payload = buildCatalogClientPayload({
+    products: PRODUCTS,
+    meta: CATALOG_META,
+    featured: getFeaturedProducts(12),
+  });
+
+  it('件数 / 品类计数 / 覆盖率 / 平台分布与直接读目录算出来的一致', () => {
+    expect(payload.source).toBe(CATALOG_META.source);
+    // 与中栏徽标读的是同一个对象——两处数字不可能不同
+    expect(payload.meta).toBe(CATALOG_META);
+    expect(payload.categoryCounts).toEqual(computeCategoryCounts(PRODUCTS));
+    expect(Object.values(payload.categoryCounts).reduce((sum, count) => sum + count, 0)).toBe(
+      PRODUCTS.length,
+    );
+    expect(payload.coverage).toEqual(computeCatalogCoverage(PRODUCTS));
+    expect(payload.platformCounts).toEqual(computePlatformCounts(PRODUCTS));
+    // 首屏推荐来自调用方传入的 getFeaturedProducts（排序规则只有一份实现）
+    expect(payload.featured).toHaveLength(12);
+    expect(payload.featured.map((product) => product.id)).toEqual(
+      getFeaturedProducts(12).map((product) => product.id),
+    );
+  });
+
+  it('换一份目录（切源 / 换产物）时数字跟着变——证明没有任何写死的计数', () => {
+    const sample = [
+      makeProduct({ id: 'a', category: '数码', platform: 'Amazon', sales: 5 }),
+      makeProduct({ id: 'b', category: '图书', platform: 'Amazon', sales: 0 }),
+      makeProduct({ id: 'c', category: '图书', platform: 'Walmart', sales: 0 }),
+    ];
+    const sampleMeta: CatalogMeta = { ...CATALOG_META, count: 3, source: 'mock' };
+    const built = buildCatalogClientPayload({
+      products: sample,
+      meta: sampleMeta,
+      featured: sample.slice(0, 2),
+    });
+
+    expect(built.source).toBe('mock');
+    expect(built.categoryCounts).toMatchObject({ 图书: 2, 数码: 1, 食品: 0 });
+    expect(built.coverage.find((row) => row.label === '销量')).toMatchObject({
+      covered: 1,
+      total: 3,
+    });
+    expect(built.platformCounts).toEqual([
+      { platform: 'Amazon', count: 2 },
+      { platform: 'Walmart', count: 1 },
+    ]);
+    expect(built.featured).toHaveLength(2);
   });
 });

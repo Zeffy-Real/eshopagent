@@ -18,6 +18,12 @@ import { CATEGORIES, type Category, type Product } from '@/lib/types';
  * 切换方式：环境变量 `CATALOG_SOURCE=real|justoneapi|mock`（next.config.ts 把它内联进
  * 客户端包，保证服务端与浏览器解析出同一个源；token 这类密钥**不会**也不应该内联）。
  * 业务代码（工具层、节点、组件）一律从这里取数，不直接依赖具体数据源。
+ *
+ * **这是服务端模块**：它静态 import 着两份目录 JSON（real 451 KB + justoneapi 28 件）。
+ * 客户端组件**不得** import 它——那会把整份目录打进首屏 bundle（实测 First Load 555 kB，
+ * 目录约占 127 kB）。客户端需要的数字由服务端经 `app/page.tsx` 的
+ * `buildCatalogClientPayload` 注入（见 `components/providers/catalog-data-provider.tsx`），
+ * 只有「对话内联卡」按需 `import()` 本模块（`lib/catalog/client-products.ts`，独立 chunk）。
  */
 
 export type CatalogSource = 'real' | 'justoneapi' | 'mock';

@@ -1,26 +1,29 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Database, GitCompareArrows, Package, SearchX, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { EmptyState } from '@/components/common/empty-state';
 import { PanelHeader } from '@/components/common/panel-header';
-import { CategoryBar } from '@/components/product/category-bar';
 import { ProductDetailDialog } from '@/components/product/product-detail-dialog';
+import { CategoryBar } from '@/components/product/category-bar';
 import { ProductGrid } from '@/components/product/product-grid';
 import { SortControl } from '@/components/product/sort-control';
+import { useCatalogData } from '@/components/providers/catalog-data-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { CATALOG_META, getFeaturedProducts, getProductById } from '@/lib/catalog/products';
+import {
+  recallResolvedProduct,
+  rememberResolvedProducts,
+  resolveDetailProduct,
+} from '@/lib/catalog/client-products';
 import { applyLiveOverride } from '@/lib/justoneapi/overrides';
 import type { Product, SortKey } from '@/lib/types';
 import { useAgentStore } from '@/store/use-agent-store';
 import { useUiStore } from '@/store/use-ui-store';
-
-const FEATURED = getFeaturedProducts(12);
 
 function sortProducts(products: Product[], sort: SortKey): Product[] {
   const list = products.slice();
@@ -43,6 +46,8 @@ export function ProductPanel() {
   const snapshot = useAgentStore((s) => s.snapshot);
   const thinking = useAgentStore((s) => s.thinking);
   const compareSelection = useAgentStore((s) => s.compareSelection);
+  // 首屏推荐与目录元信息都由服务端注入（客户端不再 import 服务端目录模块）
+  const { meta, featured } = useCatalogData();
   const detailProductId = useUiStore((s) => s.detailProductId);
   const closeProductDetail = useUiStore((s) => s.closeProductDetail);
   const compareIds = useUiStore((s) => s.compareIds);
@@ -62,18 +67,29 @@ export function ProductPanel() {
   );
 
   const products = useMemo(() => {
-    const base = searched ? snapshot.searchResults : FEATURED;
+    const base = searched ? snapshot.searchResults : featured;
     return sortProducts(base, sort).map((product) =>
       applyLiveOverride(product, liveOverrides),
     );
-  }, [searched, snapshot, sort, liveOverrides]);
+  }, [searched, snapshot, sort, liveOverrides, featured]);
 
-  // 详情弹窗的数据来自目录（不是快照），因此这里也要叠加一次实时覆盖 ——
-  // 否则会出现「卡片显示实时价、弹窗显示快照价」的分叉
-  const detailProduct = useMemo(() => {
-    const base = detailProductId ? (getProductById(detailProductId) ?? null) : null;
-    return base ? applyLiveOverride(base, liveOverrides) : null;
-  }, [detailProductId, liveOverrides]);
+  // 渲染过的商品记进会话缓存：详情弹窗按 id 复用。列表随检索变化时（含回复流中途更新），
+  // 已打开弹窗的那件商品仍在缓存里，不会因为「列表换掉了」而解析不到。
+  useEffect(() => {
+    rememberResolvedProducts(products);
+  }, [products]);
+
+  // 详情弹窗的商品来自调用方（弹窗组件本身就是 `product: Product | null` 签名），不再从目录反查：
+  // 解析顺序 = 当前渲染的列表（已是叠加过实时覆盖的对象）→ 会话内已解析过的内联卡商品。
+  // 「从哪张卡片点开就显示哪张卡片的商品」，实时价与「实时 · HH:mm」标注因此不会在弹窗里丢失。
+  const lookup = useCallback(
+    (id: string) => products.find((product) => product.id === id) ?? recallResolvedProduct(id),
+    [products],
+  );
+  const detailProduct = useMemo(
+    () => resolveDetailProduct(detailProductId, lookup, liveOverrides),
+    [detailProductId, lookup, liveOverrides],
+  );
   const condition = snapshot && hasFilters ? snapshot.conditionText : null;
 
   return (
@@ -93,15 +109,13 @@ export function ProductPanel() {
               <TooltipTrigger asChild>
                 <Badge variant="neutral" className="gap-1">
                   <Database className="size-2.5" />
-                  {CATALOG_META.source === 'real' ? '真实数据' : '演示数据'}
+                  {meta.source === 'real' ? '真实数据' : '演示数据'}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                {CATALOG_META.provider} · {CATALOG_META.count} 件商品
-                {CATALOG_META.generatedAt
-                  ? ` · 快照于 ${CATALOG_META.generatedAt.slice(0, 10)}`
-                  : ''}
-                {CATALOG_META.note ? `\n${CATALOG_META.note}` : ''}
+                {meta.provider} · {meta.count} 件商品
+                {meta.generatedAt ? ` · 快照于 ${meta.generatedAt.slice(0, 10)}` : ''}
+                {meta.note ? `\n${meta.note}` : ''}
               </TooltipContent>
             </Tooltip>
             {snapshot?.llmEnabled === false && (

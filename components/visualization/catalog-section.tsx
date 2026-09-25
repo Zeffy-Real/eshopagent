@@ -1,17 +1,18 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { ChevronDown, ExternalLink } from 'lucide-react';
+import { useCatalogData } from '@/components/providers/catalog-data-provider';
 import { Badge } from '@/components/ui/badge';
-import { CATALOG_META, CATEGORY_COUNTS, PRODUCTS, type CatalogSource } from '@/lib/catalog/products';
 import {
   FIELD_TRUTH,
   FIELD_TRUTH_LEVEL_LABEL,
   REBUILD_COMMAND,
-  computeCatalogCoverage,
-  computePlatformCounts,
   type FieldTruthLevel,
 } from '@/lib/catalog/field-truth';
+// 只取类型（`import type` 在编译期被抹掉）——面板的数字全部来自服务端注入的载荷，
+// 组件本身不 import 服务端的目录模块（否则整份目录会进首屏 bundle）
+import type { CatalogSource } from '@/lib/catalog/products';
 import { CATEGORIES } from '@/lib/types';
 
 /**
@@ -23,10 +24,11 @@ import { CATEGORIES } from '@/lib/types';
  *
  * 三条硬约束（都有对应实现）：
  *   1. **纯只读**：零网络请求、零写盘、不执行构建——只渲染静态常量与派生数字；
- *   2. **数字全部派生**：件数 / 品类分布 / 平台分布 / 覆盖率都由当前目录算出来
- *      （不写死 112 或 16），扩容后自动正确；
- *   3. **与角标同一口径**：件数/来源/时间都读 `CATALOG_META`，与中栏「真实数据」徽标的
- *      tooltip 是同一个对象，不可能出现两处数字不同。
+ *   2. **数字全部派生**：件数 / 品类分布 / 平台分布 / 覆盖率都由**当前目录**算出来
+ *      （不写死 112 或 420，扩容后自动正确）。算法在服务端 `buildCatalogClientPayload` 里跑，
+ *      组件只渲染结果——客户端不再持有全量目录（否则整份目录会进首屏 bundle）；
+ *   3. **与角标同一口径**：件数/来源/时间读的都是服务端注入的同一个 `meta` 对象
+ *      （就是 `CATALOG_META`），不可能出现两处数字不同。
  *
  * 字段分级表定义在 `lib/catalog/field-truth.ts`（唯一代码来源），README 与
  * `docs/project-status.md` 只描述口径并指向它。
@@ -70,21 +72,22 @@ function parseOrigins(origin: string | null): { label: string; url: string }[] {
 }
 
 export function CatalogSection() {
-  const coverage = useMemo(() => computeCatalogCoverage(PRODUCTS), []);
-  const platforms = useMemo(() => computePlatformCounts(PRODUCTS), []);
-  const isReal = CATALOG_META.source === 'real';
-  const rebuild = REBUILD_COMMAND[CATALOG_META.source];
+  // 数字全部来自服务端按当前源算好的载荷（覆盖率 / 平台分布 / 品类计数）。
+  // 载荷在服务端由 `buildCatalogClientPayload` 从当前目录现算，因此扩容或切源后自动正确。
+  const { meta, categoryCounts, coverage, platformCounts: platforms } = useCatalogData();
+  const isReal = meta.source === 'real';
+  const rebuild = REBUILD_COMMAND[meta.source];
 
   return (
     <div className="space-y-2.5 text-[11.5px] leading-4">
       <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant={isReal ? 'success' : 'neutral'}>{SOURCE_LABEL[CATALOG_META.source]}</Badge>
-        <span className="text-muted-foreground">{SOURCE_HINT[CATALOG_META.source]}</span>
+        <Badge variant={isReal ? 'success' : 'neutral'}>{SOURCE_LABEL[meta.source]}</Badge>
+        <span className="text-muted-foreground">{SOURCE_HINT[meta.source]}</span>
       </div>
 
       {isReal && (
         <Row label="数据来源">
-          {parseOrigins(CATALOG_META.origin).map((item) => (
+          {parseOrigins(meta.origin).map((item) => (
             <a
               key={item.url}
               href={item.url}
@@ -100,12 +103,12 @@ export function CatalogSection() {
         </Row>
       )}
 
-      {(CATALOG_META.generatedAt || CATALOG_META.localizedAt) && (
+      {(meta.generatedAt || meta.localizedAt) && (
         <Row label="构建时间">
-          <span className="tabular-nums text-foreground">{formatStamp(CATALOG_META.generatedAt)}</span>
-          {CATALOG_META.localizedAt && (
+          <span className="tabular-nums text-foreground">{formatStamp(meta.generatedAt)}</span>
+          {meta.localizedAt && (
             <span className="text-muted-foreground">
-              文案本地化 {formatStamp(CATALOG_META.localizedAt)}
+              文案本地化 {formatStamp(meta.localizedAt)}
             </span>
           )}
         </Row>
@@ -113,12 +116,12 @@ export function CatalogSection() {
 
       <Row label="规模">
         <span className="text-foreground">
-          {CATALOG_META.count} 件 · {CATEGORIES.length} 品类
+          {meta.count} 件 · {CATEGORIES.length} 品类
         </span>
         <span className="flex flex-wrap gap-1">
           {CATEGORIES.map((category) => (
             <Badge key={category} variant="outline" className="tabular-nums">
-              {category} {CATEGORY_COUNTS[category]}
+              {category} {categoryCounts[category]}
             </Badge>
           ))}
         </span>

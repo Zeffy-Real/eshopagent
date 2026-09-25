@@ -51,6 +51,15 @@ export interface Product {
    * 内置的 mock 数据可能没有，因此是可选的——「数据快照」面板按它统计平台分布。
    */
   platform?: string;
+  /**
+   * 该商品的 `description` 是**派生文案**（而非源数据的描述）。
+   *
+   * 构建期检测到源描述是亚马逊 A+ 页 CSS（不可用）时会打上这个标记，
+   * 并把描述换成用真实字段拼装的文案（品牌 / 类目 / 商品参数 / 评分）；
+   * 图书简介自始就是派生的，走的是另一套（作者 / 类目 / 评分 / 版本）。
+   * 字段分级见 `lib/catalog/field-truth.ts`。
+   */
+  descriptionDerived?: boolean;
 }
 
 export interface CartItem {

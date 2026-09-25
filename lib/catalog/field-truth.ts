@@ -1,4 +1,5 @@
-import type { Product } from '@/lib/types';
+import { CATEGORIES, type Category, type Product } from '@/lib/types';
+import type { CatalogMeta, CatalogSource } from '@/lib/catalog/products';
 
 /**
  * 商品目录的**字段真实性分级**（唯一代码来源）。
@@ -125,4 +126,59 @@ export function computePlatformCounts(products: Product[]): { platform: string; 
   return Array.from(counts.entries())
     .map(([platform, count]) => ({ platform, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+/** 各品类件数：从传入的目录算出来（不写死 112 / 420），首页分类入口与快照面板都用它 */
+export function computeCategoryCounts(products: Product[]): Record<Category, number> {
+  return CATEGORIES.reduce(
+    (counts, category) => {
+      counts[category] = products.filter((product) => product.category === category).length;
+      return counts;
+    },
+    {} as Record<Category, number>,
+  );
+}
+
+/**
+ * 客户端需要的**目录轻量数据**（由服务端注入，见 `components/providers/catalog-data-provider.tsx`）。
+ *
+ * 为什么要有这个结构：`lib/catalog/products.ts` 里静态 import 着 451 KB 的目录 JSON，
+ * 它是**服务端模块**——客户端 import 它会把整份目录打进首屏 bundle（实测 First Load 555 kB，
+ * 目录占约 127 kB）。客户端真正需要的只有这几项：来源与构建信息、品类计数、覆盖率、
+ * 平台分布、首屏 12 件推荐；它们由服务端在 `app/page.tsx` 里算好注入。
+ *
+ * **源感知天然成立**：服务端已按 `CATALOG_SOURCE` 解析出当前源（real / justoneapi / mock），
+ * 这里打包的就是「当前源」的数据，因此切源不需要第二份产物，也不会出现两处数字不一致。
+ */
+export interface CatalogClientPayload {
+  source: CatalogSource;
+  /** 与中栏「真实数据」徽标 tooltip 读的是同一个对象——两处数字不可能不同 */
+  meta: CatalogMeta;
+  categoryCounts: Record<Category, number>;
+  coverage: CoverageRow[];
+  platformCounts: { platform: string; count: number }[];
+  /** 首屏「为你推荐」（排序规则在 `lib/catalog/products.ts` 的 getFeaturedProducts） */
+  featured: Product[];
+}
+
+/**
+ * 组装客户端载荷（纯函数）。
+ *
+ * 所有数字都从传入的 `products` 现算——换一份目录（切源 / 扩容）数字自动跟着变，
+ * 没有任何写死的计数。`featured` 由调用方传入（排序规则只有一份实现，见上）。
+ */
+export function buildCatalogClientPayload(input: {
+  products: Product[];
+  meta: CatalogMeta;
+  featured: Product[];
+}): CatalogClientPayload {
+  const { products, meta, featured } = input;
+  return {
+    source: meta.source,
+    meta,
+    categoryCounts: computeCategoryCounts(products),
+    coverage: computeCatalogCoverage(products),
+    platformCounts: computePlatformCounts(products),
+    featured,
+  };
 }

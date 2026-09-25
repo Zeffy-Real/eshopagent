@@ -1,7 +1,7 @@
 'use client';
 
 import { LayoutGrid } from 'lucide-react';
-import { CATEGORY_COUNTS } from '@/lib/catalog/products';
+import { useCatalogData } from '@/components/providers/catalog-data-provider';
 import { CATEGORIES, type Category } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/store/use-agent-store';
@@ -18,6 +18,8 @@ export function CategoryBar() {
   const snapshot = useAgentStore((s) => s.snapshot);
   const thinking = useAgentStore((s) => s.thinking);
   const sendMessage = useAgentStore((s) => s.sendMessage);
+  // 件数由服务端按当前源算好注入（real 各 60 / justoneapi 各 4 / mock 各不同）
+  const { categoryCounts } = useCatalogData();
   const active: Category | undefined = snapshot?.searchFilters.category;
 
   return (
@@ -54,7 +56,7 @@ export function CategoryBar() {
           >
             {category}
             <span className="tabular-nums text-[10px] text-muted-foreground">
-              {CATEGORY_COUNTS[category]}
+              {categoryCounts[category]}
             </span>
           </button>
         );

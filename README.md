@@ -117,7 +117,22 @@ npm run catalog:build -- --per=60 && npm run catalog:localize   # real 源
 
 这两步就是**完整流程，不需要任何手工补救**：`catalog:build` 写盘前会把上一版已本地化的字段继承回新构建结果（见下），`catalog:localize` 只翻没有标记的条目。跑完重启 dev。面板里给出的就是这条命令，但它**不执行**任何东西。
 
-**产物规模与代价**：420 件 → `data/real-catalog.json` 约 451 KB（本地化中文后约 1.1 KB/件）。整份 catalog 会进首屏 bundle（客户端组件要读 `CATEGORY_COUNTS` / `CATALOG_META`），构建报告口径的 First Load JS 从 470 kB 涨到 **554 kB**（gzip 后，+84 kB：目录扩容约 +62 kB、中文文案比英文原文约 +20 kB、「数据快照」面板约 +2 kB）。该数字随 `--per` 线性增长（约 **200 B/件**，gzip），因此 `--per` 建议不超过 60。
+**产物规模与代价**：420 件 → `data/real-catalog.json` 约 451 KB（本地化中文后约 1.1 KB/件）。**这份产物不进客户端 bundle**（见下），因此 `--per` 不再影响首屏体积。
+
+### 客户端数据流：服务端持有全量目录，客户端只有轻量数据 + 按需 chunk
+
+```
+服务端                                                 客户端
+lib/catalog/products.ts（451 KB 目录 JSON，服务端模块）
+  └─ app/page.tsx: buildCatalogClientPayload（纯函数，按当前源现算）
+       └─ CatalogDataProvider ──► 品类计数 / CATALOG_META / 覆盖率 / 平台分布 / 12 件 featured
+lib/catalog/products.ts  ── 按需 import() ──► 对话内联卡按 id 取商品（独立 chunk，首次用到才下载）
+```
+
+- **为什么这样切**：客户端原先静态 import 目录（`category-bar` / `product-panel` / `catalog-section` / `message-bubble` 四处），整份目录被内联进首屏 bundle——实测 First Load JS 555 kB，目录占约 **127 kB**。改完之后 **555 → 423 kB**（首屏 10 个 chunk 里搜不到任何商品 id，目录只出现在按需 chunk 里）。
+- **源感知天然成立**：载荷由服务端按 `CATALOG_SOURCE` 现算，real / mock / justoneapi 各自显示自己的件数、分布与覆盖率（real 420 件 · 各品类 60；mock 50 件 · 10/8/7/7/10/5/3；justoneapi 28 件 · 各 4），不需要第二份产物，也不可能与中栏徽标的口径不一致。
+- **两处「按 id 找商品」**：详情弹窗的商品由调用方传入（就是当前渲染的那张卡片对象，已叠加实时覆盖，所以弹窗里的「实时 · HH:mm」与卡片一致）；对话内联卡走按需 chunk，加载期间显示**与卡片同高的占位**（实测卡片 62px），chunk 到达后渲染，**失败则静默少几张卡片**（不报错、不显示「找不到」）。
+- **已知边界**：内联卡从「首帧就有」变成「chunk 到达后出现」（首次约几十毫秒，之后命中模块缓存）；`productIds` 目前只在**非流式（模板/规则兜底）回复**里写入，因此 LLM 流式回复下本来就不显示内联卡（既有行为，见 `docs/project-status.md` §8）。
 
 **跨产物继承（重建不丢已验收文案）**：`catalog:build` 在写盘前，把上一版产物里**已本地化**的五个字段（`name` / `description` / `tags` / `specifications` / `nameOriginal`）接回新构建结果，并在输出里打印继承条数：
 
