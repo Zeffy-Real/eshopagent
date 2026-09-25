@@ -51,7 +51,8 @@ npm run dev            # http://localhost:3000
 
 ### 演示与技术决策
 
-- **[docs/demo-script.md](docs/demo-script.md)** —— 5 分钟 / 2 分钟演示脚本：每一步都写了「操作 / 预期画面（三栏）/ 这一步在证明什么」，全部在真机上跑通。
+- **[docs/demo-script.md](docs/demo-script.md)** —— 5 分钟 / 2 分钟演示脚本：每一步都写了「操作 / 预期画面（三栏）/ 这一步在证明什么」，三阶段（默认源 / 实时源 / 无 Key）已按脚本顺序彩排走通。
+- **[docs/demo-rehearsal.md](docs/demo-rehearsal.md)** —— 演示彩排记录（2026-09-25）：逐步结果表、实测耗时、脚本逐条修正、彩排中暴露的问题与**现场翻车预案（Plan B：模型服务不可用 / 实时配额用尽 / 断网）**。
 - **[docs/decisions.md](docs/decisions.md)** —— 10 条技术决策记录（背景 / 选项 / 决策 / 理由 / 代价 + 「如果被追问」）：为什么不用 tool calling、为什么不做语义记忆、为什么硬串行化、为什么库存不显示件数、为什么用 SSE 而不是 WebSocket…
 - **[docs/project-status.md](docs/project-status.md)** —— 项目现状说明书：已完成 / 已验证 / 未验证 / 已知问题，**不美化**。
 
@@ -232,7 +233,7 @@ cp .env.example .env.local
 
 npm run dev        # http://localhost:3000
 npm run typecheck  # 类型检查
-npm test           # 单测（290 个用例：口径一致性的唯一实现、记忆机制、落地校验重试、在途请求中止、JustOneAPI 码表与映射）
+npm test           # 单测（321 个用例：口径一致性的唯一实现、记忆机制、落地校验重试、在途请求中止、JustOneAPI 码表与映射、实时补充节点六条判定）
 npm run build      # 生产构建
 ```
 
@@ -243,7 +244,7 @@ npm run build      # 生产构建
 | `LLM_BASE_URL` | OpenAI 兼容接口地址 | `https://api.deepseek.com/v1` |
 | `LLM_API_KEY` | 接口密钥 | `sk-...` |
 | `LLM_MODEL` | 模型名 | `deepseek-chat` / `qwen-plus` / `gpt-4o-mini` |
-| `LLM_FALLBACK_ENABLED` | ⚠️ **当前实现下无实际效果**（已记为已知问题）：只要 Key 可用就会调用 LLM，Key 不可用本来就走规则兜底 —— 两种取值结果相同。要演示降级路径请让 Key 不可用（清空或写无效值）后重启 | `true` |
+| `LLM_FALLBACK_ENABLED` | ⚠️ **当前实现下无实际效果**（已记为已知问题）：只要 Key 可用就会调用 LLM，Key 不可用本来就走规则兜底 —— 两种取值结果相同。要演示降级路径请让 Key **不可用**后重启：**清空**它会走「干净的规则路径」（商品区出现「规则兜底」徽标）；只写**无效值**同样会降级，但 `llmEnabled` 仍为 true、没有徽标，需指向时间线上的「规则解析 · LLM 失败」证据（2026-09-25 彩排实测，见 [demo-rehearsal.md](docs/demo-rehearsal.md) Plan B1） | `true` |
 | `CATALOG_SOURCE` | 商品目录数据源：`real`（真实数据快照，默认）/ `justoneapi`（京东实时源，需 `JUSTONEAPI_TOKEN`，未配置时启动即报错）/ `mock`（内置演示数据） | `real` |
 | `JUSTONEAPI_TOKEN` | 可选。京东实时数据源 token（[dashboard.justoneapi.com](https://dashboard.justoneapi.com) 获取）。**只服务端读取**，禁止写成 `NEXT_PUBLIC_*`；不配置时该源与实时补充功能整体不启用，现有功能零影响 | 空 |
 | `HISTORY_ENABLED` | 是否把最近若干轮对话注入意图解析（默认 true） | `true` |
