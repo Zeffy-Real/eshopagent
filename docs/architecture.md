@@ -74,7 +74,7 @@ flowchart TB
     C1["productTools<br/>filterProducts · compareProducts"]
     C2["cartTools<br/>addToCart · buildOrderDraft"]
     C3["cart-pricing · decision<br/>金额与推荐（前后端共用同一份）"]
-    C4["catalog/products.ts<br/>112 件真实商品 · 唯一入口"]
+    C4["catalog/products.ts<br/>420 件真实商品 · 唯一入口"]
     C1 --> C4
     C2 --> C3
   end

@@ -102,7 +102,7 @@
 | `image` | ⚠️ jd-search `products[].imageUrl`（`"jfs/t1/…"` 相对路径，需拼 `https://img30.360buyimg.com/sku/`）　✅ jd-detail `product.mainImages[]`（完整 URL，实测 3 张） | ✅ tb-search `picUrlFull`（完整 URL） | 京东侧用 jd-detail 的 `mainImages[0]` 最稳；jd-search 的 `images[]` 实测为空数组 |
 | `description` | ❌ 源里没有（jd-search/jd-detail 无描述文案；`product.sellPoint` 实测为空串） | ❌ 源里没有（tb-search 无描述；详情里的 `beehiveContent` 是买家评价内容，不是商品描述） | 无 → 构建期写空串或沿用现有清洗后的兜底 |
 | `specifications` | ⚠️ jd-detail `product`：`weight`(`"0.182"`)、`width/height/length`、`model`(`"i113"`)、`upc`、`wserve`(`"1年质保"`)、`skuName`/`product.spec` 等 → 组成 `Record<string,string>` | ⚠️ tb-search `model.propertyList[]` 是**筛选属性**（`pname/valueList`），非本商品参数 | 需剔除与对比表固定行同名的键（构建期已踩过「品牌」重名导致 React key 冲突，`project-status` §4.4） |
-| `tags` | ⚠️ 从 `title` / `cid` 派生（复用 `localize-catalog.mjs` 的中文功能词表思路） | ⚠️ 同 | 无命中就是空数组（现有 21 件无标签是允许状态） |
+| `tags` | ⚠️ 从 `title` / `cid` 派生（复用 `localize-catalog.mjs` 的中文功能词表思路） | ⚠️ 同 | 无命中就是空数组（现有 75 件无标签是允许状态） |
 
 ---
 
@@ -110,7 +110,7 @@
 
 ### 4.1 `sales` —— **实测判定：一律记 0（不映射）**（2026-09-25 写死）
 
-- **现状基线**：真实销量只覆盖 112 件中的 17 件（Amazon `bought_past_month`、Lazada `number_sold`），界面优先展示真实评价数，销量仅用于排序与对比（`project-status` §4.3）。
+- **现状基线**：真实销量只覆盖 420 件中的 88 件（Amazon `bought_past_month`、Lazada `number_sold`），界面优先展示真实评价数，销量仅用于排序与对比（`project-status` §4.3）。
 - **实测证据**（本批可用端点内，均为真实响应）：
 
 | 来源 | 字段 | 实测值 | 判定 |
