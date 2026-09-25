@@ -297,13 +297,39 @@ export function loosenFilters(filters: SearchFilters): SearchFilters {
   return filters;
 }
 
-/** 把筛选条件渲染成一句可读描述（时间线 / 回复文案复用） */
+/**
+ * 把筛选条件渲染成一句可读描述（时间线 / 回复文案复用）。
+ *
+ * 跨列表去重（2026-09-25）：同一题材词可能同时落在 keywords 与 tags —— LLM 解析
+ * 把「小说」当关键词、规则解析把它归题材标签，同一 thread 混合两种解析来源时
+ * 合并结果里两份列表都有它，直接拼接就出现「图书 · 小说 · 小说」。
+ * 这里按「首次出现」保序去重，**只清洗展示结果，不改 filters 本身**。
+ *
+ * 注意：本函数也被 refineSearch 当作「条件是否变化」的等价比对使用
+ * （`nodes/refineSearch.ts`）。去重只让「同词重复」的写法在比较中被视为相等；
+ * relaxFilters / loosenFilters 都不会把词在列表之间搬动（relax 只改价格/评分/追加标签，
+ * loosen 只会整列删除），因此该比对语义不受影响。
+ */
 export function describeFilters(filters: SearchFilters): string {
   const parts: string[] = [];
-  if (filters.category) parts.push(filters.category);
-  if (filters.keywords?.length) parts.push(filters.keywords.join(' '));
-  if (filters.tags?.length) parts.push(filters.tags.join(' '));
-  if (filters.brands?.length) parts.push(filters.brands.join(' '));
+  const seen = new Set<string>();
+  /** 列表内保序去重后仍按空格拼接成一组（组之间才是 ` · `，与原格式一致） */
+  const renderWords = (words: string[] | undefined): void => {
+    const kept = (words ?? []).filter((word) => {
+      if (seen.has(word)) return false;
+      seen.add(word);
+      return true;
+    });
+    if (kept.length > 0) parts.push(kept.join(' '));
+  };
+
+  if (filters.category) {
+    seen.add(filters.category);
+    parts.push(filters.category);
+  }
+  renderWords(filters.keywords);
+  renderWords(filters.tags);
+  renderWords(filters.brands);
   if (filters.minPrice !== undefined && filters.maxPrice !== undefined) {
     parts.push(`¥${filters.minPrice} - ¥${filters.maxPrice}`);
   } else if (filters.maxPrice !== undefined) {

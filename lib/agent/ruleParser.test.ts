@@ -173,4 +173,32 @@ describe('describeFilters：条件回显', () => {
     expect(text).toContain('¥500 以内');
     expect(text).toContain('4.5 分以上');
   });
+
+  // 2026-09-25：同一 thread 先走 LLM 解析、再走规则解析时，同一题材词会同时落在
+  // keywords 与 tags，条件串曾出现「图书 · 小说 · 小说」（见 demo-rehearsal.md §6.2 C1）。
+  it('跨列表重复词只出现一次（同词同时在 keywords 与 tags）', () => {
+    expect(describeFilters({ category: '图书', keywords: ['小说'], tags: ['小说'] })).toBe(
+      '图书 · 小说',
+    );
+  });
+
+  it('跨列表去重同样覆盖 品类 / 品牌 与列表之间的重复', () => {
+    expect(
+      describeFilters({ category: '数码', keywords: ['数码'], brands: ['Sony'], tags: ['Sony'] }),
+    ).toBe('数码 · Sony');
+  });
+
+  it('不同词的内容与顺序不变（品类 → 关键词 → 标签 → 品牌 → 价格 → 评分）', () => {
+    expect(
+      describeFilters({
+        category: '数码',
+        keywords: ['降噪'],
+        tags: ['轻量', '透气'],
+        brands: ['Sony'],
+        minPrice: 100,
+        maxPrice: 500,
+        minRating: 4.5,
+      }),
+    ).toBe('数码 · 降噪 · 轻量 透气 · Sony · ¥100 - ¥500 · 4.5 分以上');
+  });
 });

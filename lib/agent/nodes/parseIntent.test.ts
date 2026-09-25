@@ -1,7 +1,7 @@
 import { HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { describe, expect, it, vi } from 'vitest';
-import { parseIntentNode, resolveOrdinalTarget } from '@/lib/agent/nodes/parseIntent';
+import { parseIntentNode, resolveOrdinalTarget, sanitizeLlmError } from '@/lib/agent/nodes/parseIntent';
 import type { AgentStateUpdate } from '@/lib/agent/state';
 import {
   createEmptyProfile,
@@ -91,6 +91,30 @@ const boughtBook: UserProfile = mergeProfile(
 function configWith(profile: UserProfile): RunnableConfig {
   return { configurable: { profile } };
 }
+
+describe('sanitizeLlmError：写进时间线前清洗密钥片段', () => {
+  // 项目纪律是 token 不进日志 / 文档 / commit；右栏时间线同样会被截图与讲述，
+  // 因此也不该出现密钥片段（实测服务商 401 文本会回显密钥末 4 位，见 demo-rehearsal.md §6.2 C3）。
+  it('服务商回显的密钥片段换成中性描述，状态码与 request_id 保留', () => {
+    const out = sanitizeLlmError(
+      '401 Authentication Fails, Your api key: ****abcd is invalid (request_id: 2673ed9',
+    );
+    expect(out).not.toContain('abcd');
+    expect(out).not.toMatch(/api[\s_-]?key/i);
+    expect(out).toContain('401');
+    expect(out).toContain('request_id: 2673ed9');
+    expect(out).toContain('服务商鉴权失败');
+  });
+
+  it('裸掩码片段（无前后文）也会被掩掉', () => {
+    expect(sanitizeLlmError('invalid credential ****deadbeef')).not.toContain('deadbeef');
+  });
+
+  it('普通失败文本原样保留（不误伤超时 / 限流描述）', () => {
+    expect(sanitizeLlmError('timeout of 20000ms exceeded')).toBe('timeout of 20000ms exceeded');
+    expect(sanitizeLlmError('429 rate limit exceeded')).toBe('429 rate limit exceeded');
+  });
+});
 
 describe('parseIntentNode：画像消费（无 Key 路径）', () => {
   it('输入宽泛 + 画像有信号 → 写入 profileHint 并产出记忆事件', async () => {

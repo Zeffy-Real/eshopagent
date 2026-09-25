@@ -106,6 +106,26 @@ function shouldKeepPrevious(
 }
 
 /**
+ * 清洗写进时间线的 LLM 失败文本（2026-09-25）。
+ *
+ * 动机不是「修漏洞」，而是**口径一致**：项目纪律是 token 不进日志 / 文档 / commit，
+ * 右栏时间线同样是被截图、被讲述、被审查的界面，因此也不该出现密钥片段 ——
+ * 实测服务商 401 文本形如 `401 Authentication Fails, Your api key: ****rsal is invalid
+ * (request_id: …)`，其中含密钥末 4 位。
+ *
+ * 只去掉密钥片段，**保留可诊断信息**（HTTP 状态码、request_id、超时描述）。
+ */
+export function sanitizeLlmError(message: string): string {
+  return message
+    // 「Your api key: ****abcd is invalid」整体换成中性描述（最多吃掉 48 字，遇到 , ; ( ) 即停，避免误伤后续诊断信息）
+    .replace(/(?:your\s+)?api[\s_-]?key\s*[:=]?\s*[^,;()]{0,48}/gi, '服务商鉴权失败')
+    // 兜底：任何「****abcd」形态的掩码片段
+    .replace(/\*{2,}[A-Za-z0-9]+/g, '***')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * 意图解析节点。
  *
  * 主路径：LLM 结构化输出（withStructuredOutput，强约束 schema）；
@@ -172,7 +192,7 @@ export async function parseIntentNode(
         `LLM 解析（${method === 'prompt' ? '文本 JSON' : method === 'jsonMode' ? 'JSON 模式' : '工具调用'}）${
           history ? ` · 历史 ${history.length} 字` : ''
         }`
-      : `规则解析${llmError ? ` · LLM 失败：${llmError.slice(0, 80)}` : ''}`;
+      : `规则解析${llmError ? ` · LLM 失败：${sanitizeLlmError(llmError).slice(0, 80)}` : ''}`;
 
   // 序数指代（「换成第二件」）：定位到上一轮结果的第 N 件，交给 searchProducts 收窄结果集。
   // LLM 没给出 targetIndex 时用规则解析兜底 —— 「无 Key 也能跑」同样要覆盖这个能力。
