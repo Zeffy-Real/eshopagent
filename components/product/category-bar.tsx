@@ -6,21 +6,25 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { CATEGORIES, type Category } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/store/use-agent-store';
+import { useUiStore } from '@/store/use-ui-store';
 
 /**
  * 按品类浏览入口（中栏顶部）。
  *
- * 为什么点击后是「发一句话」而不是直接改筛选条件：筛选条件（`searchFilters`）只存在于
- * 服务端图状态里，客户端没有第二条写入路径。让它走与对话完全相同的入口
- * （`parseIntent → searchProducts`），才能保证「点分类搜出来的结果」与「说品类搜出来的结果」
- * 一模一样 —— 不新增一套并行的筛选实现，也就不会有第二处口径。
+ * 点击后**直接打开中栏浏览视图**（`components/product/browse-view.tsx`），
+ * 不走对话：视图数据由客户端目录的按需 chunk 现算，因此没有 LLM 依赖、
+ * 不产生 SSE 请求、也不会带上任何上一轮残留的筛选条件（此前 chip 走对话时，
+ * 「100 元以内」之后点品类会把价格条件一起带进去，命中从 60 缩到 4）。
+ *
+ * 对话入口没有消失：输入「帮我看看<品类>的商品」仍会走 parseIntent → searchProducts，
+ * 想要「带条件的品类检索」时用它。
  */
 export function CategoryBar() {
   const snapshot = useAgentStore((s) => s.snapshot);
-  const thinking = useAgentStore((s) => s.thinking);
-  const sendMessage = useAgentStore((s) => s.sendMessage);
+  const openBrowse = useUiStore((s) => s.openBrowse);
   // 件数由服务端按当前源算好注入（real 各 60 / justoneapi 各 4 / mock 各不同）
   const { categoryCounts } = useCatalogData();
+  // 高亮只表示「对话当前用的品类」，与浏览视图无关（后者自带标题与口径）
   const active: Category | undefined = snapshot?.searchFilters.category;
 
   return (
@@ -42,18 +46,14 @@ export function CategoryBar() {
               <button
                 type="button"
                 aria-pressed={isActive}
-                // 已选中的品类再点一次没有意义：同一条请求会白跑一轮
-                disabled={thinking || isActive}
-                onClick={() => void sendMessage(`帮我看看${category}的商品`)}
+                // 纯客户端浏览：Agent 执行中也随时可点（不给服务端加负载、零 LLM 依赖）
+                onClick={() => openBrowse({ kind: 'category', category })}
                 className={cn(
                   'flex items-center gap-1 rounded-[var(--radius-sm)] border px-2 py-1 text-[12px] leading-4 transition-colors duration-150',
                   'outline-none focus-visible:border-primary',
                   isActive
                     ? 'border-primary/30 bg-primary-soft text-primary-ink'
                     : 'border-border bg-surface text-foreground hover:border-border-strong hover:bg-surface-muted',
-                  // 执行中整体置灰；已选中项保持常态外观（只不可再点），避免被误读成「失效」
-                  thinking ? 'cursor-not-allowed opacity-50' : '',
-                  isActive && !thinking ? 'cursor-default' : '',
                 )}
               >
                 {category}
@@ -62,9 +62,11 @@ export function CategoryBar() {
                 </span>
               </button>
             </TooltipTrigger>
-            {/* 数字是**目录总量**（服务端按当前源算好），不是某次检索的命中数 ——
-                与数据快照面板「检索单次最多展示前 12 件」的口径配套 */}
-            <TooltipContent>该品类目录共 {categoryCounts[category]} 件</TooltipContent>
+            {/* 数字是**目录总量**（服务端按当前源算好），不是某次检索的命中数；
+                点开浏览视图能看到该品类全部这些件数 */}
+            <TooltipContent>
+              浏览该品类全部 {categoryCounts[category]} 件（不进对话、无残留条件）
+            </TooltipContent>
           </Tooltip>
         );
       })}

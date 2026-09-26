@@ -94,6 +94,18 @@ export const AgentState = Annotation.Root({
   }),
 
   /**
+   * 本轮命中商品的前 `SEARCH_RESULT_ID_LIMIT` 个 id（「查看全部 N 件」的数据源）。
+   *
+   * 由 `searchProducts` 写入：**只有存在有效筛选条件、且命中数多于展示数时**才写
+   * （无筛选条件的大集合由客户端目录现算，不传 id）；闲聊 / 加购 / 对比轮不经过检索，
+   * 快照侧由 `toSnapshot` 按意图门挡清空。覆盖型 —— refine 重新检索必须跟着更新。
+   */
+  searchResultIds: Annotation<string[]>({
+    reducer: (_previous, next) => next,
+    default: () => [],
+  }),
+
+  /**
    * 实时数据覆盖（键 = 商品 id，值 = 覆盖后的商品）。由 enrichLiveData 写入。
    *
    * 为什么**不写进 searchResults**：那样就再也说不清哪个价格来自快照、哪个来自实时查询。

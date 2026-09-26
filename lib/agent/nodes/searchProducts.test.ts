@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { searchProductsNode } from '@/lib/agent/nodes/searchProducts';
-import { SEARCH_RESULT_LIMIT } from '@/lib/agent/events';
+import { SEARCH_RESULT_ID_LIMIT, SEARCH_RESULT_LIMIT } from '@/lib/agent/events';
 import type { AgentStateUpdate } from '@/lib/agent/state';
 import { PRODUCTS } from '@/lib/catalog/products';
 import type { ProfileSignal } from '@/lib/profile';
@@ -35,6 +35,12 @@ function totalOf(update: AgentStateUpdate): number {
   const value = update.searchTotal;
   if (typeof value !== 'number') throw new Error('searchProductsNode 未返回 searchTotal');
   return value;
+}
+
+function idsOf(update: AgentStateUpdate): string[] {
+  const value = update.searchResultIds;
+  if (!Array.isArray(value)) throw new Error('searchProductsNode 未返回 searchResultIds');
+  return value as string[];
 }
 
 const books = PRODUCTS.filter((product) => product.category === '图书');
@@ -167,5 +173,56 @@ describe('searchProductsNode：searchTotal 是本轮命中数（截断前）', (
 
     expect(resultsOf(update)).toHaveLength(1);
     expect(totalOf(update)).toBe(1);
+  });
+});
+
+/**
+ * `searchResultIds`（中栏「查看全部 N 件」的数据源）的写入口径（2026-09-26）。
+ *
+ * 三条门挡同时成立才写：**有有效筛选条件**（无筛选 → 客户端用目录现算全量，420 个 id 不进 SSE）、
+ * **命中多于展示**（没有藏起来的部分就不需要入口）、截断到 `SEARCH_RESULT_ID_LIMIT`。
+ * 每轮重新检索都会覆盖它（覆盖型），序数定位那种「只展示一件」的轮次显式清空。
+ */
+describe('searchProductsNode：searchResultIds 是「查看全部 N 件」的数据源', () => {
+  it('有筛选条件 + 命中多于展示 → 写命中前 120 个 id（与展示结果同序、覆盖全部命中）', async () => {
+    const update = await searchProductsNode(makeState({ searchFilters: { category: '图书' } }));
+
+    expect(totalOf(update)).toBe(books.length);
+    const ids = idsOf(update);
+    expect(ids).toHaveLength(Math.min(books.length, SEARCH_RESULT_ID_LIMIT));
+    // 顺序 = 检索结果顺序：展示的前 12 件必须是 id 列表的前 12 个
+    expect(ids.slice(0, SEARCH_RESULT_LIMIT)).toEqual(
+      resultsOf(update).map((product) => product.id),
+    );
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('无筛选条件（命中整个目录）→ 不写 id 列表（客户端目录现算，420 个 id 不进 SSE）', async () => {
+    const update = await searchProductsNode(makeState({ searchFilters: {} }));
+
+    expect(totalOf(update)).toBe(PRODUCTS.length);
+    expect(idsOf(update)).toEqual([]);
+  });
+
+  it('命中少于一屏 → 不写（没有藏起来的部分，入口本来就不出现）', async () => {
+    const update = await searchProductsNode(
+      makeState({ searchFilters: { category: '图书', tags: ['悬疑'] } }),
+    );
+
+    expect(totalOf(update)).toBeLessThan(SEARCH_RESULT_LIMIT);
+    expect(idsOf(update)).toEqual([]);
+  });
+
+  it('序数定位（收窄为 1 件）→ 显式清掉上一轮的 id 列表', async () => {
+    const target = books[0];
+    const update = await searchProductsNode(
+      makeState({ focusProductId: target?.id ?? null, searchFilters: { category: '图书' } }),
+    );
+
+    expect(idsOf(update)).toEqual([]);
+  });
+
+  it('上限常量就是 120（载荷预算：实测 id 平均 15.9 字 ≈ 2.2 KB/帧）', () => {
+    expect(SEARCH_RESULT_ID_LIMIT).toBe(120);
   });
 });

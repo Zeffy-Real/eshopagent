@@ -68,6 +68,7 @@ export function makeState(overrides: Partial<AgentStateValue> = {}): AgentStateV
     searchFilters: {},
     searchResults: [],
     searchTotal: 0,
+    searchResultIds: [],
     liveOverrides: {},
     liveFetchedAt: null,
     compareTargets: [],

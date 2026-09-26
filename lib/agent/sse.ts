@@ -10,6 +10,7 @@ import {
 import type { AgentApp } from '@/lib/agent/graph';
 import type { AgentStateValue } from '@/lib/agent/state';
 import { messageText } from '@/lib/agent/utils';
+import { isSearchIntent } from '@/lib/product-panel-state';
 import type { Order, Product } from '@/lib/types';
 
 /**
@@ -105,6 +106,9 @@ export function toSnapshot(
     searchResults: state.searchResults,
     // 命中总数（截断前）：中栏据此显示「共 N 件 · 展示前 M 件」
     searchTotal: state.searchTotal,
+    // 「查看全部 N 件」的数据源：只在搜索 / 细化轮下发（闲聊 / 加购 / 对比 / 结算轮为空）——
+    // 那些轮次不经过检索，状态里留着的是上一轮的值，不下发才不会让入口「跨轮复活」
+    searchResultIds: isSearchIntent(state.intent) ? state.searchResultIds : [],
     // 本轮回复挂哪几张内联卡：由 selectReplyProductIds 统一选取（模板路径与 LLM 路径同源）
     replyProductIds: selectReplyProductIds(state.searchResults),
     // 实时覆盖随快照整体下发：前端三处渲染（卡片 / 弹窗 / 对比表）按 id 取用，

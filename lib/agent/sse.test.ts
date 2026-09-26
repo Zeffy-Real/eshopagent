@@ -58,6 +58,30 @@ describe('toSnapshot：把内联卡商品随快照下发', () => {
   });
 });
 
+/**
+ * `searchResultIds`（「查看全部 N 件」的数据源）的**下发门挡**（2026-09-26）。
+ *
+ * 状态里的 id 列表不会在非检索轮被清空（那些轮次不经过 searchProducts），
+ * 所以快照侧按意图挡一道：只有 search / refine 轮才带，否则入口会在闲聊轮「跨轮复活」。
+ */
+describe('toSnapshot：searchResultIds 只在搜索 / 细化轮下发', () => {
+  const ids = ['p-1', 'p-2', 'p-3'];
+
+  it('search / refine 轮 → 原样下发', () => {
+    for (const intent of ['search', 'refine'] as const) {
+      const snapshot = toSnapshot(makeState({ intent, searchResultIds: ids }), Date.now(), 0);
+      expect(snapshot.searchResultIds).toEqual(ids);
+    }
+  });
+
+  it('闲聊 / 加购 / 对比 / 结算轮 → 空（上一轮的 id 不跨轮复活）', () => {
+    for (const intent of ['chat', 'cart', 'compare', 'checkout'] as const) {
+      const snapshot = toSnapshot(makeState({ intent, searchResultIds: ids }), Date.now(), 0);
+      expect(snapshot.searchResultIds).toEqual([]);
+    }
+  });
+});
+
 describe('fallbackInterruptOrder：只有 pending 才是挂起中断', () => {
   /**
    * 收尾兜底曾把「pendingOrder 非空」当成「有挂起中断」：`confirmOrder` 之后

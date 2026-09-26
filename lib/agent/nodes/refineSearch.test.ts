@@ -61,6 +61,32 @@ describe('refineSearchNode：用户主动细化（needsRefine = false）', () =>
     expect(update.refineCount).toBe(2);
     expect(update.needsRefine).toBe(false);
   });
+
+  it('轮次文案是「本轮第 N/2 轮」（refineCount 每轮由 parseIntent 重置，N ≤ 2 恒成立）', async () => {
+    const titleOf = (update: AgentStateUpdate): string => {
+      const value = update.toolCallLog;
+      return Array.isArray(value) ? (value[0]?.title ?? '') : '';
+    };
+    expect(titleOf(await refineSearchNode(stateWith('换成第二件')))).toBe(
+      '本轮第 1/2 轮调整条件',
+    );
+    expect(
+      titleOf(await refineSearchNode(stateWith('换成第二件', { refineCount: 1 }))),
+    ).toBe('本轮第 2/2 轮调整条件');
+  });
+
+  it('反向区间在节点入口被 clamp（relaxFilters 兜底，检索不会因反向区间必空）', async () => {
+    const filters = filtersOf(
+      await refineSearchNode(
+        makeState({
+          messages: [new HumanMessage('再便宜点')],
+          searchFilters: { minPrice: 100000, maxPrice: 100200 },
+        }),
+      ),
+    );
+    expect(filters.maxPrice).toBe(100000);
+    expect(filters.minPrice).toBe(100000);
+  });
 });
 
 describe('refineSearchNode：检索为空触发放宽（needsRefine = true）', () => {

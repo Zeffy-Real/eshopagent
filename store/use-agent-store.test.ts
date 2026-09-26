@@ -28,6 +28,7 @@ function snapshotPayload(overrides: Partial<AgentStateSnapshot> = {}): AgentStat
     conditionText: '',
     searchResults: [],
     searchTotal: 0,
+    searchResultIds: [],
     replyProductIds: [],
     liveOverrides: {},
     liveFetchedAt: null,

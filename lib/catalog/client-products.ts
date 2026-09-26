@@ -6,7 +6,7 @@ import type { Product } from '@/lib/types';
  *
  * 背景：客户端**不再静态 import 目录**（`lib/catalog/products.ts` 里带着 451 KB 的 JSON，
  * 静态引用会把整份目录打进首屏 bundle，实测 First Load 555 kB、目录占约 127 kB）。
- * 现在只有两处需要「按 id 找商品」：
+ * 现在只有三处需要「拿到目录里的商品」：
  *
  *   1. **对话内联卡**：`loadInlineProducts` 按需 `import('@/lib/catalog/products')`——
  *      目录因此落在一个独立 chunk，不进首屏；加载失败静默返回空（不抛错、不显示「找不到」）。
@@ -14,6 +14,8 @@ import type { Product } from '@/lib/types';
  *      解析顺序 = 面板当前渲染的列表（已是叠加过实时覆盖的对象）→ 会话内已解析过的内联卡商品。
  *      这条顺序保证「从哪张卡片点开的，弹窗就显示那张卡片的商品」——实时覆盖过的价格与
  *      「实时 · HH:mm」标注因此不会在弹窗里丢失。
+ *   3. **浏览视图**：走 `lib/catalog/browse-products.ts`（独立模块 = 独立按需 chunk，
+ *      不在首屏里），支持品类 / 全量 / 对话命中的 id 列表三种来源。
  */
 
 export type ProductLookup = (id: string) => Product | undefined;

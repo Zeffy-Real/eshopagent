@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import type { BrowseSource } from '@/lib/catalog/browse-products';
 
 export type MobileTab = 'chat' | 'products';
 
@@ -22,6 +23,15 @@ interface UiState {
   shoppingDrawerTab: ShoppingDrawerTab;
   openShoppingDrawer: (tab: ShoppingDrawerTab) => void;
   closeShoppingDrawer: () => void;
+  /**
+   * 中栏浏览视图（覆盖层）的数据来源；`null` = 未打开。
+   *
+   * 纯 UI 态：数据由客户端目录 chunk 现算（品类 / 全量）或按 id 查找（检索命中），
+   * **不经对话、不碰 SSE、零 LLM 依赖** —— 无 Key 时它同样完整可用。
+   */
+  browseSource: BrowseSource | null;
+  openBrowse: (source: BrowseSource) => void;
+  closeBrowse: () => void;
   /** 详情弹窗当前展示的商品 id */
   detailProductId: string | null;
   /** 待对比商品 id（2 - 4 件，选择完成后一次性提交给 Agent） */
@@ -46,6 +56,7 @@ export const useUiStore = create<UiState>((set) => ({
   mobileTab: 'chat',
   shoppingDrawerOpen: false,
   shoppingDrawerTab: 'cart',
+  browseSource: null,
   detailProductId: null,
   compareIds: [],
   toggleRightPanel: () =>
@@ -59,6 +70,8 @@ export const useUiStore = create<UiState>((set) => ({
   setMobileTab: (tab) => set({ mobileTab: tab }),
   openShoppingDrawer: (tab) => set({ shoppingDrawerOpen: true, shoppingDrawerTab: tab }),
   closeShoppingDrawer: () => set({ shoppingDrawerOpen: false }),
+  openBrowse: (source) => set({ browseSource: source }),
+  closeBrowse: () => set({ browseSource: null }),
   openProductDetail: (id) => set({ detailProductId: id }),
   closeProductDetail: () => set({ detailProductId: null }),
   toggleCompare: (id) =>

@@ -140,9 +140,100 @@ const INTENT_RULES: { intent: AgentIntent; patterns: RegExp[] }[] = [
   },
 ];
 
+/* ============================================================
+   「看全部 / 清空条件」判据（2026-09-26）
+
+   背景：判据原来只有「新目标 → 重置细分条件」与「否则 → 全量继承」两支，
+   「用户要看全部商品」落在缝隙里 —— LLM 不回写时上一轮的「数码」照样残留。
+   这一支只看**用户原话**（不读 LLM 输出、不读 filters），确定性不受 LLM 判定波动影响。
+   词表只此一处，parseIntent（LLM 路径）与 guessIntentByRules（无 Key 路径）共用。
+   ============================================================ */
+
+/** 强触发：清空类动词，单出现即命中 */
+const CLEAR_ALL_STRONG_TERMS = [
+  '清空条件',
+  '重置',
+  '从头开始',
+  '重新开始',
+  '不限',
+  '随便看看',
+  '随便逛逛',
+  '都行',
+];
+
+/** 弱触发-浏览动词（须与聚合词同时出现） */
+const BROWSE_TERMS = ['看', '查看', '浏览', '逛逛', '显示', '列出'];
+
+/** 弱触发-聚合词（「420 件」这类 3 - 4 位数字 + 件 用正则） */
+const AGGREGATE_TERMS = ['全部', '所有', '整个目录'];
+const AGGREGATE_COUNT = /\d{3,4}\s*件/;
+
+/** 排除词：问数量 / 金额的句子是统计诉求，不是清空条件 */
+const CLEAR_ALL_EXCLUSIONS = [
+  '加起来',
+  '多少钱',
+  '总价',
+  '一共',
+  '合计',
+  '平均',
+  '统计',
+  '共多少',
+  '几件',
+];
+
+/**
+ * 触发词自身构成的「伪点名」。
+ *
+ * 目录里有「适用于所有车辆」「适合所有肤质」这类商品名，n-gram 抽取会把
+ * 「所有」认成关键词，于是「看看所有商品」被判成「点名了某个词」而漏掉清空。
+ * 其余触发词一并纳入，避免同类误伤。
+ */
+function isTriggerVocabulary(word: string): boolean {
+  return [...CLEAR_ALL_STRONG_TERMS, ...BROWSE_TERMS, ...AGGREGATE_TERMS].some((term) =>
+    term.includes(word),
+  );
+}
+
+/**
+ * 「用户要看全部商品 / 清空条件」判据（纯函数，只看原话）。
+ *
+ * 命中 =（强触发 ∨ 浏览动词 + 聚合词）∧ 无排除词 ∧ 原话未点名任何东西。
+ * 「点名」以规则解析器的产出为准（category / keywords / tags / brands），
+ * 但剔除触发词自身的伪点名（见 isTriggerVocabulary）：
+ * 「看看所有小说」因为点名了「小说」而**不**清空（走切换目标），
+ * 「所有商品加起来多少钱」因为排除词而**不**清空。
+ *
+ * 已知限制（记录在案）：中文数字（「四百二十件」）不命中；
+ * 字段级重置不支持 —— 「重置预算」「不限品牌」清空的是整份条件。
+ */
+export function detectClearAll(text: string): boolean {
+  const normalized = text.trim();
+  if (!normalized) return false;
+  if (CLEAR_ALL_EXCLUSIONS.some((word) => normalized.includes(word))) return false;
+
+  const named = extractFiltersByRules(normalized);
+  const namesSomething =
+    Boolean(named.category) ||
+    (named.tags?.length ?? 0) > 0 ||
+    (named.brands?.length ?? 0) > 0 ||
+    (named.keywords ?? []).some((word) => !isTriggerVocabulary(word));
+  if (namesSomething) return false;
+
+  const strong = CLEAR_ALL_STRONG_TERMS.some((word) => normalized.includes(word));
+  const weak =
+    BROWSE_TERMS.some((word) => normalized.includes(word)) &&
+    (AGGREGATE_TERMS.some((word) => normalized.includes(word)) ||
+      AGGREGATE_COUNT.test(normalized));
+  return strong || weak;
+}
+
 export function guessIntentByRules(text: string): AgentIntent {
   const normalized = text.trim();
   if (!normalized) return 'chat';
+  // 清空类表达优先于其他规则：无 Key 的降级路径也必须能「看全部商品」——
+  // 放在最前是因为「清空条件」会撞上加购词表里的「清空」；只接 detectClearAll
+  // 这一个纯函数，不扩充通用词表（对比 / 结算 / 加购 / 细化的判定不受影响）。
+  if (detectClearAll(normalized)) return 'search';
   for (const rule of INTENT_RULES) {
     if (rule.patterns.some((pattern) => pattern.test(normalized))) return rule.intent;
   }
@@ -229,6 +320,10 @@ export function extractFiltersByRules(text: string): SearchFilters {
   const keywords = Array.from(
     new Set([...canonicalKeywords, ...extractKeywords(normalized, exclude)]),
   )
+    // 触发词自身不算关键词（2026-09-26）：目录里有「适用于所有车辆」「适合所有肤质」这类
+    // 商品名，n-gram 会把「所有」认成关键词 —— 它既不是用户的检索目标，又会让
+    // 「所有商品加起来多少钱」被当成「点名了某个词」而误触发切目标重置。
+    .filter((word) => !isTriggerVocabulary(word))
     .filter((word, _, all) => !all.some((other) => other !== word && other.includes(word)))
     .slice(0, 2);
 
@@ -300,6 +395,16 @@ export function relaxFilters(filters: SearchFilters, text: string): SearchFilter
   if (/其他|别的|换一批/.test(text)) {
     next.keywords = undefined;
     next.maxPrice = filters.maxPrice;
+  }
+  // 反向区间兜底（2026-09-26）：上面的乘法放宽没有上限保证 ——
+  // 「¥100000 以上」再「再便宜点」会产出 minPrice ¥100000 > maxPrice ¥70140，
+  // 区间反向时检索必然为空，界面上像「放宽反而清空」。clamp 成单点区间。
+  if (
+    next.minPrice !== undefined &&
+    next.maxPrice !== undefined &&
+    next.maxPrice < next.minPrice
+  ) {
+    next.maxPrice = next.minPrice;
   }
   return next;
 }

@@ -1,14 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Database, GitCompareArrows, Package, SearchX, Sparkles } from 'lucide-react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowRight, Database, GitCompareArrows, Package, SearchX, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { EmptyState } from '@/components/common/empty-state';
 import { PanelHeader } from '@/components/common/panel-header';
 import { ProductDetailDialog } from '@/components/product/product-detail-dialog';
 import { CategoryBar } from '@/components/product/category-bar';
 import { ProductGrid } from '@/components/product/product-grid';
-import { SortControl } from '@/components/product/sort-control';
+import { SortControl, sortProducts } from '@/components/product/sort-control';
 import { useCatalogData } from '@/components/providers/catalog-data-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,25 +21,31 @@ import {
   resolveDetailProduct,
 } from '@/lib/catalog/client-products';
 import { applyLiveOverride } from '@/lib/justoneapi/overrides';
-import { productPanelStateOf } from '@/lib/product-panel-state';
+import { hasEffectiveFilters, isSearchIntent, productPanelStateOf } from '@/lib/product-panel-state';
+import type { BrowseSource } from '@/lib/catalog/browse-products';
 import type { Product, SortKey } from '@/lib/types';
 import { useAgentStore } from '@/store/use-agent-store';
 import { useUiStore } from '@/store/use-ui-store';
 
-function sortProducts(products: Product[], sort: SortKey): Product[] {
-  const list = products.slice();
-  switch (sort) {
-    case 'price_asc':
-      return list.sort((a, b) => a.price - b.price);
-    case 'price_desc':
-      return list.sort((a, b) => b.price - a.price);
-    case 'rating':
-      return list.sort((a, b) => b.rating - a.rating || b.sales - a.sales);
-    case 'sales':
-      return list.sort((a, b) => b.sales - a.sales);
-    default:
-      return list;
-  }
+/**
+ * 浏览视图按需加载：**先点开才下载它的 chunk**（组件只有 `browseSource` 非空时才挂载）。
+ * 这样「中栏浏览」既不进首屏 bundle，也不在页面加载时白下载 —— 与目录 chunk 同一套思路。
+ * 用 React 自带的 `lazy` 而不是 `next/dynamic`：后者会把它的运行时也带进首屏（实测 +2 kB）。
+ */
+const BrowseView = lazy(() =>
+  import('@/components/product/browse-view').then((module) => ({ default: module.BrowseView })),
+);
+
+/** 按需 chunk 加载期间的占位（与视图同尺寸的中栏覆盖层，不是空白） */
+function BrowseViewLoading() {
+  return (
+    <section
+      aria-label="正在打开浏览视图"
+      className="absolute inset-0 z-30 flex items-center justify-center bg-background"
+    >
+      <p className="text-[12px] text-muted-foreground">正在打开浏览视图…</p>
+    </section>
+  );
 }
 
 export function ProductPanel() {
@@ -53,6 +59,28 @@ export function ProductPanel() {
   const closeProductDetail = useUiStore((s) => s.closeProductDetail);
   const compareIds = useUiStore((s) => s.compareIds);
   const clearCompare = useUiStore((s) => s.clearCompare);
+  // 浏览视图是否打开：只订阅布尔值（打开时才挂载按需 chunk 的组件）
+  const browseOpen = useUiStore((s) => s.browseSource !== null);
+  const openBrowse = useUiStore((s) => s.openBrowse);
+
+  /**
+   * 「查看全部 N 件」入口的数据来源（2026-09-26）。
+   *
+   * 两个门挡：本轮必须是**搜索类意图**（闲聊 / 加购 / 对比轮不出现入口 —— 那些轮次的
+   * searchTotal 是上一轮的历史值），且命中数**多于**展示数（没有藏起来的部分就不需要入口）。
+   *
+   * 来源二选一，与服务端 `searchProducts` 的写入口径**同源**（`hasEffectiveFilters`）：
+   * - 无有效筛选条件（如「看看所有商品」命中 420）→ 客户端目录全量，420 个 id 不进 SSE；
+   * - 有筛选条件（如「图书 · 小说」命中 30）→ 本轮下发的命中 id 列表（上限 120）。
+   */
+  const browseAllSource: BrowseSource | null = useMemo(() => {
+    if (!snapshot || !isSearchIntent(snapshot.intent)) return null;
+    if (snapshot.searchTotal <= snapshot.searchResults.length) return null;
+    if (!hasEffectiveFilters(snapshot.searchFilters)) return { kind: 'all' };
+    return snapshot.searchResultIds.length > 0
+      ? { kind: 'ids', ids: snapshot.searchResultIds, total: snapshot.searchTotal }
+      : null;
+  }, [snapshot]);
 
   // 三态（唯一判据在 lib/product-panel-state.ts）：搜索结果 / 搜索无结果 / 为你推荐。
   // 「搜索类意图 + 0 命中」原先会静默回落成推荐位，用户分不清「没搜到」还是「被当成闲聊」；
@@ -119,7 +147,7 @@ export function ProductPanel() {
       : `${shownCount} 件商品`;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col">
       <PanelHeader
         icon={Package}
         title={
@@ -135,6 +163,18 @@ export function ProductPanel() {
             : hasResults
               ? `${resultLabel}${condition ? ` · ${condition}` : ''}`
               : `目录共 ${meta.count} 件 · 按评分与销量精选 ${featured.length} 件`
+        }
+        subtitleAction={
+          browseAllSource && (
+            <Button
+              variant="link"
+              onClick={() => openBrowse(browseAllSource)}
+              className="h-auto gap-0.5 p-0 text-[12px] font-medium [&_svg]:size-3"
+            >
+              查看全部 {snapshot?.searchTotal} 件
+              <ArrowRight />
+            </Button>
+          )
         }
         className="bg-sidebar"
         status={
@@ -218,6 +258,16 @@ export function ProductPanel() {
         </div>
       </ScrollArea>
 
+      {/* 浏览视图（覆盖层，按需 chunk）：品类 chip / 「查看全部 N 件」共用同一个组件，
+          数据走客户端目录的按需 chunk —— 零 LLM 依赖，不碰 SSE。
+          只有真正打开时才挂载（否则连它的 chunk 都不下载）。
+          放在对比条之前渲染；对比条带 z-40，选中商品后操作条仍浮在覆盖层之上 */}
+      {browseOpen && (
+        <Suspense fallback={<BrowseViewLoading />}>
+          <BrowseView />
+        </Suspense>
+      )}
+
       {/* 对比选择操作条 */}
       <AnimatePresence>
         {compareIds.length >= 2 && (
@@ -226,7 +276,7 @@ export function ProductPanel() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="flex shrink-0 items-center gap-2 border-t border-border bg-surface px-4 py-2.5"
+            className="relative z-40 flex shrink-0 items-center gap-2 border-t border-border bg-surface px-4 py-2.5"
           >
             <GitCompareArrows className="size-4 shrink-0 text-primary-ink" />
             <p className="text-[13px] text-foreground">

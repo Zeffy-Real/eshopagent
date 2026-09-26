@@ -126,6 +126,11 @@ export interface SearchOutcome {
   items: Product[];
   /** 命中总数（截断前） */
   total: number;
+  /**
+   * 截断前的**全部命中 id**（与 items 同序）。供「查看全部 N 件」按 id 打开浏览视图用，
+   * 由调用方按 `SEARCH_RESULT_ID_LIMIT` 截断；不装完整对象（120 件的对象约 130 KB）。
+   */
+  ids: string[];
   /** 实际生效的筛选条件 */
   filters: SearchFilters;
   /** 关键词是全命中还是降级为任一命中 */
@@ -161,6 +166,7 @@ export function filterProducts(filters: SearchFilters, limit = 12): SearchOutcom
   return {
     items: sorted.slice(0, limit),
     total: sorted.length,
+    ids: sorted.map((product) => product.id),
     filters,
     keywordMode,
   };

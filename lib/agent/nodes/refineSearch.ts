@@ -41,7 +41,7 @@ export async function refineSearchNode(
       createLogEntry({
         kind: 'tool',
         name: 'refine_search',
-        title: `第 ${round}/${MAX_REFINE_ROUNDS} 轮调整条件`,
+        title: `本轮第 ${round}/${MAX_REFINE_ROUNDS} 轮调整条件`,
         detail: `${before} → ${describeFilters(filters)}`,
         status: 'done',
         startedAt,

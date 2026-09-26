@@ -2,6 +2,7 @@ import { HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  clearAllFilters,
   isScopeSwitch,
   parseIntentNode,
   resolveOrdinalTarget,
@@ -358,5 +359,140 @@ describe('isScopeSwitch：同值沿用与原话兜底', () => {
     expect(
       isScopeSwitch({ rawQuery: '推荐点耳机', keywords: ['耳机'] }, { category: '图书', keywords: ['小说'] }),
     ).toBe(true);
+  });
+});
+
+/**
+ * 「看全部 / 清空条件」（2026-09-26 修 §8-37）。
+ *
+ * 脏会话实测：「推荐几件数码的商品」之后说「让我看看所有 420 件商品」，
+ * 条件没被清空 —— 判据缺「用户要看全部」这一支，LLM 不回写旧值时旧条件照样残留。
+ * 修法：判据只看**用户原话**（detectClearAll），命中且 intent ∈ {search, refine}
+ * 就把整份条件清空（显式 undefined 覆盖浅合并 reducer 里的旧值）。
+ */
+describe('parseIntentNode：看全部商品（清空条件）', () => {
+  const dirtyFilters: SearchFilters = {
+    category: '数码',
+    keywords: ['耳机'],
+    minPrice: 100,
+    maxPrice: 300,
+    minRating: 4.5,
+    tags: ['降噪'],
+    brands: ['Sony'],
+    sort: 'sales',
+  };
+
+  it('「让我看看所有420件商品」清空整份条件，只留本轮原话与排序偏好', async () => {
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('让我看看所有420件商品')],
+        searchFilters: dirtyFilters,
+      }),
+    );
+
+    const filters = filtersOf(update);
+    expect(filters.rawQuery).toBe('让我看看所有420件商品');
+    expect(filters.category).toBeUndefined();
+    expect(filters.keywords).toBeUndefined();
+    expect(filters.minPrice).toBeUndefined();
+    expect(filters.maxPrice).toBeUndefined();
+    expect(filters.minRating).toBeUndefined();
+    expect(filters.tags).toBeUndefined();
+    expect(filters.brands).toBeUndefined();
+    // sort 是展示偏好，按既有裁决不参与重置
+    expect(filters.sort).toBe('sales');
+  });
+
+  it('清空经 reducer 落到状态：旧条件真的消失（不是只在返回值里）', async () => {
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('不限品类，看看全部商品')],
+        searchFilters: dirtyFilters,
+      }),
+    );
+
+    const merged = mergeSearchFilters(dirtyFilters, filtersOf(update));
+    expect(merged.category).toBeUndefined();
+    expect(merged.keywords).toBeUndefined();
+    expect(merged.maxPrice).toBeUndefined();
+    expect(merged.brands).toBeUndefined();
+    expect(merged.sort).toBe('sales');
+  });
+
+  it('时间线留一条可见记录：清空条件 + 条件变化', async () => {
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('让我看看所有420件商品')],
+        searchFilters: dirtyFilters,
+      }),
+    );
+
+    const clear = logsOf(update).find((entry) => entry.name === 'clear_filters');
+    expect(clear?.title).toBe('清空条件：重置全部筛选条件');
+    expect(clear?.detail).toContain('数码');
+    expect(clear?.detail).toContain('全部商品');
+  });
+
+  it('排除词（问金额 / 数量）不清空：不写清空记录，且上一轮条件原样保留', async () => {
+    for (const text of ['所有商品加起来多少钱', '所有商品的平均评分是多少']) {
+      const update = await parseIntentNode(
+        makeState({ messages: [new HumanMessage(text)], searchFilters: dirtyFilters }),
+      );
+
+      expect(logsOf(update).some((entry) => entry.name === 'clear_filters')).toBe(false);
+      // 「所有」曾因目录里的商品名被 n-gram 当成关键词，把这类句子误判成「换目标」而丢条件
+      //（2026-09-26 修：触发词不再是关键词）
+      expect(filtersOf(update).category).toBe('数码');
+      expect(filtersOf(update).keywords).toEqual(['耳机']);
+    }
+  });
+
+  it('intent 门挡：购物车轮不清空（「全部加入购物车」）', async () => {
+    const update = await parseIntentNode(
+      makeState({ messages: [new HumanMessage('全部加入购物车')], searchFilters: dirtyFilters }),
+    );
+
+    expect(update.intent).toBe('cart');
+    expect(filtersOf(update).category).toBe('数码');
+    expect(logsOf(update).some((entry) => entry.name === 'clear_filters')).toBe(false);
+  });
+
+  it('「看看所有小说」点名了东西 → 不清空（走切换目标 / 合并）', async () => {
+    const update = await parseIntentNode(
+      makeState({ messages: [new HumanMessage('看看所有小说')], searchFilters: dirtyFilters }),
+    );
+
+    expect(filtersOf(update).category).toBe('数码');
+    expect(logsOf(update).some((entry) => entry.name === 'clear_filters')).toBe(false);
+  });
+
+  it('上一轮本来就无条件下清空时不写记录（避免噪音）', async () => {
+    const update = await parseIntentNode(
+      makeState({ messages: [new HumanMessage('看看所有商品')], searchFilters: {} }),
+    );
+
+    expect(filtersOf(update).rawQuery).toBe('看看所有商品');
+    expect(logsOf(update).some((entry) => entry.name === 'clear_filters')).toBe(false);
+  });
+
+  it('clearAllFilters 的八个字段显式 undefined（浅合并下覆盖旧值的机制保证）', () => {
+    const cleared = clearAllFilters({ rawQuery: '看看所有商品' }, dirtyFilters);
+    const merged = mergeSearchFilters(dirtyFilters, cleared);
+    expect(merged.category).toBeUndefined();
+    expect(merged.keywords).toBeUndefined();
+    expect(merged.minPrice).toBeUndefined();
+    expect(merged.maxPrice).toBeUndefined();
+    expect(merged.minRating).toBeUndefined();
+    expect(merged.tags).toBeUndefined();
+    expect(merged.brands).toBeUndefined();
+    expect(merged.sort).toBe('sales');
+  });
+
+  it('每轮重置 refineCount（覆盖型 reducer；否则第 3 轮起自动放宽永久失效）', async () => {
+    const update = await parseIntentNode(
+      makeState({ messages: [new HumanMessage('推荐几本小说')], refineCount: 2 }),
+    );
+
+    expect(update.refineCount).toBe(0);
   });
 });

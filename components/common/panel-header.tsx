@@ -6,6 +6,8 @@ export interface PanelHeaderProps {
   icon: LucideIcon;
   title: string;
   subtitle?: string;
+  /** 副标题右侧的行内动作（如中栏的「查看全部 N 件」）；不传则只有副标题 */
+  subtitleAction?: ReactNode;
   /** 标题右侧的实时状态点（如在线状态） */
   status?: ReactNode;
   actions?: ReactNode;
@@ -17,6 +19,7 @@ export function PanelHeader({
   icon: Icon,
   title,
   subtitle,
+  subtitleAction,
   status,
   actions,
   className,
@@ -38,10 +41,11 @@ export function PanelHeader({
           </h2>
           {status}
         </div>
-        {subtitle && (
-          <p className="truncate text-[12px] leading-tight text-muted-foreground">
-            {subtitle}
-          </p>
+        {(subtitle || subtitleAction) && (
+          <div className="flex items-center gap-2 text-[12px] leading-tight text-muted-foreground">
+            {subtitle && <p className="truncate">{subtitle}</p>}
+            {subtitleAction && <span className="shrink-0">{subtitleAction}</span>}
+          </div>
         )}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}

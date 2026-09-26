@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   describeFilters,
+  detectClearAll,
   detectSort,
   extractFiltersByRules,
   guessIntentByRules,
@@ -142,6 +143,20 @@ describe('relaxFilters：细化场景的增量调整', () => {
     const next = relaxFilters({ maxPrice: 500 }, '随便看看');
     expect(next.maxPrice).toBe(500);
   });
+
+  // 2026-09-26（③ 同轮）：乘法放宽没有上限保证，「¥100000 以上」再「再便宜点」
+  // 会产出 minPrice 100000 > maxPrice 70140 —— 反向区间检索必然为空，且像「放宽反而清空」。
+  it('反向区间被 clamp 成单点区间，不再出现 min > max', () => {
+    const next = relaxFilters({ minPrice: 100000, maxPrice: 100200 }, '再便宜点');
+    expect(next.maxPrice).toBe(100000);
+    expect(next.minPrice).toBe(100000);
+  });
+
+  it('正常区间不受 clamp 影响', () => {
+    const next = relaxFilters({ minPrice: 300, maxPrice: 500 }, '再便宜点');
+    expect(next.maxPrice).toBe(350);
+    expect(next.minPrice).toBe(300);
+  });
 });
 
 describe('loosenFilters：检索为空时逐级放宽', () => {
@@ -154,6 +169,94 @@ describe('loosenFilters：检索为空时逐级放宽', () => {
 
   it('已无任何条件时原样返回，不会死循环', () => {
     expect(loosenFilters({})).toEqual({});
+  });
+});
+
+/* ============================================================
+   「看全部 / 清空条件」判据（2026-09-26 修 §8-37）
+
+   背景：脏会话里「让我看看所有 420 件商品」不清空上一轮的「数码」——
+   判据原来只有「新目标 → 重置细分条件」与「否则 → 全量继承」两支，
+   「用户要看全部」落在缝隙里（实测 LLM 不回写时旧条件照样残留）。
+   判据只看**用户原话**，因此下面这组用例同时是产品词表的锁定。
+   ============================================================ */
+describe('detectClearAll：看全部 / 清空条件判据', () => {
+  it('正例：浏览动词 + 聚合词', () => {
+    expect(detectClearAll('让我看看所有420件商品')).toBe(true);
+    expect(detectClearAll('不限品类，看看全部商品')).toBe(true);
+    expect(detectClearAll('看看所有商品')).toBe(true);
+    expect(detectClearAll('我想浏览全部商品')).toBe(true);
+    expect(detectClearAll('显示所有商品')).toBe(true);
+    expect(detectClearAll('列出整个目录')).toBe(true);
+    expect(detectClearAll('看看 420 件商品')).toBe(true);
+  });
+
+  it('正例：清空类动词单出现即命中', () => {
+    expect(detectClearAll('清空条件')).toBe(true);
+    expect(detectClearAll('重置')).toBe(true);
+    expect(detectClearAll('从头开始')).toBe(true);
+    expect(detectClearAll('重新开始')).toBe(true);
+    expect(detectClearAll('随便看看')).toBe(true);
+    expect(detectClearAll('随便逛逛')).toBe(true);
+    expect(detectClearAll('都行')).toBe(true);
+  });
+
+  it('边界 22 / 23：字段级重置不支持 —— 「重置预算」「不限品牌」清空的是整份条件', () => {
+    expect(detectClearAll('重置预算')).toBe(true);
+    expect(detectClearAll('不限品牌')).toBe(true);
+  });
+
+  it('反例：排除词（问数量 / 金额）不清空', () => {
+    expect(detectClearAll('所有商品加起来多少钱')).toBe(false);
+    expect(detectClearAll('所有商品的平均评分是多少')).toBe(false);
+    expect(detectClearAll('一共有几件商品')).toBe(false);
+    expect(detectClearAll('帮我统计所有商品')).toBe(false);
+    expect(detectClearAll('所有商品的总价')).toBe(false);
+  });
+
+  it('反例：原话点名了东西就不算「看全部」（边界 21）', () => {
+    expect(detectClearAll('看看所有小说')).toBe(false);
+    expect(detectClearAll('推荐几本小说')).toBe(false);
+    expect(detectClearAll('帮我看看数码的商品')).toBe(false);
+  });
+
+  it('反例：无聚合词 / 浏览动词的句子不清空', () => {
+    expect(detectClearAll('换成第二件')).toBe(false);
+    expect(detectClearAll('再便宜点')).toBe(false);
+    expect(detectClearAll('全部加入购物车')).toBe(false);
+    expect(detectClearAll('对比前 3 件')).toBe(false);
+    expect(detectClearAll('看看 20 件商品')).toBe(false);
+    expect(detectClearAll('今天天气不错')).toBe(false);
+  });
+
+  it('目录里的商品名含「所有」不构成伪点名（「适用于所有车辆」/「适合所有肤质」）', () => {
+    // n-gram 会把「所有」当关键词（目录里确有两个商品名含它），但触发词不算检索目标：
+    // 解析器已剔除（2026-09-26），否则「看看所有商品」会被判成「点名了某个词」而漏掉清空
+    expect(extractFiltersByRules('看看所有商品').keywords ?? []).not.toContain('所有');
+    expect(detectClearAll('看看所有商品')).toBe(true);
+  });
+
+  it('触发词被剔除后，统计类句子也不会把「所有」当条件带进检索', () => {
+    expect(extractFiltersByRules('所有商品加起来多少钱').keywords ?? []).toEqual([]);
+    expect(extractFiltersByRules('所有商品的平均评分是多少').keywords ?? []).toEqual([]);
+  });
+});
+
+describe('guessIntentByRules：清空类表达强制 search（无 Key 降级路径）', () => {
+  it('「看看所有商品」「清空条件」「不限品牌」判为 search', () => {
+    expect(guessIntentByRules('看看所有商品')).toBe('search');
+    // 「清空」会撞上加购词表的「清空」，必须靠清空判据前置抢回
+    expect(guessIntentByRules('清空条件')).toBe('search');
+    expect(guessIntentByRules('不限品牌')).toBe('search');
+    expect(guessIntentByRules('都行')).toBe('search');
+  });
+
+  it('加购 / 对比 / 细化不受影响（只接 detectClearAll，不扩充通用词表）', () => {
+    expect(guessIntentByRules('全部加入购物车')).toBe('cart');
+    expect(guessIntentByRules('把购物车清空')).toBe('cart');
+    expect(guessIntentByRules('对比前 3 件')).toBe('compare');
+    expect(guessIntentByRules('换成第二件')).toBe('refine');
+    expect(guessIntentByRules('再便宜一点')).toBe('refine');
   });
 });
 

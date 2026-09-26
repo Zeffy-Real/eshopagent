@@ -5,6 +5,7 @@ import { isLlmEnabled } from '@/lib/agent/llm';
 import { INTENT_SYSTEM_PROMPT, buildIntentUserPrompt } from '@/lib/agent/prompts';
 import {
   describeFilters,
+  detectClearAll,
   extractFiltersByRules,
   guessIntentByRules,
   parseOrdinalIndex,
@@ -172,6 +173,27 @@ export function isScopeSwitch(next: SearchFilters, previous: SearchFilters): boo
 }
 
 /**
+ * 清空整份筛选条件：八个筛选字段全部显式置 undefined（浅合并 reducer 下覆盖旧值），
+ * 只留本轮原话与排序偏好（sort 是展示偏好，按既有裁决不参与重置）。
+ *
+ * 为什么必须「显式」：reducer 是 `{...previous, ...next}`，只写 `{rawQuery}` 的话
+ * 上一轮的 category / keywords 会原样留下 —— 清空就成了摆设。
+ */
+export function clearAllFilters(next: SearchFilters, previous: SearchFilters): SearchFilters {
+  return {
+    rawQuery: next.rawQuery,
+    keywords: undefined,
+    category: undefined,
+    minPrice: undefined,
+    maxPrice: undefined,
+    minRating: undefined,
+    brands: undefined,
+    tags: undefined,
+    sort: next.sort ?? previous.sort,
+  };
+}
+
+/**
  * 重置细分条件：五类显式置 undefined（浅合并 reducer 下覆盖旧值，单测锁定该语义）；
  * 品类 / 关键词用本轮的，排序本轮给了就用本轮、没给沿用上一轮。
  */
@@ -263,11 +285,21 @@ export async function parseIntentNode(
   }
 
   // 条件继承与重置（唯一判定点，2026-09-26 起）：
+  // - 用户要看「全部商品」（清空条件类表达）→ 整份条件重置（含品类 / 关键词）；
   // - 切换浏览目标 → 重置上一轮的细分条件（价格 / 评分 / 标签 / 品牌）；
   // - 其余情况（细化、稀疏增量、闲聊等）→ 与上一轮合并，未提到的字段沿用。
   const previous = state.searchFilters;
-  const switchesScope = isScopeSwitch(filters, previous);
-  filters = switchesScope ? resetRefinements(filters, previous) : mergeFilters(previous, filters);
+  // 「看全部」判据只读**用户原话**（detectClearAll 不看 LLM 输出、不看 filters）：
+  // 旧判据被绕过的原因正是拿「LLM 回写的旧值」当「本轮提到了什么」的证据 ——
+  // 用户说「让我看看所有 420 件商品」时，回写回来的「数码」是旧的，不是他说的话。
+  // intent 门挡在 {search, refine}：购物车 / 结算 / 对比 / 闲聊轮不清空（「全部加入购物车」）。
+  const clearsAll = (intent === 'search' || intent === 'refine') && detectClearAll(text);
+  const switchesScope = !clearsAll && isScopeSwitch(filters, previous);
+  filters = clearsAll
+    ? clearAllFilters(filters, previous)
+    : switchesScope
+      ? resetRefinements(filters, previous)
+      : mergeFilters(previous, filters);
   // 注意：相对表述（「再便宜一点」）的放宽只在 refineSearch 节点执行一次，
   // 这里不再处理，否则同一轮会被放宽两次（500 → 350 → 245）。
 
@@ -321,6 +353,18 @@ export async function parseIntentNode(
   }
   // 重置发生时留一条中性记录：条件悄悄消失会让人困惑（本项目的主题是推理过程可视化）。
   // 上一轮本来就没什么可重置时不写 —— 避免「全部商品 → 服饰」这种没有信息量的噪音。
+  if (clearsAll && describeFilters(previous) !== '全部商品') {
+    logs.push(
+      createLogEntry({
+        kind: 'decision',
+        name: 'clear_filters',
+        title: '清空条件：重置全部筛选条件',
+        detail: `${describeFilters(previous)} → ${describeFilters(filters)}`,
+        status: 'done',
+        startedAt,
+      }),
+    );
+  }
   if (switchesScope && hasRefinementConditions(previous)) {
     logs.push(
       createLogEntry({
@@ -341,6 +385,10 @@ export async function parseIntentNode(
     focusProductId: focusProduct?.id ?? null,
     // 每轮重置本轮画像信号（覆盖型 reducer，见 AgentState 的注释）
     profilePatch: [],
+    // 每轮重置自动放宽计数（覆盖型 reducer）：它是**本轮**的放宽轮次，不是线程级累积 ——
+    // 旧实现逐轮累加，跑满 2 轮后时间线显示「第 3/2 轮」，且条件边永远判 false
+    // （needsRefine && refineCount < 2），该线程的自动放宽能力从此永久失效。
+    refineCount: 0,
     profileHint,
     toolCallLog: logs,
   };

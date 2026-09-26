@@ -49,6 +49,16 @@ export const NODE_ORDER: string[] = [
  */
 export const SEARCH_RESULT_LIMIT = 12;
 
+/**
+ * 单轮下发的**命中 id 列表**上限（「查看全部 N 件」入口的数据）。
+ *
+ * 为什么是 120：实测目录 id 平均 15.9 字 → 120 个约 2.2 KB/帧（每轮 5 个状态帧，
+ * 合计约 +11 KB），落在「≤4 KB/帧」的载荷预算内；再往上收益很小（筛选命中极少超过 120 件）。
+ * 超过上限时浏览视图显示前 120 件并注明，**无筛选条件的大集合不走这里**
+ * （前端读 `hasEffectiveFilters` → 无筛选直接由客户端目录现算，420 个 id 不进 SSE）。
+ */
+export const SEARCH_RESULT_ID_LIMIT = 120;
+
 /** 服务端状态快照：前端各面板的唯一数据来源 */
 export interface AgentStateSnapshot {
   intent: AgentIntent;
@@ -64,6 +74,15 @@ export interface AgentStateSnapshot {
    * 覆盖型：refine 重新检索后必须跟着更新，不能是历史值。
    */
   searchTotal: number;
+  /**
+   * 本轮命中商品的前 `SEARCH_RESULT_ID_LIMIT` 个 id（**只读展示字段**，同类于 `searchTotal`）。
+   *
+   * 唯一用途：中栏「查看全部 N 件」入口 —— 有筛选条件时客户端拿它按 id 打开浏览视图
+   * （无筛选条件时走客户端目录全量，这里为空）。只在 search / refine 轮下发，
+   * 闲聊 / 加购 / 对比 / 结算轮一律为空（`toSnapshot` 按意图门挡）。
+   * 不装完整对象：120 件商品的完整对象约 130 KB，装不下也不该装。
+   */
+  searchResultIds: string[];
   /**
    * 实时数据覆盖（键 = 商品 id）。**不写进 searchResults**：这样才始终说得清
    * 「哪个价格来自快照、哪个来自实时查询」。渲染时按 id 查覆盖值，查不到就用原值

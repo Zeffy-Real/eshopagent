@@ -1,7 +1,8 @@
 import { filterProducts } from '@/lib/agent/tools/productTools';
 import { getProductById } from '@/lib/catalog/products';
-import { SEARCH_RESULT_LIMIT } from '@/lib/agent/events';
+import { SEARCH_RESULT_ID_LIMIT, SEARCH_RESULT_LIMIT } from '@/lib/agent/events';
 import { describeFilters } from '@/lib/agent/ruleParser';
+import { hasEffectiveFilters } from '@/lib/product-panel-state';
 import type { AgentStateUpdate, AgentStateValue } from '@/lib/agent/state';
 import { createLogEntry } from '@/lib/agent/utils';
 import { extractProfileSignals } from '@/lib/profile';
@@ -19,6 +20,10 @@ import { formatPrice } from '@/lib/utils';
  *
  * `searchTotal`（命中总数，截断前）随之写入 —— 它只用于中栏「共 N 件 · 展示前 M 件」
  * 的展示口径，不参与筛选 / 排序 / 推荐；每轮重新检索都会覆盖它。
+ *
+ * `searchResultIds`（命中前 120 个 id）只在**存在有效筛选条件、且命中多于展示**时写入：
+ * 中栏「查看全部 N 件」用它按 id 打开浏览视图；无筛选条件时客户端用目录现算全量，
+ * 不需要（也不该）让 420 个 id 挤进状态帧 —— 判据与客户端共用 `hasEffectiveFilters`。
  */
 export async function searchProductsNode(
   state: AgentStateValue,
@@ -34,6 +39,8 @@ export async function searchProductsNode(
       return {
         searchResults: [target],
         searchTotal: 1,
+        // 只展示这一件，没有「查看全部」可言 —— 显式清掉上一轮的 id 列表
+        searchResultIds: [],
         focusProductId: null,
         needsRefine: false,
         toolCallLog: [
@@ -64,6 +71,11 @@ export async function searchProductsNode(
   return {
     searchResults: outcome.items,
     searchTotal: outcome.total,
+    // 「查看全部 N 件」的数据源：有筛选条件、且命中多于展示时才下发（见文件头注释）
+    searchResultIds:
+      hasEffectiveFilters(state.searchFilters) && outcome.total > outcome.items.length
+        ? outcome.ids.slice(0, SEARCH_RESULT_ID_LIMIT)
+        : [],
     focusProductId: null,
     needsRefine: outcome.total === 0,
     profilePatch: [...state.profilePatch, ...signals],
