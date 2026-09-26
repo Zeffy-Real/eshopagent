@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AgentStateSnapshot, AgentStreamEvent } from '@/lib/agent/events';
+import { normalizeSnapshot } from '@/lib/agent/events';
 import { applyProfilePatch, clearProfile, createEmptyProfile, type UserProfile } from '@/lib/profile';
 import type { Order, ToolLogEntry } from '@/lib/types';
 import { abortActiveRequest, isAbortError, resumeAgent, streamAgent } from '@/lib/agent-client';
@@ -404,6 +405,18 @@ export const useAgentStore = create<AgentState>()(
         // 「新会话」按钮因此不会清掉画像
         userProfile: state.userProfile,
       }),
+      /**
+       * 恢复时的形状归一化（**唯一入口**）：`snapshot` 可能来自旧版本，而它的字段是
+       * 逐步长出来的 —— localStorage 是不可信边界，这里把它归一回 `AgentStateSnapshot`
+       * （默认值清单与理由见 `lib/agent/events.ts` 的 `normalizeSnapshot`）。
+       * 不这么做的话，消费者要各自写 `?.` / `??`，漏一处就是整页白屏（2026-09-26 实测）。
+       * 其余被持久化的键（sessionId / messages / userProfile）形状稳定，按默认浅合并处理。
+       */
+      merge: (persisted, current) => {
+        const saved =
+          persisted && typeof persisted === 'object' ? (persisted as Partial<AgentState>) : {};
+        return { ...current, ...saved, snapshot: normalizeSnapshot(saved.snapshot) };
+      },
     },
   ),
 );

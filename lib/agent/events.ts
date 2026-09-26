@@ -59,7 +59,12 @@ export const SEARCH_RESULT_LIMIT = 12;
  */
 export const SEARCH_RESULT_ID_LIMIT = 120;
 
-/** 服务端状态快照：前端各面板的唯一数据来源 */
+/**
+ * 服务端状态快照：前端各面板的唯一数据来源。
+ *
+ * ⚠️ **新增字段时必须同时在 `normalizeSnapshot` 里补默认值** —— 这个对象会随 store
+ * 持久化进 localStorage，**旧版本写下的快照不会带新字段**；恢复期的形状归一化只有那一处。
+ */
 export interface AgentStateSnapshot {
   intent: AgentIntent;
   searchFilters: SearchFilters;
@@ -113,6 +118,74 @@ export interface AgentStateSnapshot {
   profileGeneration: number;
   /** 服务端是否已配置 LLM（决定前端是否展示兜底提示） */
   llmEnabled: boolean;
+}
+
+/**
+ * 快照的**形状归一化**（恢复持久化状态时调用；纯函数，唯一入口）。
+ *
+ * 为什么需要：`snapshot` 会随 store 持久化进 localStorage，而持久化数据可能来自**旧版本**
+ * —— `AgentStateSnapshot` 的字段是逐步长出来的（`searchResultIds` / `searchTotal` /
+ * `replyProductIds` / `profilePatch` …），旧快照不会带新字段。zustand 的 rehydrate 是
+ * 浅合并、没有任何形状校验，实测（2026-09-26）：
+ *   ① 删掉 `searchResultIds` 再刷新 → `product-panel.tsx` 的 `snapshot.searchResultIds.length`
+ *      抛错，**整页白屏**（Application error）；
+ *   ② 只删 `searchTotal` 更隐蔽 —— 不崩，但中栏退化成「12 件商品」、入口写成「查看全部  件」。
+ * 修复只在这一处做，不让每个消费者各写一份 `?.` / `??`。
+ *
+ * 约定：`raw` 不是普通对象 / 为 null → 返回 `null`（视为「没有快照」，与初始状态一致）。
+ * 已有字段**原样保留、不做语义重解释**；缺失字段按下述默认值补齐 —— 每条的理由：
+ *
+ * - `intent: 'chat'`：最保守的意图（不假装在搜索；中栏回落「为你推荐」）；
+ * - `searchFilters: {}`：无条件 —— `hasEffectiveFilters({})` 为 false，「查看全部」走
+ *   客户端目录而不是去读一组不存在的 id；
+ * - `conditionText: ''`：不显示条件（比编一段条件描述安全）；
+ * - `searchResults / compareTargets / cart / toolCallLog / profilePatch: []`：空集合。
+ *   时间线本来就不持久化（§8-35），空数组与恢复后的实际表现一致；快照里的 `cart` 只在
+ *   服务端下发时同步展示，空数组不会清掉本地购物车；本轮画像信号已合并进 `userProfile`；
+ * - `searchTotal`: **取 `searchResults.length`**（而不是 0）—— 命中数不应小于已展示数，
+ *   避免「共 0 件 · 展示前 12 件」这种自相矛盾的文案；
+ * - `searchResultIds / replyProductIds: []`：缺省即「本轮没有可跳转的列表 / 不挂内联卡」，
+ *   入口不出现 —— 比猜一组 id 安全；
+ * - `liveOverrides: {}`、`liveFetchedAt: null`：没有实时覆盖；
+ * - `comparison: null`、`pendingOrder: null`：没有对比结果；**刷新后不存在挂起中断**
+ *   （与「确认下单后刷新不重播弹窗」的既有语义一致）；
+ * - `reply: ''`：本轮回复文本对恢复后的界面无用（气泡文本已在 `messages` 里）；
+ * - `profileGeneration: 0`：最旧的一代 → 任何在途 patch 都会被丢弃（「清除画像」后
+ *   丢弃旧 patch 是既定行为，这里只是把「未知」当成最保守的一侧）；
+ * - `llmEnabled: true`：不显示「规则兜底」徽标（宁可少说，不在没依据时声称走的是
+ *   规则路径）；下一轮服务端快照会给出真实值。
+ *
+ * 数组字段额外挡一层类型：localStorage 是不可信边界，`'字符串'` / `{...}` 这类形状
+ * 会被下游的 `.map` / `.length` 用坏（本次崩溃正是「不是数组」的一类）。
+ */
+export function normalizeSnapshot(raw: unknown): AgentStateSnapshot | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const source = raw as Record<string, unknown>;
+  const arrayOf = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+  const searchResults = arrayOf<Product>(source.searchResults);
+
+  return {
+    intent: (source.intent as AgentIntent | undefined) ?? 'chat',
+    searchFilters: (source.searchFilters as SearchFilters | undefined) ?? {},
+    conditionText: typeof source.conditionText === 'string' ? source.conditionText : '',
+    searchResults,
+    searchTotal:
+      typeof source.searchTotal === 'number' ? source.searchTotal : searchResults.length,
+    searchResultIds: arrayOf<string>(source.searchResultIds),
+    replyProductIds: arrayOf<string>(source.replyProductIds),
+    liveOverrides: (source.liveOverrides as Record<string, Product> | undefined) ?? {},
+    liveFetchedAt: typeof source.liveFetchedAt === 'number' ? source.liveFetchedAt : null,
+    compareTargets: arrayOf<Product>(source.compareTargets),
+    comparison: (source.comparison as ComparisonResult | null | undefined) ?? null,
+    cart: arrayOf<CartItem>(source.cart),
+    toolCallLog: arrayOf<ToolLogEntry>(source.toolCallLog),
+    pendingOrder: (source.pendingOrder as Order | null | undefined) ?? null,
+    reply: typeof source.reply === 'string' ? source.reply : '',
+    profilePatch: arrayOf<ProfileSignal>(source.profilePatch),
+    profileGeneration:
+      typeof source.profileGeneration === 'number' ? source.profileGeneration : 0,
+    llmEnabled: typeof source.llmEnabled === 'boolean' ? source.llmEnabled : true,
+  };
 }
 
 export type AgentStreamEvent =
