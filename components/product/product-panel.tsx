@@ -21,6 +21,7 @@ import {
   resolveDetailProduct,
 } from '@/lib/catalog/client-products';
 import { applyLiveOverride } from '@/lib/justoneapi/overrides';
+import { productPanelStateOf } from '@/lib/product-panel-state';
 import type { Product, SortKey } from '@/lib/types';
 import { useAgentStore } from '@/store/use-agent-store';
 import { useUiStore } from '@/store/use-ui-store';
@@ -53,7 +54,17 @@ export function ProductPanel() {
   const compareIds = useUiStore((s) => s.compareIds);
   const clearCompare = useUiStore((s) => s.clearCompare);
 
-  const searched = snapshot !== null && snapshot.searchResults.length > 0;
+  // 三态（唯一判据在 lib/product-panel-state.ts）：搜索结果 / 搜索无结果 / 为你推荐。
+  // 「搜索类意图 + 0 命中」原先会静默回落成推荐位，用户分不清「没搜到」还是「被当成闲聊」；
+  // 闲聊轮回落推荐是刻意行为，没有改。
+  const panelState = productPanelStateOf({
+    intent: snapshot?.intent ?? null,
+    total: snapshot?.searchTotal ?? 0,
+    shown: snapshot?.searchResults.length ?? 0,
+  });
+  const hasResults = panelState === 'results';
+  const emptySearch = panelState === 'empty-search';
+  const searched = hasResults || emptySearch;
   const hasFilters =
     snapshot !== null && Object.keys(snapshot.searchFilters).length > 1;
 
@@ -67,11 +78,11 @@ export function ProductPanel() {
   );
 
   const products = useMemo(() => {
-    const base = searched ? snapshot.searchResults : featured;
+    const base = hasResults && snapshot ? snapshot.searchResults : featured;
     return sortProducts(base, sort).map((product) =>
       applyLiveOverride(product, liveOverrides),
     );
-  }, [searched, snapshot, sort, liveOverrides, featured]);
+  }, [hasResults, snapshot, sort, liveOverrides, featured]);
 
   // 渲染过的商品记进会话缓存：详情弹窗按 id 复用。列表随检索变化时（含回复流中途更新），
   // 已打开弹窗的那件商品仍在缓存里，不会因为「列表换掉了」而解析不到。
@@ -111,11 +122,19 @@ export function ProductPanel() {
     <div className="flex h-full min-h-0 flex-col">
       <PanelHeader
         icon={Package}
-        title={searched ? '搜索结果' : '为你推荐'}
+        title={
+          emptySearch
+            ? '没有找到符合条件的商品'
+            : hasResults
+              ? '搜索结果'
+              : '为你推荐'
+        }
         subtitle={
-          searched
-            ? `${resultLabel}${condition ? ` · ${condition}` : ''}`
-            : `目录共 ${meta.count} 件 · 按评分与销量精选 ${featured.length} 件`
+          emptySearch
+            ? '试试放宽条件（价格 / 品类），或看看下面的推荐'
+            : hasResults
+              ? `${resultLabel}${condition ? ` · ${condition}` : ''}`
+              : `目录共 ${meta.count} 件 · 按评分与销量精选 ${featured.length} 件`
         }
         className="bg-sidebar"
         status={
@@ -157,6 +176,14 @@ export function ProductPanel() {
             <p className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
               <Sparkles className="size-3.5" />
               在左侧对话区描述需求后，这里会展示检索结果
+            </p>
+          )}
+
+          {/* 搜索无结果：不空白页，下方仍给精选推荐（标题与说明已在面板头部写明） */}
+          {emptySearch && (
+            <p className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
+              <Sparkles className="size-3.5" />
+              为你推荐
             </p>
           )}
 
