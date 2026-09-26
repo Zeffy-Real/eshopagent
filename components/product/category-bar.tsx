@@ -2,6 +2,7 @@
 
 import { LayoutGrid } from 'lucide-react';
 import { useCatalogData } from '@/components/providers/catalog-data-provider';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CATEGORIES, type Category } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/store/use-agent-store';
@@ -36,29 +37,35 @@ export function CategoryBar() {
       {CATEGORIES.map((category) => {
         const isActive = category === active;
         return (
-          <button
-            key={category}
-            type="button"
-            aria-pressed={isActive}
-            // 已选中的品类再点一次没有意义：同一条请求会白跑一轮
-            disabled={thinking || isActive}
-            onClick={() => void sendMessage(`帮我看看${category}的商品`)}
-            className={cn(
-              'flex items-center gap-1 rounded-[var(--radius-sm)] border px-2 py-1 text-[12px] leading-4 transition-colors duration-150',
-              'outline-none focus-visible:border-primary',
-              isActive
-                ? 'border-primary/30 bg-primary-soft text-primary-ink'
-                : 'border-border bg-surface text-foreground hover:border-border-strong hover:bg-surface-muted',
-              // 执行中整体置灰；已选中项保持常态外观（只不可再点），避免被误读成「失效」
-              thinking ? 'cursor-not-allowed opacity-50' : '',
-              isActive && !thinking ? 'cursor-default' : '',
-            )}
-          >
-            {category}
-            <span className="tabular-nums text-[10px] text-muted-foreground">
-              {categoryCounts[category]}
-            </span>
-          </button>
+          <Tooltip key={category}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-pressed={isActive}
+                // 已选中的品类再点一次没有意义：同一条请求会白跑一轮
+                disabled={thinking || isActive}
+                onClick={() => void sendMessage(`帮我看看${category}的商品`)}
+                className={cn(
+                  'flex items-center gap-1 rounded-[var(--radius-sm)] border px-2 py-1 text-[12px] leading-4 transition-colors duration-150',
+                  'outline-none focus-visible:border-primary',
+                  isActive
+                    ? 'border-primary/30 bg-primary-soft text-primary-ink'
+                    : 'border-border bg-surface text-foreground hover:border-border-strong hover:bg-surface-muted',
+                  // 执行中整体置灰；已选中项保持常态外观（只不可再点），避免被误读成「失效」
+                  thinking ? 'cursor-not-allowed opacity-50' : '',
+                  isActive && !thinking ? 'cursor-default' : '',
+                )}
+              >
+                {category}
+                <span className="tabular-nums text-[10px] text-muted-foreground">
+                  {categoryCounts[category]}
+                </span>
+              </button>
+            </TooltipTrigger>
+            {/* 数字是**目录总量**（服务端按当前源算好），不是某次检索的命中数 ——
+                与数据快照面板「检索单次最多展示前 12 件」的口径配套 */}
+            <TooltipContent>该品类目录共 {categoryCounts[category]} 件</TooltipContent>
+          </Tooltip>
         );
       })}
     </div>

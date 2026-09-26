@@ -66,17 +66,28 @@ export function resolveOrdinalTarget(
   return results[index - 1] ?? null;
 }
 
+/**
+ * LLM 结构化输出 → **完整的**筛选条件对象（未解析出的字段显式为 undefined）。
+ *
+ * 为什么补齐「空键」而不是只写本轮解析出来的字段（2026-09-26 修检索条件粘性）：
+ * searchFilters 的 reducer 是浅合并，只写有值的键时，上一轮设过的字段会被
+ * 「默默留下」—— LLM 路径实测：「100 元以内」之后点品类 chip，`maxPrice` 仍在、
+ * 命中从 60 缩到 4。规则解析器一直返回完整对象（未命中即 undefined），
+ * 两条路径对齐这一形状后，「重置」才有确定的机制保证：
+ * 显式 undefined 在浅合并里覆盖旧值（由 mergeSearchFilters 的单测锁定）。
+ */
 function toFilters(parsed: IntentParseResult, text: string): SearchFilters {
-  const filters: SearchFilters = { rawQuery: text };
-  if (parsed.keywords?.length) filters.keywords = parsed.keywords;
-  if (parsed.category) filters.category = parsed.category;
-  if (typeof parsed.minPrice === 'number') filters.minPrice = parsed.minPrice;
-  if (typeof parsed.maxPrice === 'number') filters.maxPrice = parsed.maxPrice;
-  if (typeof parsed.minRating === 'number') filters.minRating = parsed.minRating;
-  if (parsed.brands?.length) filters.brands = parsed.brands;
-  if (parsed.tags?.length) filters.tags = parsed.tags;
-  if (parsed.sort) filters.sort = parsed.sort;
-  return filters;
+  return {
+    rawQuery: text,
+    keywords: parsed.keywords?.length ? parsed.keywords : undefined,
+    category: parsed.category ?? undefined,
+    minPrice: typeof parsed.minPrice === 'number' ? parsed.minPrice : undefined,
+    maxPrice: typeof parsed.maxPrice === 'number' ? parsed.maxPrice : undefined,
+    minRating: typeof parsed.minRating === 'number' ? parsed.minRating : undefined,
+    brands: parsed.brands?.length ? parsed.brands : undefined,
+    tags: parsed.tags?.length ? parsed.tags : undefined,
+    sort: parsed.sort ?? undefined,
+  };
 }
 
 /** 增量合并：只覆盖本次真正解析出来的字段 */
@@ -93,16 +104,87 @@ function mergeFilters(base: SearchFilters, patch: SearchFilters): SearchFilters 
   return merged;
 }
 
-/** 新条件过于稀疏时，沿用上一轮的条件（例如「我想买跑鞋」→「预算 500 以内」） */
-function shouldKeepPrevious(
-  intent: AgentIntent,
-  next: SearchFilters,
-  previous: SearchFilters,
-): boolean {
-  if (intent === 'refine') return true;
-  const nextSparse = !next.category && !next.keywords?.length;
-  const previousHasScope = Boolean(previous.category || previous.keywords?.length);
-  return intent === 'search' && nextSparse && previousHasScope;
+/** 五类「细分条件」：价格 / 评分 / 标签 / 品牌。排序刻意不在其中（见 isScopeSwitch） */
+function hasRefinementConditions(filters: SearchFilters): boolean {
+  return (
+    filters.minPrice !== undefined ||
+    filters.maxPrice !== undefined ||
+    filters.minRating !== undefined ||
+    (filters.tags?.length ?? 0) > 0 ||
+    (filters.brands?.length ?? 0) > 0
+  );
+}
+
+/** 列表型字段是否含有「上一轮没有的」新词（同值不算本轮证据） */
+function hasNewWords(next: string[] | undefined, previous: string[] | undefined): boolean {
+  if (!next?.length) return false;
+  const known = new Set(previous ?? []);
+  return next.some((word) => !known.has(word));
+}
+
+/**
+ * 本轮**新给出**的细分条件：「与上一轮同值」且「用户原话里也没出现」的取值
+ * 视为沿用（LLM 把旧条件写回来的情形），不计入本轮证据。
+ *
+ * 为什么必须做这层过滤：LLM 会把 prompt 里「当前筛选条件」的旧值一并写进结构化
+ * 输出 —— 实测「100 元以内」之后点服饰 chip，输出里带着 maxPrice=100 回来；
+ * 「推荐几本小说」之后说「按价格从低到高排」，输出里带着上一轮的 category=图书
+ * 回来。拿原样输出当证据，重置会被这些沿用值无条件挡掉，判据等于失效。
+ *
+ * 为什么还要「原话兜底」：用户明确重述一个与上一轮相同的值时（「100 元以内的书」
+ * 在 ≤100 的会话里），它是**本轮给出的条件**，不能被当成沿用清掉。
+ * 数字按字面匹配、词按子串匹配 —— 宁可判成「本轮条件」（不重置），不可反过来。
+ */
+function hasNewRefinements(next: SearchFilters, previous: SearchFilters): boolean {
+  const text = next.rawQuery ?? '';
+  const isNewNumber = (value: number | undefined, former: number | undefined): boolean =>
+    value !== undefined && (value !== former || text.includes(String(value)));
+  const isNewWordList = (list: string[] | undefined, former: string[] | undefined): boolean =>
+    (list ?? []).some((word) => !(former ?? []).includes(word) || text.includes(word));
+  return (
+    isNewNumber(next.minPrice, previous.minPrice) ||
+    isNewNumber(next.maxPrice, previous.maxPrice) ||
+    isNewNumber(next.minRating, previous.minRating) ||
+    isNewWordList(next.tags, previous.tags) ||
+    isNewWordList(next.brands, previous.brands)
+  );
+}
+
+/**
+ * 「切换浏览目标」判据（2026-09-26 修 §8-32 检索条件粘性、品类 chip 场景）：
+ * 本轮**新给出**明确的浏览目标（品类或关键词）、且没有新的细分条件
+ * → 视为一次全新浏览，重置上一轮的细分条件；否则与上一轮合并（未提到的字段沿用）。
+ *
+ * 四个刻意的设计点：
+ * 1. **与 intent 无关**：LLM 对「切换目标」的判定不稳定（实测同一句话可能判 search、
+ *    也可能判 refine），靠 intent 分叉必漏一处；判据只看「本轮解析出了什么」。
+ * 2. **只看「新给出」的取值**：与上一轮同值的字段视为沿用（LLM 会把旧条件写回来，
+ *    见 hasNewRefinements 的注释）。
+ * 3. **sort 不参与判据、也不被重置**：它是展示偏好不是过滤条件 ——
+ *    「服饰，按价格排序」要的是「服饰 + 按价格排」，不该被上一轮的价格条件挡住。
+ * 4. **关键词也是明确目标**：「推荐点跑鞋」在图书会话里应换到运动品类，
+ *    所以 category 与 keywords 命中其一即可触发。
+ */
+export function isScopeSwitch(next: SearchFilters, previous: SearchFilters): boolean {
+  const categoryIsNew = next.category !== undefined && next.category !== previous.category;
+  const targetIsNew = categoryIsNew || hasNewWords(next.keywords, previous.keywords);
+  return targetIsNew && !hasNewRefinements(next, previous);
+}
+
+/**
+ * 重置细分条件：五类显式置 undefined（浅合并 reducer 下覆盖旧值，单测锁定该语义）；
+ * 品类 / 关键词用本轮的，排序本轮给了就用本轮、没给沿用上一轮。
+ */
+export function resetRefinements(next: SearchFilters, previous: SearchFilters): SearchFilters {
+  return {
+    ...next,
+    minPrice: undefined,
+    maxPrice: undefined,
+    minRating: undefined,
+    tags: undefined,
+    brands: undefined,
+    sort: next.sort ?? previous.sort,
+  };
 }
 
 /**
@@ -180,9 +262,12 @@ export async function parseIntentNode(
     }
   }
 
-  if (shouldKeepPrevious(intent, filters, state.searchFilters)) {
-    filters = mergeFilters(state.searchFilters, filters);
-  }
+  // 条件继承与重置（唯一判定点，2026-09-26 起）：
+  // - 切换浏览目标 → 重置上一轮的细分条件（价格 / 评分 / 标签 / 品牌）；
+  // - 其余情况（细化、稀疏增量、闲聊等）→ 与上一轮合并，未提到的字段沿用。
+  const previous = state.searchFilters;
+  const switchesScope = isScopeSwitch(filters, previous);
+  filters = switchesScope ? resetRefinements(filters, previous) : mergeFilters(previous, filters);
   // 注意：相对表述（「再便宜一点」）的放宽只在 refineSearch 节点执行一次，
   // 这里不再处理，否则同一轮会被放宽两次（500 → 350 → 245）。
 
@@ -229,6 +314,20 @@ export async function parseIntentNode(
         name: 'profile_recall',
         title: `记起你的偏好：${recall.label}`,
         detail: `本轮输入未给出品类/关键词，参考了历史偏好（来源：${PROFILE_SOURCE_LABEL[recall.source]}）`,
+        status: 'done',
+        startedAt,
+      }),
+    );
+  }
+  // 重置发生时留一条中性记录：条件悄悄消失会让人困惑（本项目的主题是推理过程可视化）。
+  // 上一轮本来就没什么可重置时不写 —— 避免「全部商品 → 服饰」这种没有信息量的噪音。
+  if (switchesScope && hasRefinementConditions(previous)) {
+    logs.push(
+      createLogEntry({
+        kind: 'decision',
+        name: 'scope_reset',
+        title: '切换浏览目标：重置上一轮条件',
+        detail: `${describeFilters(previous)} → ${describeFilters(filters)}`,
         status: 'done',
         startedAt,
       }),

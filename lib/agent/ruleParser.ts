@@ -1,5 +1,6 @@
 import { PRODUCTS } from '@/lib/catalog/products';
 import {
+  CATEGORIES,
   type AgentIntent,
   type Category,
   type SearchFilters,
@@ -90,7 +91,17 @@ const CATEGORY_TERMS: { term: string; category: Category; keyword?: string }[] =
   { term: '护肤', category: '美妆' },
   { term: '书', category: '图书' },
   { term: '图书', category: '图书' },
+  // 7 个品类名本身必须全部收录（上面已覆盖 运动 / 数码 / 图书，这里补齐其余 4 个）：
+  // 品类 chip 发出的「帮我看看<品类>的商品」在无 Key 降级路径下全靠这张表 ——
+  // 漏一个，那个品类的 chip 就是一个「点了没反应」的死按钮（2026-09-26 修）。
+  { term: '服饰', category: '服饰' },
+  { term: '食品', category: '食品' },
+  { term: '家居', category: '家居' },
+  { term: '美妆', category: '美妆' },
 ];
+
+/** 7 个品类名（品类 chip 的入口消息依赖它触发 search，见下方 INTENT_RULES 末条） */
+const CATEGORY_NAME_PATTERN = new RegExp(CATEGORIES.join('|'));
 
 const INTENT_RULES: { intent: AgentIntent; patterns: RegExp[] }[] = [
   { intent: 'compare', patterns: [/对比|比较|哪个好|哪个更|哪款|区别|差异|帮我选/] },
@@ -119,6 +130,13 @@ const INTENT_RULES: { intent: AgentIntent; patterns: RegExp[] }[] = [
   {
     intent: 'search',
     patterns: [/想买|要买|买一|推荐|找一|有没有|搜索|预算|以内|以下|左右|适合|求推荐/],
+  },
+  {
+    // 7 个品类名本身也是「找商品」的明确信号（品类 chip 的入口消息就是「帮我看看<品类>的商品」）。
+    // 刻意只认品类名，不加「看看 / 帮我」这类通用词——那会改变其他意图的判定；
+    // 放在列表最后，让「对比 / 结算 / 加购 / 细化」这些更具体的意图优先命中。
+    intent: 'search',
+    patterns: [CATEGORY_NAME_PATTERN],
   },
 ];
 

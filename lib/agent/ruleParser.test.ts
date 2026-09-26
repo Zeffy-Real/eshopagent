@@ -9,6 +9,7 @@ import {
   parsePriceRange,
   relaxFilters,
 } from '@/lib/agent/ruleParser';
+import { CATEGORIES } from '@/lib/types';
 
 /**
  * 规则解析器是「无 API Key」时的主路径，也是 LLM 失败后的兜底。
@@ -153,6 +154,30 @@ describe('loosenFilters：检索为空时逐级放宽', () => {
 
   it('已无任何条件时原样返回，不会死循环', () => {
     expect(loosenFilters({})).toEqual({});
+  });
+});
+
+describe('品类名与规则路径的品类浏览（2026-09-26 修）', () => {
+  it('7 个品类名都能解析出对应 category 与 search 意图（品类 chip 在无 Key 下可用）', () => {
+    for (const category of CATEGORIES) {
+      const text = `帮我看看${category}的商品`;
+      expect(guessIntentByRules(text)).toBe('search');
+      expect(extractFiltersByRules(text).category).toBe(category);
+    }
+  });
+
+  it('闲聊不会被品类规则误判成搜索', () => {
+    expect(guessIntentByRules('你好')).toBe('chat');
+    expect(guessIntentByRules('谢谢')).toBe('chat');
+  });
+
+  it('回归：「推荐几本小说」仍是 search（规则路径「小说」进 tags，字段名差异见 §8-20）', () => {
+    expect(guessIntentByRules('推荐几本小说')).toBe('search');
+    const filters = extractFiltersByRules('推荐几本小说');
+    // 规则路径不推品类（「小说」不是品类词，不加词表扩展）；「图书 + 小说」是 LLM 路径的输出。
+    // 「小说」落进 tags 是规则解析器的既有语义（意图面板显示「功能 小说」，§8-20 刻意不改）。
+    expect(filters.category).toBeUndefined();
+    expect(filters.tags).toContain('小说');
   });
 });
 

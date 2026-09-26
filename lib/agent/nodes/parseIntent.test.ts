@@ -1,7 +1,13 @@
 import { HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { describe, expect, it, vi } from 'vitest';
-import { parseIntentNode, resolveOrdinalTarget, sanitizeLlmError } from '@/lib/agent/nodes/parseIntent';
+import {
+  isScopeSwitch,
+  parseIntentNode,
+  resolveOrdinalTarget,
+  sanitizeLlmError,
+} from '@/lib/agent/nodes/parseIntent';
+import { mergeSearchFilters } from '@/lib/agent/state';
 import type { AgentStateUpdate } from '@/lib/agent/state';
 import {
   createEmptyProfile,
@@ -158,5 +164,199 @@ describe('parseIntentNode：画像消费（无 Key 路径）', () => {
     );
 
     expect(hintOf(update)).toBe('');
+  });
+});
+
+/**
+ * 条件继承与重置（2026-09-26 修 §8-32「检索条件粘性」与品类 chip 场景）。
+ *
+ * 背景：LLM 路径的 `toFilters` 过去只写本轮解析出来的字段，浅合并 reducer 会把
+ * 上一轮设过的字段（价格 / 关键词等）默默留下 —— 「100 元以内」之后点「服饰」chip，
+ * 命中从 60 缩到 4。修法是在 parseIntent 里做唯一判定：切换浏览目标 → 重置细分条件，
+ * 其余情况合并（未提到的字段沿用）。这一组用例锁住判据的四个边界。
+ */
+describe('parseIntentNode：检索条件的继承与重置', () => {
+  const dirtyFilters: SearchFilters = {
+    category: '图书',
+    keywords: ['小说'],
+    minPrice: 50,
+    maxPrice: 100,
+    minRating: 4.5,
+    tags: ['透气'],
+    brands: ['Sony'],
+  };
+
+  it('只有品类（chip 场景）→ 重置价格 / 评分 / 标签 / 品牌与上一轮关键词', async () => {
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('帮我看看服饰的商品')],
+        searchFilters: dirtyFilters,
+      }),
+    );
+
+    const filters = filtersOf(update);
+    expect(filters.category).toBe('服饰');
+    expect(filters.keywords).toBeUndefined();
+    expect(filters.minPrice).toBeUndefined();
+    expect(filters.maxPrice).toBeUndefined();
+    expect(filters.minRating).toBeUndefined();
+    expect(filters.tags).toBeUndefined();
+    expect(filters.brands).toBeUndefined();
+  });
+
+  it('只有关键词（无品类）→ 同样视为新目标并重置细分条件', async () => {
+    const update = await parseIntentNode(
+      makeState({ messages: [new HumanMessage('推荐点耳机')], searchFilters: dirtyFilters }),
+    );
+
+    const filters = filtersOf(update);
+    expect(filters.keywords).toContain('耳机');
+    expect(filters.maxPrice).toBeUndefined();
+    expect(filters.brands).toBeUndefined();
+  });
+
+  it('品类 + 价格 → 两者都生效（不触发重置）', async () => {
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('500 元以内的跑鞋')],
+        searchFilters: { maxPrice: 200 },
+      }),
+    );
+
+    const filters = filtersOf(update);
+    expect(filters.category).toBe('运动');
+    expect(filters.keywords).toContain('跑鞋');
+    expect(filters.maxPrice).toBe(500);
+  });
+
+  it('纯指代（无品类 / 关键词）→ 继承上一轮条件', async () => {
+    const update = await parseIntentNode(
+      makeState({ messages: [new HumanMessage('换成第二件')], searchFilters: dirtyFilters }),
+    );
+
+    const filters = filtersOf(update);
+    expect(filters.category).toBe('图书');
+    expect(filters.keywords).toEqual(['小说']);
+    expect(filters.maxPrice).toBe(100);
+  });
+
+  it('增量（只给价格）→ 继承其余条件', async () => {
+    const update = await parseIntentNode(
+      makeState({ messages: [new HumanMessage('预算 300 以内')], searchFilters: dirtyFilters }),
+    );
+
+    const filters = filtersOf(update);
+    expect(filters.category).toBe('图书');
+    expect(filters.keywords).toEqual(['小说']);
+    expect(filters.maxPrice).toBe(300);
+  });
+
+  it('品类 + 排序 → 重置过滤条件、保留排序', async () => {
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('服饰 最便宜的')],
+        searchFilters: { maxPrice: 100, tags: ['透气'] },
+      }),
+    );
+
+    const filters = filtersOf(update);
+    expect(filters.category).toBe('服饰');
+    expect(filters.sort).toBe('price_asc');
+    expect(filters.maxPrice).toBeUndefined();
+    expect(filters.tags).toBeUndefined();
+  });
+
+  it('本轮没给排序时，上一轮的排序不被重置（sort 是展示偏好）', async () => {
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('帮我看看服饰的商品')],
+        searchFilters: { ...dirtyFilters, sort: 'sales' },
+      }),
+    );
+
+    expect(filtersOf(update).sort).toBe('sales');
+  });
+
+  it('重置会在时间线上留一条可见记录（条件悄悄消失会让人困惑）', async () => {
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('帮我看看服饰的商品')],
+        searchFilters: dirtyFilters,
+      }),
+    );
+
+    const reset = logsOf(update).find((entry) => entry.name === 'scope_reset');
+    expect(reset?.title).toBe('切换浏览目标：重置上一轮条件');
+    expect(reset?.detail).toContain('图书');
+    expect(reset?.detail).toContain('服饰');
+    expect(reset?.detail).toContain('→');
+  });
+
+  it('上一轮没有细分条件可重置时不写记录（避免无信息量的噪音）', async () => {
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('帮我看看服饰的商品')],
+        searchFilters: { category: '图书' },
+      }),
+    );
+
+    expect(logsOf(update).some((entry) => entry.name === 'scope_reset')).toBe(false);
+  });
+
+  it('显式 undefined 在浅合并 reducer 下覆盖旧值（重置的机制保证）', async () => {
+    const previous: SearchFilters = { ...dirtyFilters };
+    const update = await parseIntentNode(
+      makeState({
+        messages: [new HumanMessage('帮我看看服饰的商品')],
+        searchFilters: previous,
+      }),
+    );
+
+    // 还原真实链路：节点返回值经 searchFilters 的 reducer（mergeSearchFilters）落到状态
+    const merged = mergeSearchFilters(previous, filtersOf(update));
+    expect(merged.category).toBe('服饰');
+    expect(merged.maxPrice).toBeUndefined();
+    expect(merged.tags).toBeUndefined();
+    expect(merged.keywords).toBeUndefined();
+  });
+});
+
+/**
+ * 判据的「只认本轮新给出的取值」这层 —— LLM 会把 prompt 里「当前筛选条件」的旧值
+ * 一并写进结构化输出（实测：chip 轮带回 maxPrice、排序轮带回 category），
+ * 直接拿原样输出当证据会让重置被沿用值挡掉（或误伤同值目标）。
+ */
+describe('isScopeSwitch：同值沿用与原话兜底', () => {
+  it('与上一轮同值的品类不算新目标（排序轮带回的 category）', () => {
+    expect(
+      isScopeSwitch(
+        { rawQuery: '按价格从低到高排', category: '图书', sort: 'price_asc' },
+        { category: '图书', keywords: ['小说'] },
+      ),
+    ).toBe(false);
+  });
+
+  it('与上一轮同值的价格、原话未提及 → 视为沿用（重置触发）', () => {
+    expect(
+      isScopeSwitch({ rawQuery: '帮我看看服饰的商品', category: '服饰', maxPrice: 100 }, { maxPrice: 100 }),
+    ).toBe(true);
+  });
+
+  it('与上一轮同值的价格、但原话里说了 → 算本轮条件（不重置）', () => {
+    expect(
+      isScopeSwitch({ rawQuery: '100 元以内的书', category: '图书', maxPrice: 100 }, { maxPrice: 100 }),
+    ).toBe(false);
+  });
+
+  it('新品类 + 新价格 → 不触发重置（两者都生效）', () => {
+    expect(
+      isScopeSwitch({ rawQuery: '服饰 200 以内', category: '服饰', maxPrice: 200 }, { maxPrice: 100 }),
+    ).toBe(false);
+  });
+
+  it('新关键词 + 无细分条件 → 触发（换商品目标）', () => {
+    expect(
+      isScopeSwitch({ rawQuery: '推荐点耳机', keywords: ['耳机'] }, { category: '图书', keywords: ['小说'] }),
+    ).toBe(true);
   });
 });

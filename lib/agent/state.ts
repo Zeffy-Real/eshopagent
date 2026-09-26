@@ -26,6 +26,21 @@ export function mergeLiveOverrides(
 }
 
 /**
+ * searchFilters 的合并规则（导出即为了单测能直接钉住它，与 mergeLiveOverrides 同理）。
+ *
+ * 浅合并 + **显式 undefined 会覆盖旧值**：重置（切换浏览目标）依赖后半句 ——
+ * `parseIntent` 把不再适用的字段显式置为 undefined，这里就会把旧值覆盖掉；
+ * 反过来，**未提到的字段会被上一轮的值留着**，所以「保留还是清掉」必须在
+ * `parseIntent` 里显式表达（继承与重置的唯一判定点，见 nodes/parseIntent.ts）。
+ */
+export function mergeSearchFilters(
+  previous: SearchFilters,
+  next: SearchFilters,
+): SearchFilters {
+  return { ...previous, ...next };
+}
+
+/**
  * Agent 全局状态（StateGraph 所有节点共享读写）。
  *
  * 设计要点：
@@ -49,9 +64,15 @@ export const AgentState = Annotation.Root({
     default: () => 'chat',
   }),
 
-  /** 搜索筛选条件（浅合并，支持 refine 只更新变化的部分） */
+  /**
+   * 搜索筛选条件（浅合并：`{...prev, ...next}`，显式 undefined 会覆盖旧值）。
+   *
+   * 合并 / 重置的**判定**不在这里，而在 parseIntent（继承 vs 切换浏览目标）——
+   * reducer 只做机械合并；「显式 undefined 清掉旧值」是重置能生效的机制保证，
+   * 由 mergeSearchFilters 的单测直接钉住。
+   */
   searchFilters: Annotation<SearchFilters>({
-    reducer: (previous, next) => ({ ...previous, ...next }),
+    reducer: mergeSearchFilters,
     default: () => ({}),
   }),
 
