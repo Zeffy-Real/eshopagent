@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { searchProductsNode } from '@/lib/agent/nodes/searchProducts';
+import { SEARCH_RESULT_LIMIT } from '@/lib/agent/events';
 import type { AgentStateUpdate } from '@/lib/agent/state';
 import { PRODUCTS } from '@/lib/catalog/products';
 import type { ProfileSignal } from '@/lib/profile';
@@ -27,6 +28,12 @@ function firstLogOf(update: AgentStateUpdate): ToolLogEntry | undefined {
 function patchOf(update: AgentStateUpdate): ProfileSignal[] {
   const value = update.profilePatch;
   if (!Array.isArray(value)) throw new Error('searchProductsNode 未返回 profilePatch');
+  return value;
+}
+
+function totalOf(update: AgentStateUpdate): number {
+  const value = update.searchTotal;
+  if (typeof value !== 'number') throw new Error('searchProductsNode 未返回 searchTotal');
   return value;
 }
 
@@ -98,5 +105,67 @@ describe('searchProductsNode：画像信号', () => {
   it('条件为空且结果混品类 → 不产出信号（不替用户总结）', async () => {
     const update = await searchProductsNode(makeState({ searchFilters: {} }));
     expect(patchOf(update)).toEqual([]);
+  });
+});
+
+/**
+ * `searchTotal`（命中总数，截断前）的写入口径。
+ *
+ * 背景（2026-09-26 Bug B）：数据快照面板里的 420 是**目录总量**，而中栏单次最多展示
+ * `SEARCH_RESULT_LIMIT` 件 —— 界面原先只写「12 件商品」，看起来与 420 / 品类 chip 的 60
+ * 对不上。修法是把命中总数单独下发，由中栏渲染「共 N 件 · 展示前 M 件」。
+ * 这里锁三件事：截断关系、refine 后必须更新（不能是历史值）、序数定位同步为 1。
+ */
+describe('searchProductsNode：searchTotal 是本轮命中数（截断前）', () => {
+  it('命中数多于展示上限 → searchResults 截断到上限，searchTotal 仍是真实命中数', async () => {
+    // 图书品类在默认目录里是 60 件（7 品类 × 60）
+    const update = await searchProductsNode(makeState({ searchFilters: { category: '图书' } }));
+
+    expect(totalOf(update)).toBe(books.length);
+    expect(resultsOf(update)).toHaveLength(SEARCH_RESULT_LIMIT);
+    expect(SEARCH_RESULT_LIMIT).toBe(12);
+  });
+
+  it('命中数少于一屏 → 不截断，两个数字一致（界面不写「展示前 12 件」）', async () => {
+    // 题材标签「悬疑」在图书里只命中个位数 —— 命中数 < 展示上限的情形
+    const update = await searchProductsNode(
+      makeState({ searchFilters: { category: '图书', tags: ['悬疑'] } }),
+    );
+
+    const total = totalOf(update);
+    expect(total).toBeGreaterThan(0);
+    expect(total).toBeLessThan(SEARCH_RESULT_LIMIT);
+    expect(resultsOf(update)).toHaveLength(total);
+  });
+
+  it('refine 换条件后 searchTotal 跟着变（不是上一轮的历史值）', async () => {
+    const wide = await searchProductsNode(makeState({ searchFilters: { category: '图书' } }));
+    const narrow = await searchProductsNode(
+      makeState({ searchFilters: { category: '图书', tags: ['悬疑'] } }),
+    );
+
+    expect(totalOf(wide)).toBeGreaterThan(totalOf(narrow));
+  });
+
+  it('命中为 0 → 两个数字都是 0（并置 needsRefine 交给放宽条件）', async () => {
+    const update = await searchProductsNode(
+      makeState({ searchFilters: { category: '图书', minPrice: 99999 } }),
+    );
+
+    expect(totalOf(update)).toBe(0);
+    expect(resultsOf(update)).toHaveLength(0);
+    expect(update.needsRefine).toBe(true);
+  });
+
+  it('序数定位（focusProductId）→ 收窄为 1 件，searchTotal 同步为 1', async () => {
+    const target = books[0];
+    expect(target).toBeDefined();
+
+    const update = await searchProductsNode(
+      makeState({ focusProductId: target?.id ?? null, searchFilters: { category: '图书' } }),
+    );
+
+    expect(resultsOf(update)).toHaveLength(1);
+    expect(totalOf(update)).toBe(1);
   });
 });

@@ -4,8 +4,8 @@
 >
 > - 数据快照生成时间：2026-09-25 05:18 UTC
 > - 文案本地化时间：2026-09-25 05:18 UTC
-> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `55ac172`；本次同步内容为**内联卡在 LLM 路径下不出现的修复（关 §8 第 25 条）并冻结**（2026-09-25 冻结轮）
-> - 校验状态：`tsc --noEmit` 0 错误；**363 个单测全绿（25 个文件）**；`next build` 通过（首页 287 kB / First Load 423 kB）
+> - 版本锚点：git 仓库 `https://github.com/Zeffy-Real/eshopagent`，本次同步前 HEAD 为 `0c018c2`；本次同步内容为**解冻轮**：结算弹窗复发与刷新重播（Bug A + A-2）、目录件数口径（Bug B）、购物车 / 订单历史抽屉（两个新入口）
+> - 校验状态：`tsc --noEmit` 0 错误；**381 个单测全绿（26 个文件）**；`next build` 通过（首页 288 kB / First Load 424 kB；上一轮为 287 / 423）
 
 ---
 
@@ -32,10 +32,10 @@
 | Agent 框架 | `@langchain/langgraph` 1.4（StateGraph + SqliteSaver checkpoint + interrupt） |
 | LLM 封装 | `@langchain/openai` 1.5（ChatOpenAI，`baseURL` 兼容 DeepSeek / 通义千问 / OpenAI） |
 | 流式 | LangGraph `streamEvents()` → 后端 SSE → 前端 `fetch` + `ReadableStream` |
-| 源码规模 | **127 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`，其中 25 个单测文件）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
+| 源码规模 | **134 个 `.ts` / `.tsx` 文件**（`app` / `components` / `lib` / `store` / `scripts`，其中 26 个单测文件）+ 9 个 `.mjs` 与 6 个 `.d.mts`（京东实时源；`.mjs + .d.mts` 的原因见设计文档 §15.6） |
 | 页面与接口 | `app` 下 2 个页面（`/`、`/_not-found`）+ 2 个 API 路由 |
 | Agent 节点 | **9 个**（`lib/agent/nodes/`，含条件触发的 `enrichLiveData`） |
-| 测试 | **363 个单测用例**（Vitest，25 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射、实时补充节点六条判定与静默失败、条件串去重与 LLM 失败文本清洗、目录字段分级与派生统计、跨产物继承的判据与边界、A+ CSS 描述降级的拼装与长度合格性、客户端轻量载荷的派生一致性、内联卡按 id 解析与静默失败、详情弹窗的实时覆盖解析、**内联卡选取规则与两条路径产出同一 id 列表**）；无组件/E2E 自动化测试 |
+| 测试 | **381 个单测用例**（Vitest，26 个文件，覆盖口径一致性的唯一实现、记忆机制、会话持久化、落地校验重试、在途请求中止、JustOneAPI 码表与字段映射、实时补充节点六条判定与静默失败、条件串去重与 LLM 失败文本清洗、目录字段分级与派生统计、跨产物继承的判据与边界、A+ CSS 描述降级的拼装与长度合格性、客户端轻量载荷的派生一致性、内联卡按 id 解析与静默失败、详情弹窗的实时覆盖解析、内联卡选取规则与两条路径产出同一 id 列表、**检索命中总数与展示口径（`searchTotal`）**、**收尾兜底的挂起中断判定与成功态会话级门**、**订单历史合并规则（只收 confirmed / 按 id 幂等 / 上限 20）**）；无组件/E2E 自动化测试 |
 | 版本控制 | git 仓库，远端 `https://github.com/Zeffy-Real/eshopagent` |
 
 ---
@@ -74,6 +74,7 @@ lib/
     platforms/jd.mjs / .d.mts   京东端点、cid 类目映射、价格/库存换算
     overrides.ts                实时覆盖规则（只盖 price/库存等级 + 划线价一致性；前后端共用）
   profile.ts                    跨会话画像：信号提取 + 幂等合并 + 提示文案（纯函数）
+  order-history.ts              订单历史合并规则（纯函数：只收 confirmed、按 id 幂等、上限 20）
   cart-pricing.ts               购物车金额规则（纯函数，前后端共用）
   decision.ts                   决策推荐理由与对比结论（纯函数）
   utils.ts                      cn / 价格格式化 / formatCount / hasRealSales
@@ -81,6 +82,13 @@ lib/
 components/
   chat/ product/ visualization/ charts/ order/ layout/ common/ ui/
   visualization/catalog-section.tsx   数据快照面板（只读）
+  order/shopping-drawer.tsx     购物车 / 订单历史抽屉（两个顶栏入口共用；复用 cart-section）
+  order/order-history-section.tsx 订单历史列表（空态「还没有订单」）
+store/
+  use-agent-store.ts            对话、快照、时间线、中断；成功态会话级门（不持久化）
+  use-cart-store.ts             购物车（localStorage）
+  use-order-store.ts            订单历史（localStorage；写入源是快照里的 confirmed 订单）
+  use-ui-store.ts               面板开合、移动端视图、抽屉开关与 Tab
 data/
   real-catalog.json             真实商品数据快照（默认源，420 件，冻结）
   justoneapi-catalog.json       京东实时源产物（可选源，构建时刻的真实价格/库存）
@@ -371,6 +379,25 @@ confirmOrder   → generateReply → END
 | — 内联卡点击与「实时」标注（冻结轮，0 计费） | ① 点内联卡 → 弹窗；② 中栏换列表后点**旧**内联卡；③ 注入伪造 `liveOverrides` 到持久化快照后刷新 | ✅ ① 弹窗内容完整（作者/类目/评分/派生简介/规格 5 行）、无覆盖时 `实时 ·` 计数 0（与卡片一致）；② 中栏已换成耳机类结果，点旧书卡仍开弹窗（走**会话缓存**分支，§8 第 24 条 ③ 的缓解生效）；③ 卡片与弹窗**同时**显示 `¥1 实时 · 15:01` → 覆盖价与标注在弹窗里都没丢（注入的是客户端自有数据，零计费、事后已清理） |
 | — 修复单测（冻结轮） | `lib/agent/sse.test.ts`（5 条）+ `store/use-agent-store.test.ts`（+3 条） | ✅ 选取规则：有商品取前 3（顺序与检索结果一致）/ 不足 3 取全部 / 无商品空数组；`toSnapshot` 下发的 `replyProductIds` 就是 `selectReplyProductIds(searchResults)`；store 两路径：模板回复 3 张、LLM token 气泡补 3 张且**不新建第二个气泡**、无商品时 `productIds` 缺省 |
 
+#### 2026-09-26 解冻轮（Bug A / A-2 / Bug B / 购物车与订单历史抽屉）
+
+| 项 | 方法 | 结果 |
+| --- | --- | --- |
+| 结算弹窗复发的诊断（Bug A） | SSE 直连 `/api/agent`（`real` 源，0 计费），四轮流：`a1` 结算 → `a2` resume confirm → `a3` 再发「你好」→ `a4` 在复发的弹窗上再点确认 | ✅ 复现并定位：`a1` 1 条 `interrupt`（status=pending，正常）；`a2` **1 条 interrupt（status=confirmed）**；`a3` **1 条 interrupt（同一订单，confirmed）** —— 根因是收尾兜底把「`pendingOrder` 非空」当成挂起中断，而 `confirmOrder` 之后该字段一直是 confirmed |
+| — 修复后同四轮流（0 计费） | 同上前提，新会话 `diag-f`：`f1` 结算 → `f2` resume confirm → `f3`「你好」→ `f4` 再 resume | ✅ `f1` **1 条 interrupt（pending，正常流程未被修坏）**；`f2/f3/f4` **0 条 interrupt**；`f2` 节点序列 `prepareOrder→confirmOrder→generateReply`、`pendingOrder=ES20260926642726/confirmed`、`cart=0`（订单号与清空购物车都正常） |
+| — 前端（浏览器，agent-browser 驱动 Chrome） | 挂购物车 → 抽屉「去结算」→ 确认下单 → 等成功态自动关闭 → **刷新页面** | ✅ 成功弹窗正常出现并自动关闭；**刷新后无成功弹窗**（A-2 修复：成功态由「会话级门 `recentConfirmedOrderId` + 快照里的 confirmed 订单」判定，门不入 `partialize`）；订单历史刷新仍在 |
+| — 修复单测 | `lib/agent/sse.test.ts`（+3）、`store/use-agent-store.test.ts`（+4） | ✅ `fallbackInterruptOrder`：pending→订单 / confirmed→null / 无订单→null；store：confirmed 的 interrupt 事件被忽略、pending 的正常打开、resume 期间到达 confirmed 快照写入成功态、**普通一轮带回同一条 confirmed 快照不写成功态（刷新不重播）** |
+| 目录件数口径（Bug B） | 比对 `data/real-catalog.json` 的 `products.length`、过 `isProductLike` 后的条数、`CATALOG_META.count` | ✅ 三者一致（420 / 420 / 0 条被丢弃）→ 判定为**口径问题**：面板写的是目录总量，而中栏单次最多展示 12 件。修法：新增只读字段 `searchTotal`（命中总数，截断前）+ 中栏副标题写「共 N 件 · 展示前 M 件」+ 数据快照面板写明「界面按需展示」 |
+| — 中栏副标题（浏览器实读） | 1440 视口：检索「推荐几本小说」/「推荐几本悬疑小说」/ 闲聊「你好」 | ✅ 「共 30 件 · 展示前 12 件 · 图书 · 小说」/「**2 件商品** · 图书 · 悬疑 小说」（命中 < 展示上限时不写「展示前 12 件」）/ 闲聊轮回到「为你推荐」+「目录共 420 件 · 按评分与销量精选 12 件」 |
+| — refine 后 `searchTotal` 更新（SSE 直连） | 同会话：小说(30) →「再便宜点」(¥200 以内，仍 30，经数据核对全部 ≤¥200) → 再「再便宜点」(¥140 以内) | ✅ 第三轮 **27**，与直接读目录算出的「小说标签且 ≤¥140 的件数 27」一致 → 确实是本轮命中数而不是历史值 |
+| — 数据快照面板（浏览器实读） | 1440 视口读面板文本 | ✅ 「目录共 420 件 · 7 品类」+「界面按需展示：首屏精选 12 件；检索单次最多展示前 12 件」 |
+| — 单测 | `lib/agent/nodes/searchProducts.test.ts`（+5） | ✅ 命中数多于上限→结果截断且 `searchTotal` 是真实命中数（图书 60）；命中数少于一屏（悬疑 5）→不截断且两数一致；refine 后 `searchTotal` 变小；命中 0→两数都是 0 且 `needsRefine`；序数定位→`searchTotal=1` |
+| 购物车 / 订单历史抽屉（浏览器，1440 与 375 两档） | 顶栏购物车图标 → 抽屉；顶栏订单图标 → 抽屉「订单历史」Tab；抽屉内「去结算」→ 确认弹窗；下单 → 历史 | ✅ 抽屉 `420×900`、贴右（x=1020）、`position: fixed`、无横向溢出；窄屏 `375×812` 全宽全高、自带关闭按钮、`scrollWidth=375` 不破版；两 Tab 与件数角标正确；**空态**「购物车是空的」/「还没有订单」正确；抽屉内容与右栏一致（同一 `CartSection`：`商品合计（1 件）` 与 应付 ¥25 两处相同）；点「去结算」→ **抽屉先关闭、再出现居中确认弹窗**（不叠层） |
+| — 订单历史来自真实下单 | 下单成功后读抽屉 + `localStorage['eshop-orders']` | ✅ 卡片显示 `ES20260926877136 / 已确认 · 待发货 / 2026-09-26 10:38 / 1 种商品 / Beneath a Scarlet Sky：小说 × 1 / 实付 ¥106`，与 localStorage 中 `status=confirmed` 的订单一致（来源是 `confirmOrder` 落单结果，节点未改动） |
+| — 上限 20 条 | 灌 25 条（24 条构造 + 1 条真实）后触发一次真实写入（发一轮消息 → 快照 → `recordOrder`） | ✅ 写后为 **20** 条、真实订单 upsert 到最前、最旧的被截断；渲染 `scrollHeight=2659` 长列表不破版（构造数据事后已清理，仅留真实订单） |
+| — 单测 | `lib/order-history.test.ts`（6 条） | ✅ 最新在前 / 同 id 不重复（推 5 次仍 1 条）/ 内容未变返回原数组（不触发 setState）/ pending 与 cancelled 拒绝写入 / 超上限截断 / 同 id 变化时覆盖 |
+| 全量校验（解冻轮） | 先停 dev → `tsc` → `npm test` → `npm run build` | ✅ `tsc` 0 错误；**381 个单测全绿（26 个文件）**；build 通过：首页 **288 kB** / First Load **424 kB**（上一轮 287 / 423，+1 kB 为订单 store 与抽屉组件）；共享 103 kB 不变 |
+
 ### 7.2 未验证 / 验证受限
 
 | 项 | 原因 |
@@ -424,6 +451,11 @@ confirmOrder   → generateReply → END
 | 23 | ~~构建会丢掉上一轮的本地化结果~~ | 工程化 | ✅ **已修（2026-09-25 收尾轮，commit `ccb0497`）**：`catalog:build` 写盘前按「**id 相同 + 英文原文逐字一致**」把上一版的 `name` / `description` / `tags` / `specifications` / `nameOriginal` 继承到新构建结果（纯函数 `inheritLocalizedFields`，在 `scripts/catalog-shared.mjs`），构建输出打印「继承已本地化 N 条，待翻译 M 条」；`localize` 的跳过判据与它共用同一份实现——**判据语义：`nameOriginal` 存在 = 该条目已本地化过（该字段只有 localize 写入；批次失败不留半个标记）**，仅此一处定义（代码注释在 `isLocalizedProduct`）。实测 420 件产物重跑 build → localize = 继承 420 条 / **0 批 LLM 调用 / 0.38 秒**，`products` 逐字未变 → 不再依赖一次性脚本 `.cache/restore-approved.mjs`。**边界**：上游改了标题的条目会被重译一次（判据要求英文原文一致，这是刻意的——标题变了，旧中文文案不再对应）；描述基准变化（A+ CSS 降级）的条目同样重译一次 |
 | 24 | **客户端不再持有全量目录**（本轮瘦身的代价，压下了 132 kB） | 架构边界 | 详情弹窗的商品来自「调用方传入的渲染中对象 / 会话内已解析列表」，内联卡按 id 解析走**按需 chunk**（`lib/catalog/client-products.ts`）。由此：① 内联卡从「首帧就有」变为「chunk 到达后出现」（有与卡片同高的占位，实测卡片 **62px**）；② chunk 加载失败时内联卡静默缺失（不报错、不显示「找不到」——与项目既有的「实时补充失败静默」同一口径）；③ 若某个 id 既不在渲染列表也不在会话缓存（正常交互到不了，只能由外部构造），弹窗不打开——今天它会从全量目录里查到。想恢复 ③ 的完全等价，要把弹窗数据源改成服务端接口（引入加载态）或把内联卡商品写进消息对象（改 store 形状），都超出本轮「只动客户端数据流」的授权 |
 | 25 | ~~`productIds` 只在非流式回复里写入（LLM 路径没有内联卡）~~ | 能力边界 | ✅ **已修（2026-09-25 冻结轮，commit `85fd462`）**：**判定为实现遗漏**——依据：初始提交里那句注释写的是「逐字路径**等本轮结束再收尾**」，但 `finalizeReply` 只处理文本、没补该字段；同一个 `applySnapshot` 的 4 个分支只有 1 个写了它；全仓（含 docs 与 decisions）**没有一句**说明「LLM 路径不带卡片」；模板回复同样逐字列出了商品却也挂了卡（「冗余」这个理由不成立）。修法：选取规则收敛到 `lib/agent/sse.ts` 的 `selectReplyProductIds`（本轮检索结果**前 3 件**，与模板路径历史取值一致），随快照 `replyProductIds` 下发；store 在 LLM 气泡收尾时补齐、模板路径创建时写入——**节点逻辑与 store 形状都没动**。真机（0 计费）：real 源 LLM 正常的两轮回复各挂 **3 张**（逐气泡取证，= 中栏前 3 件）；干净会话发「你好」**0 张**（该轮无商品）；无效 Key 模板路径 **3 张** = 该轮中栏前 3 件；点内联卡详情弹窗正常；再往持久化快照注入伪造 `liveOverrides`（客户端自有数据、零计费）→ **卡片与弹窗都显示 `¥1 实时 · 15:01`**，覆盖价与标注在弹窗里都没丢。单测 8 条：选取规则（有/不足/无）、`toSnapshot` 下发值、两条路径同一列表、无商品不挂卡 |
+| 26 | ~~结算弹窗在**已确认下单**之后仍会再弹~~（确认后再发任意消息，弹窗复现） | 缺陷 | ✅ **已修（2026-09-26 解冻轮）**：根因是**两处叠加**——`confirmOrder` 把 `pendingOrder` 置为 confirmed 后**不再清空**（语义是「最近一次订单状态」），而 `sse.ts` 的收尾兜底把「`pendingOrder` 非空」误读成「有挂起中断」，于是此后**每一轮**收尾都会把这条已完成订单当新中断推给前端（前端 `case 'interrupt'` 又无条件写入 `interruptedOrder`）。修法：兜底收紧为**只认 `status === 'pending'`**（纯函数 `fallbackInterruptOrder`，主路径 `findOrderInterrupt` 一行未动）+ 前端对 confirmed 事件防御性忽略。协议层四轮流实测：修复前 `a2/a3` 各 1 条 confirmed interrupt → 修复后 `f2/f3/f4` **全 0**，而 `f1`（真实结算）仍有 1 条 pending interrupt；单测 3 + 4 条锁定 |
+| 27 | ~~刷新页面会重播「下单成功」弹窗~~（成功态从持久化快照里的 confirmed 订单推出） | 缺陷 | ✅ **已修（与第 26 条同轮，同源）**：成功态改为「**会话级门** `recentConfirmedOrderId`（只在确认下单的 resume 在途期间写入、**不持久化**）+ 快照里的 confirmed 订单」双条件；successOrderOf 的判据与刷新验证见 §7.1（刷新后无弹窗、订单历史仍在）。单测：resume 期间写入 / 普通一轮不写 |
+| 28 | ~~面板写「420 件」而界面看不到 420 件~~（口径不清） | 展示层 | ✅ **已澄清（2026-09-26 解冻轮）**：三者一致（产物 420 / 过校验 420 / `CATALOG_META.count` 420，0 条被丢弃）→ 是**展示口径**而非数据问题。修法：新增只读字段 `searchTotal`（本轮命中数，截断前）+ 中栏副标题「共 N 件 · 展示前 M 件」（命中 < 展示上限时只写件数）+ 数据快照面板写明「目录共 420 件…界面按需展示」+ README/本文同步。单测 5 条 + 浏览器实读见 §7.1 |
+| 29 | **订单历史只存在本浏览器**（localStorage，无账号体系 / 无导出） | 架构边界（新） | 与购物车、画像同构：换浏览器 / 清浏览器数据即丢，不跨设备、不跨用户；服务端只持有「图状态里那一条 `pendingOrder`」，不提供历史接口。要做跨端需要账号体系 + 服务端存储 + 数据出境评估（另一个量级）。**明确不做**导出与「再来一单」 |
+| 30 | **检索命中为 0 时中栏回落到推荐位**（不显示「0 件商品」） | 已知行为（既有） | 中栏的「搜索结果」态要求 `searchResults` 非空；0 命中时面板回到「为你推荐」，空结果只体现在回复文案与时间线上。本轮未改（改动它会变成「空检索结果也占住商品区」的行为变更，超出 Bug B 的授权）；`searchTotal=0` 已随快照下发，将来若要改成「0 件」空态，只差一个展示分支 |
 
 ---
 

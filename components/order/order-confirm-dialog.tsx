@@ -21,10 +21,18 @@ const SUCCESS_VISIBLE_MS = 4200;
  * 数据流：prepareOrder 内 interrupt() → SSE 推送 interrupt 事件 →
  * 弹窗展示订单明细 → 用户点确认 → POST /api/agent/resume 带 Command(resume)
  * → 图从断点恢复执行 confirmOrder → 状态里出现 status=confirmed 的订单 → 展示成功动画。
+ *
+ * 「成功态」的数据源与判据（2026-09-26 修正）：
+ *   - 订单本体来自 SSE 快照的 `pendingOrder`（confirmOrder 真实写回的结果）；
+ *   - 但**必须同时**命中会话级门 `recentConfirmedOrderId` —— 它只在「本次页面会话内
+ *     点过确认」的 resume 在途期间写入、且不持久化。少这道门，刷新后会从持久化的
+ *     快照里再读出一条 confirmed 订单、把成功弹窗重播一次（A-2）；
+ *   - 不再依赖 interrupt 事件：confirmed 的订单不是挂起中断（服务端已按此收紧）。
  */
 export function OrderConfirmDialog() {
   const interruptedOrder = useAgentStore((s) => s.interruptedOrder);
   const resuming = useAgentStore((s) => s.resuming);
+  const recentConfirmedOrderId = useAgentStore((s) => s.recentConfirmedOrderId);
   const confirmedOrder = useAgentStore((s) =>
     s.snapshot?.pendingOrder?.status === 'confirmed' ? s.snapshot.pendingOrder : null,
   );
@@ -42,7 +50,9 @@ export function OrderConfirmDialog() {
   }, [confirmedOrder]);
 
   const showSuccess =
-    confirmedOrder !== null && confirmedOrder.id !== dismissedOrderId;
+    confirmedOrder !== null &&
+    confirmedOrder.id === recentConfirmedOrderId &&
+    confirmedOrder.id !== dismissedOrderId;
   const open = interruptedOrder !== null || showSuccess;
 
   function handleOpenChange(next: boolean) {

@@ -62,6 +62,17 @@ export const AgentState = Annotation.Root({
   }),
 
   /**
+   * 本轮检索**命中的总件数**（截断前）；`searchResults` 是实际展示的前 N 件。
+   *
+   * 用途只有一个：让中栏能说清「共 N 件 · 展示前 M 件」。覆盖型 —— refine 重新检索后
+   * 必须跟着更新（否则界面会拿旧命中数配新结果），清空结果时也回到 0。
+   */
+  searchTotal: Annotation<number>({
+    reducer: (_previous, next) => next,
+    default: () => 0,
+  }),
+
+  /**
    * 实时数据覆盖（键 = 商品 id，值 = 覆盖后的商品）。由 enrichLiveData 写入。
    *
    * 为什么**不写进 searchResults**：那样就再也说不清哪个价格来自快照、哪个来自实时查询。
@@ -107,7 +118,17 @@ export const AgentState = Annotation.Root({
     default: () => [],
   }),
 
-  /** 待确认订单（prepareOrder 写入草稿，interrupt 暂停，confirmOrder 落单） */
+  /**
+   * **最近一次的订单状态**（不是「待处理订单」）：
+   * - `prepareOrder` 在 `interrupt()` **恢复之后**写入草稿（`status: 'pending'`）；
+   * - `confirmOrder` 把它置为 `'confirmed'`（订单号不变），此后**不再清空**——
+   *   前端据此展示「下单成功」与订单历史；
+   * - 语义边界：**只有 `status === 'pending'` 才代表「有挂起中断」**。
+   *
+   * 2026-09-26 修过一个由这层语义模糊引发的 bug：SSE 收尾兜底把「`pendingOrder` 非空」
+   * 误读成「有挂起中断」，于是确认下单**之后每一轮**都会把这条已完成订单当新中断推给前端，
+   * 结算弹窗复发（修法见 `lib/agent/sse.ts` 的 `fallbackInterruptOrder`）。
+   */
   pendingOrder: Annotation<Order | null>({
     reducer: (_previous, next) => next,
     default: () => null,

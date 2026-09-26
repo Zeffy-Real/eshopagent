@@ -7,6 +7,7 @@ import { applyProfilePatch, clearProfile, createEmptyProfile, type UserProfile }
 import type { Order, ToolLogEntry } from '@/lib/types';
 import { abortActiveRequest, isAbortError, resumeAgent, streamAgent } from '@/lib/agent-client';
 import { useCartStore } from '@/store/use-cart-store';
+import { useOrderStore } from '@/store/use-order-store';
 import { useUiStore } from '@/store/use-ui-store';
 
 export interface ChatMessage {
@@ -40,6 +41,15 @@ interface AgentState {
   snapshot: AgentStateSnapshot | null;
   /** 待确认订单（interrupt 挂起时） */
   interruptedOrder: Order | null;
+  /**
+   * **本次页面会话内**真实确认过的那一单的订单号（成功态的唯一依据）。
+   *
+   * 故意不持久化（`partialize` 里没有它）：成功弹窗只在「刚刚点了确认」时出现 ——
+   * 若改用持久化快照里的 `pendingOrder.status === 'confirmed'` 判断，刷新后
+   * 会重播一次「下单成功」弹窗（A-2）。它由 `resumeOrder('confirm')` 期间
+   * 到达的 confirmed 快照写入，因此数据源仍是 `confirmOrder` 的真实结果。
+   */
+  recentConfirmedOrderId: string | null;
   /** 正在提交订单确认（resume 中） */
   resuming: boolean;
   error: string | null;
@@ -99,6 +109,15 @@ let pendingText = '';
 let activeReplyId: string | null = null;
 /** 本轮是否已结束（收到 done / interrupt）：决定打字机消费完缓冲后要不要收尾 */
 let runFinished = false;
+
+/**
+ * 是否有「确认下单」的 resume 在途（模块级、不持久化）。
+ *
+ * 用途：只有在这段时间里到达的 confirmed 快照才算「刚刚真实确认的那一单」，
+ * 用来写 `recentConfirmedOrderId`（成功态的唯一依据）。刷新后这个标记必然是
+ * false，因此持久化快照里的 confirmed 订单不会把成功弹窗重新点亮（A-2）。
+ */
+let confirmFlowActive = false;
 
 function stopTypewriter(): void {
   if (typeTimer) {
@@ -187,6 +206,7 @@ export const useAgentStore = create<AgentState>()(
       timeline: [],
       snapshot: null,
       interruptedOrder: null,
+      recentConfirmedOrderId: null,
       resuming: false,
       error: null,
       llmEnabled: true,
@@ -285,6 +305,7 @@ export const useAgentStore = create<AgentState>()(
       async resumeOrder(decision) {
         stopTypewriter();
         // 保留 interruptedOrder：弹窗需要在 resume 期间继续展示订单明细
+        confirmFlowActive = decision === 'confirm';
         set({ thinking: true, error: null, timeline: [], resuming: true });
         try {
           await resumeAgent(
@@ -309,6 +330,7 @@ export const useAgentStore = create<AgentState>()(
             });
           }
         } finally {
+          confirmFlowActive = false;
           set({ resuming: false, interruptedOrder: null });
         }
       },
@@ -459,6 +481,10 @@ function handleEvent(
     }
 
     case 'interrupt': {
+      // 挂起中断只可能是 pending：confirmed 的订单是「已完成的事实」，不是待确认订单。
+      // 服务端收尾兜底已按同一判据收紧（sse.ts 的 fallbackInterruptOrder），
+      // 这里再挡一层，任何来源的 confirmed 事件都不会把结算弹窗重新打开。
+      if (event.order.status === 'confirmed') break;
       // 图已暂停等待人工确认，没有正在执行的节点；本轮回复也到此为止
       runFinished = true;
       set({ interruptedOrder: event.order, activeNodes: [], thinking: false });
@@ -501,6 +527,15 @@ function applySnapshot(
 
   // 服务端购物车为准：UI 里的增减也会在下一轮请求中回传，此处同步展示
   useCartStore.getState().setItems(payload.cart);
+
+  // 成功态的唯一依据：在「确认下单」的 resume 在途期间到达的 confirmed 订单
+  // （就是 confirmOrder 真实写回、经 SSE 下发的落单结果）。会话级门见
+  // confirmFlowActive 的注释——刷新后从持久化快照里读到同一条订单不会再点亮弹窗。
+  if (payload.pendingOrder?.status === 'confirmed') {
+    // 订单历史：同一份 confirmed 订单幂等入库（只记真实落单结果，前端不拼装）
+    useOrderStore.getState().recordOrder(payload.pendingOrder);
+    if (confirmFlowActive) set({ recentConfirmedOrderId: payload.pendingOrder.id });
+  }
 
   // 画像：generation 校验通过才合并（清除画像后 generation 自增，携带旧值的在途 patch 一律丢弃）。
   // mergeProfile 是幂等的、且「无变化时返回同一引用」，所以一轮里被推多次也不会重复计分。

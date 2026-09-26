@@ -92,6 +92,21 @@ export function ProductPanel() {
   );
   const condition = snapshot && hasFilters ? snapshot.conditionText : null;
 
+  /**
+   * 中栏副标题的展示口径（单一处实现）。
+   *
+   * 「件数对不上」的澄清（2026-09-26）：面板里的 420 是**目录总量**，而中栏单次最多展示
+   * `SEARCH_RESULT_LIMIT` 件 —— 所以命中数大于展示数时必须把两个数字都写出来
+   * （「共 30 件 · 展示前 12 件」），否则用户会把展示条数当成命中的总数；
+   * 命中数不多时不写「展示前 N 件」（避免「共 3 件 · 展示前 12 件」这种废话）。
+   */
+  const shownCount = snapshot?.searchResults.length ?? 0;
+  const hitCount = snapshot?.searchTotal ?? 0;
+  const resultLabel =
+    hitCount > shownCount
+      ? `共 ${hitCount} 件 · 展示前 ${shownCount} 件`
+      : `${shownCount} 件商品`;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PanelHeader
@@ -99,8 +114,8 @@ export function ProductPanel() {
         title={searched ? '搜索结果' : '为你推荐'}
         subtitle={
           searched
-            ? `${snapshot.searchResults.length} 件商品${condition ? ` · ${condition}` : ''}`
-            : '默认展示高评分、高销量商品'
+            ? `${resultLabel}${condition ? ` · ${condition}` : ''}`
+            : `目录共 ${meta.count} 件 · 按评分与销量精选 ${featured.length} 件`
         }
         className="bg-sidebar"
         status={
@@ -113,7 +128,7 @@ export function ProductPanel() {
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                {meta.provider} · {meta.count} 件商品
+                {meta.provider} · 目录共 {meta.count} 件
                 {meta.generatedAt ? ` · 快照于 ${meta.generatedAt.slice(0, 10)}` : ''}
                 {meta.note ? `\n${meta.note}` : ''}
               </TooltipContent>

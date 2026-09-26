@@ -12,7 +12,7 @@ import { useUiStore } from '@/store/use-ui-store';
 import { formatPrice } from '@/lib/utils';
 
 /** 购物车状态面板：数量增减、删除、金额汇总、优惠券提示 */
-export function CartSection() {
+export function CartSection({ onBeforeCheckout }: { onBeforeCheckout?: () => void } = {}) {
   const items = useCartStore((s) => s.items);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
@@ -146,7 +146,12 @@ export function CartSection() {
       <Button
         className="w-full gap-1.5"
         disabled={thinking}
-        onClick={() => void sendMessage('结算')}
+        onClick={() => {
+          // 抽屉里点结算：先关闭抽屉（由调用方传入），避免与订单确认弹窗（同为浮层）
+          // 叠层；右栏用法不传该回调，行为与之前完全一致。结算链路本身不变。
+          onBeforeCheckout?.();
+          void sendMessage('结算');
+        }}
       >
         去结算
       </Button>

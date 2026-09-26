@@ -1,6 +1,6 @@
 'use client';
 
-import { PanelRight, Search, ShoppingCart } from 'lucide-react';
+import { PanelRight, ReceiptText, Search, ShoppingCart } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ export function AppHeader() {
   const cartCount = useCartStore(selectCartCount);
   const rightPanelOpen = useUiStore((s) => s.rightPanelOpen);
   const toggleRightPanel = useUiStore((s) => s.toggleRightPanel);
-  const setRightPanelOpen = useUiStore((s) => s.setRightPanelOpen);
+  const openShoppingDrawer = useUiStore((s) => s.openShoppingDrawer);
   const setMobileTab = useUiStore((s) => s.setMobileTab);
   const sendMessage = useAgentStore((s) => s.sendMessage);
   const thinking = useAgentStore((s) => s.thinking);
@@ -80,10 +80,7 @@ export function AppHeader() {
               size="icon"
               aria-label="购物车"
               className="relative"
-              onClick={() => {
-                setRightPanelOpen(true);
-                setMobileTab('products');
-              }}
+              onClick={() => openShoppingDrawer('cart')}
             >
               <ShoppingCart />
               {cartCount > 0 && (
@@ -94,6 +91,20 @@ export function AppHeader() {
             </Button>
           </TooltipTrigger>
           <TooltipContent>购物车 {cartCount} 件商品</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="订单历史"
+              onClick={() => openShoppingDrawer('orders')}
+            >
+              <ReceiptText />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>订单历史</TooltipContent>
         </Tooltip>
 
         <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface py-1 pl-1 pr-2.5">

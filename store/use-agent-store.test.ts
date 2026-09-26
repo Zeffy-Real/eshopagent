@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentStateSnapshot } from '@/lib/agent/events';
 import { selectReplyProductIds } from '@/lib/agent/sse';
-import { makeProduct } from '@/lib/test-utils/factories';
+import { makeOrder, makeProduct } from '@/lib/test-utils/factories';
 import { useAgentStore } from '@/store/use-agent-store';
 
 /**
@@ -27,6 +27,7 @@ function snapshotPayload(overrides: Partial<AgentStateSnapshot> = {}): AgentStat
     searchFilters: {},
     conditionText: '',
     searchResults: [],
+    searchTotal: 0,
     replyProductIds: [],
     liveOverrides: {},
     liveFetchedAt: null,
@@ -61,6 +62,9 @@ beforeEach(() => {
     messages: [],
     thinking: false,
     hasHydrated: true,
+    interruptedOrder: null,
+    recentConfirmedOrderId: null,
+    resuming: false,
   });
 });
 
@@ -190,5 +194,90 @@ describe('内联卡商品：模板路径与 LLM 路径产出同一 id 列表', (
     const reply = lastAgentMessage();
     expect(reply?.content).toBe('你好呀');
     expect(reply?.productIds).toBeUndefined();
+  });
+});
+
+describe('订单中断：confirmed 不是挂起中断', () => {
+  /**
+   * 2026-09-26 真机复现的 bug：确认下单后每一轮收尾都会再收到一条 interrupt
+   * （里面是 status=confirmed 的订单），结算弹窗复发。根因是服务端收尾兜底把
+   * 「pendingOrder 非空」误读成「有挂起中断」；前端这里再挡一层。
+   */
+  it('interrupt 事件带 confirmed 订单 → 忽略，不打开结算弹窗', async () => {
+    const order = makeOrder({ id: 'ES-CONFIRMED-1', status: 'confirmed' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            JSON.stringify({ type: 'interrupt', order }),
+            '{"type":"done"}',
+          ]),
+        ),
+      ),
+    );
+
+    await useAgentStore.getState().sendMessage('你好');
+
+    expect(useAgentStore.getState().interruptedOrder).toBeNull();
+  });
+
+  it('interrupt 事件带 pending 订单 → 正常打开结算弹窗（正常流程不被修坏）', async () => {
+    const order = makeOrder({ id: 'ES-PENDING-1', status: 'pending' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            JSON.stringify({ type: 'interrupt', order }),
+            '{"type":"done"}',
+          ]),
+        ),
+      ),
+    );
+
+    await useAgentStore.getState().sendMessage('结算');
+
+    expect(useAgentStore.getState().interruptedOrder?.id).toBe('ES-PENDING-1');
+  });
+
+  it('确认下单的 resume 期间收到 confirmed 快照 → 记下成功态订单号', async () => {
+    const order = makeOrder({ id: 'ES-CONFIRMED-2', status: 'confirmed' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            JSON.stringify({ type: 'state', payload: snapshotPayload({ pendingOrder: order }) }),
+            '{"type":"done"}',
+          ]),
+        ),
+      ),
+    );
+
+    await useAgentStore.getState().resumeOrder('confirm');
+
+    expect(useAgentStore.getState().recentConfirmedOrderId).toBe('ES-CONFIRMED-2');
+  });
+
+  it('刷新后的普通一轮也带同一条 confirmed 快照 → 不写成功态（成功弹窗不重播）', async () => {
+    const order = makeOrder({ id: 'ES-CONFIRMED-3', status: 'confirmed' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          sseResponse([
+            JSON.stringify({ type: 'state', payload: snapshotPayload({ pendingOrder: order }) }),
+            '{"type":"done"}',
+          ]),
+        ),
+      ),
+    );
+
+    // 刷新后没有 resume 在途（confirmFlowActive 必然是 false），普通消息同样会带回
+    // 持久化快照里的 confirmed 订单 —— 但它不该点亮成功态
+    await useAgentStore.getState().sendMessage('你好');
+
+    expect(useAgentStore.getState().recentConfirmedOrderId).toBeNull();
   });
 });

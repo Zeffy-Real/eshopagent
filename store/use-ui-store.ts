@@ -4,6 +4,9 @@ import { create } from 'zustand';
 
 export type MobileTab = 'chat' | 'products';
 
+/** 购物车 / 订单历史抽屉的两个 Tab */
+export type ShoppingDrawerTab = 'cart' | 'orders';
+
 interface UiState {
   /** 桌面端右栏（Agent 可视化面板）是否展开（当前生效值） */
   rightPanelOpen: boolean;
@@ -11,6 +14,14 @@ interface UiState {
   desktopPanelOpen: boolean;
   /** 移动端主视图切换 */
   mobileTab: MobileTab;
+  /**
+   * 购物车 / 订单历史抽屉（顶栏两个入口共用同一个抽屉）。
+   * `cart` 与 `orders` 是它的两个 Tab —— 不做两个独立抽屉，也不新增第四栏。
+   */
+  shoppingDrawerOpen: boolean;
+  shoppingDrawerTab: ShoppingDrawerTab;
+  openShoppingDrawer: (tab: ShoppingDrawerTab) => void;
+  closeShoppingDrawer: () => void;
   /** 详情弹窗当前展示的商品 id */
   detailProductId: string | null;
   /** 待对比商品 id（2 - 4 件，选择完成后一次性提交给 Agent） */
@@ -33,6 +44,8 @@ export const useUiStore = create<UiState>((set) => ({
   rightPanelOpen: true,
   desktopPanelOpen: true,
   mobileTab: 'chat',
+  shoppingDrawerOpen: false,
+  shoppingDrawerTab: 'cart',
   detailProductId: null,
   compareIds: [],
   toggleRightPanel: () =>
@@ -44,6 +57,8 @@ export const useUiStore = create<UiState>((set) => ({
   syncBreakpoint: (isDesktop) =>
     set((s) => ({ rightPanelOpen: isDesktop ? s.desktopPanelOpen : false })),
   setMobileTab: (tab) => set({ mobileTab: tab }),
+  openShoppingDrawer: (tab) => set({ shoppingDrawerOpen: true, shoppingDrawerTab: tab }),
+  closeShoppingDrawer: () => set({ shoppingDrawerOpen: false }),
   openProductDetail: (id) => set({ detailProductId: id }),
   closeProductDetail: () => set({ detailProductId: null }),
   toggleCompare: (id) =>

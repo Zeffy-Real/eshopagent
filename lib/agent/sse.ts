@@ -103,6 +103,8 @@ export function toSnapshot(
     searchFilters: state.searchFilters,
     conditionText: describeFilters(state.searchFilters),
     searchResults: state.searchResults,
+    // 命中总数（截断前）：中栏据此显示「共 N 件 · 展示前 M 件」
+    searchTotal: state.searchTotal,
     // 本轮回复挂哪几张内联卡：由 selectReplyProductIds 统一选取（模板路径与 LLM 路径同源）
     replyProductIds: selectReplyProductIds(state.searchResults),
     // 实时覆盖随快照整体下发：前端三处渲染（卡片 / 弹窗 / 对比表）按 id 取用，
@@ -121,9 +123,18 @@ export function toSnapshot(
   };
 }
 
-/** 从状态快照里读取待确认订单（interrupt 场景由 pendingOrder 承载） */
-function pendingOrderOf(state: AgentStateValue): Order | null {
-  return state.pendingOrder;
+/**
+ * 收尾兜底的「挂起中断」判定：**只有 `status === 'pending'` 的订单才算挂起中断**。
+ *
+ * 为什么单独抽成纯函数：`confirmOrder` 会把订单置为 `confirmed` 且此后不清空
+ * （语义见 `lib/agent/state.ts` 的 `pendingOrder` 注释）。若这里只看「非空」，
+ * 确认下单**之后每一轮**收尾都会把这条已完成订单当新中断推给前端 ——
+ * 结算弹窗在「已结账」后仍会再弹（2026-09-26 实测：确认后发「你好」仍收到
+ * `interrupt`，其中 `order.status` 是 confirmed）。判定可逐状态单测。
+ */
+export function fallbackInterruptOrder(state: AgentStateValue): Order | null {
+  const order = state.pendingOrder;
+  return order && order.status === 'pending' ? order : null;
 }
 
 /** 读取挂起的中断：prepareOrder 里 interrupt({ type: 'confirm_order', order }) 的值 */
@@ -268,7 +279,9 @@ export function createAgentEventStream(options: StreamAgentOptions): ReadableStr
         if (interruptOrder) {
           send({ type: 'interrupt', order: interruptOrder });
         } else if (values) {
-          const fallback = pendingOrderOf(values);
+          // 兜底只认 pending（见 fallbackInterruptOrder 的注释）：
+          // confirmed 的订单是「已完成的事实」，不是「挂起的中断」
+          const fallback = fallbackInterruptOrder(values);
           if (fallback) send({ type: 'interrupt', order: fallback });
         }
         if (values) {

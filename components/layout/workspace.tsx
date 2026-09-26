@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ChatPanel } from '@/components/chat/chat-panel';
 import { ProductPanel } from '@/components/product/product-panel';
 import { OrderConfirmDialog } from '@/components/order/order-confirm-dialog';
+import { ShoppingDrawer } from '@/components/order/shopping-drawer';
 import { AgentPanel } from '@/components/visualization/agent-panel';
 import { useUiStore, type MobileTab } from '@/store/use-ui-store';
 import { cn } from '@/lib/utils';
@@ -119,6 +120,9 @@ export function Workspace() {
 
       {/* 下单确认（human-in-the-loop）：由 interrupt 事件驱动 */}
       <OrderConfirmDialog />
+
+      {/* 购物车 / 订单历史抽屉：顶栏两个入口共用，浮层形态不改三栏结构 */}
+      <ShoppingDrawer />
     </div>
   );
 }

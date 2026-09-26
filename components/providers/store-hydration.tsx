@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useAgentStore } from '@/store/use-agent-store';
 import { useCartStore } from '@/store/use-cart-store';
+import { useOrderStore } from '@/store/use-order-store';
 
 /**
  * 恢复本地持久化状态。
@@ -16,6 +17,7 @@ export function StoreHydration() {
     // 置 hasHydrated（并保证失败也放行），sendMessage 依赖这个标志避免竞态
     void useAgentStore.getState().hydrate();
     void useCartStore.persist.rehydrate();
+    void useOrderStore.persist.rehydrate();
   }, []);
 
   return null;

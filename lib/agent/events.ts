@@ -40,6 +40,15 @@ export const NODE_ORDER: string[] = [
   'generateReply',
 ];
 
+/**
+ * 单轮检索**最多展示**的商品数。
+ *
+ * 为什么放在这个前后端共用模块（而不是 `nodes/searchProducts.ts`）：服务端节点用它截取
+ * 结果，客户端也要用它解释「共 N 件 · 展示前 M 件」与「数据快照」面板里的展示上限 ——
+ * 两边读同一个常量，UI 文案才不会与真实截取数量漂移（客户端不能 import 服务端节点模块）。
+ */
+export const SEARCH_RESULT_LIMIT = 12;
+
 /** 服务端状态快照：前端各面板的唯一数据来源 */
 export interface AgentStateSnapshot {
   intent: AgentIntent;
@@ -47,6 +56,14 @@ export interface AgentStateSnapshot {
   /** 筛选条件的中文描述（服务端渲染，避免把解析器打进客户端包） */
   conditionText: string;
   searchResults: Product[];
+  /**
+   * 本轮检索**命中的总件数**（截断前）；实际展示条数是 `searchResults.length`。
+   *
+   * 为什么需要：中栏要能说清「共 N 件 · 展示前 M 件」（单次最多展示
+   * `SEARCH_RESULT_LIMIT` 件），否则用户会把展示条数当成命中数。
+   * 覆盖型：refine 重新检索后必须跟着更新，不能是历史值。
+   */
+  searchTotal: number;
   /**
    * 实时数据覆盖（键 = 商品 id）。**不写进 searchResults**：这样才始终说得清
    * 「哪个价格来自快照、哪个来自实时查询」。渲染时按 id 查覆盖值，查不到就用原值

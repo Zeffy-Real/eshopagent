@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { REPLY_INLINE_LIMIT, selectReplyProductIds, toSnapshot } from '@/lib/agent/sse';
-import { makeProduct, makeState } from '@/lib/test-utils/factories';
+import {
+  REPLY_INLINE_LIMIT,
+  fallbackInterruptOrder,
+  selectReplyProductIds,
+  toSnapshot,
+} from '@/lib/agent/sse';
+import { makeOrder, makeProduct, makeState } from '@/lib/test-utils/factories';
 
 /**
  * 「本轮回复挂哪几张内联卡」的唯一实现与它的载荷落点。
@@ -50,5 +55,26 @@ describe('toSnapshot：把内联卡商品随快照下发', () => {
   it('本轮无检索结果 → 空数组（闲聊轮不带卡片）', () => {
     const snapshot = toSnapshot(makeState({ searchResults: [] }), Date.now(), 0);
     expect(snapshot.replyProductIds).toEqual([]);
+  });
+});
+
+describe('fallbackInterruptOrder：只有 pending 才是挂起中断', () => {
+  /**
+   * 收尾兜底曾把「pendingOrder 非空」当成「有挂起中断」：`confirmOrder` 之后
+   * `pendingOrder` 会一直是 confirmed，于是**每一轮**收尾都推一条 interrupt，
+   * 结算弹窗在已结账后仍会再弹（2026-09-26 真机复现）。
+   */
+  it('pending → 返回订单（真正的挂起中断仍能被兜住）', () => {
+    const order = makeOrder({ id: 'ES-PENDING', status: 'pending' });
+    expect(fallbackInterruptOrder(makeState({ pendingOrder: order }))?.id).toBe('ES-PENDING');
+  });
+
+  it('confirmed → null（已完成的事实不是挂起中断）', () => {
+    const order = makeOrder({ id: 'ES-CONFIRMED', status: 'confirmed' });
+    expect(fallbackInterruptOrder(makeState({ pendingOrder: order }))).toBeNull();
+  });
+
+  it('无订单 → null', () => {
+    expect(fallbackInterruptOrder(makeState({ pendingOrder: null }))).toBeNull();
   });
 });

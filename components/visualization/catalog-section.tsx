@@ -3,6 +3,7 @@
 import { type ReactNode } from 'react';
 import { ChevronDown, ExternalLink } from 'lucide-react';
 import { useCatalogData } from '@/components/providers/catalog-data-provider';
+import { SEARCH_RESULT_LIMIT } from '@/lib/agent/events';
 import { Badge } from '@/components/ui/badge';
 import {
   FIELD_TRUTH,
@@ -74,7 +75,7 @@ function parseOrigins(origin: string | null): { label: string; url: string }[] {
 export function CatalogSection() {
   // 数字全部来自服务端按当前源算好的载荷（覆盖率 / 平台分布 / 品类计数）。
   // 载荷在服务端由 `buildCatalogClientPayload` 从当前目录现算，因此扩容或切源后自动正确。
-  const { meta, categoryCounts, coverage, platformCounts: platforms } = useCatalogData();
+  const { meta, categoryCounts, coverage, platformCounts: platforms, featured } = useCatalogData();
   const isReal = meta.source === 'real';
   const rebuild = REBUILD_COMMAND[meta.source];
 
@@ -116,8 +117,13 @@ export function CatalogSection() {
 
       <Row label="规模">
         <span className="text-foreground">
-          {meta.count} 件 · {CATEGORIES.length} 品类
+          目录共 {meta.count} 件 · {CATEGORIES.length} 品类
         </span>
+        {/* 「目录总量」≠「当前能看到的件数」：中栏单次最多展示前 SEARCH_RESULT_LIMIT 件、
+            首屏只精选一小批，这里把展示口径一并说清，避免「显示 420 却看不到 420 件」的误解 */}
+        <p className="text-muted-foreground">
+          界面按需展示：首屏精选 {featured.length} 件；检索单次最多展示前 {SEARCH_RESULT_LIMIT} 件
+        </p>
         <span className="flex flex-wrap gap-1">
           {CATEGORIES.map((category) => (
             <Badge key={category} variant="outline" className="tabular-nums">
