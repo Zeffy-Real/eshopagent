@@ -11,14 +11,15 @@ import type { Category, Product } from '@/lib/types';
  */
 
 /**
- * 浏览视图的三种数据来源（**同一个视图组件**，见 `components/product/browse-view.tsx`）：
+ * 目录数据的数据来源（**`lib` 层的完整集合**，两种消费者共用）：
  *
  * - `category`：品类 chip 直接浏览该品类全量（如「数码」60 件）——不进对话、不带残留条件；
  * - `all`：整个目录（「让我看看所有 420 件商品」这类**无筛选条件**的命中走这条，
  *   由客户端目录 chunk 现算，**不经 SSE 传 420 个 id**）；
- * - `ids`：本轮检索命中的 id 列表（**有筛选条件**时走这条：客户端拿目录按 id 查找，
- *   与「查看全部 N 件」入口配套）；`total` 是命中总数，用于「命中 > 下发上限」时注明
- *   「显示前 N 件」（上限见 `SEARCH_RESULT_ID_LIMIT`）。
+ * - `ids`：本轮检索命中的 id 列表（**有筛选条件**时走这条：客户端拿目录按 id 查找）——
+ *   消费者是**中栏的就地「加载更多」**（追加窗口 ≤ `SEARCH_RESULT_ID_LIMIT` 件，见
+ *   `lib/product-panel-state.ts` 的 `expansionPlanOf`）；`total` 是命中总数，用于
+ *   「命中 > 下发上限」时注明「显示前 N 件」。浏览视图不再消费 `ids`（见 `BrowseViewSource`）。
  *
  * 为什么不给全量也传 id 列表：420 个 id 会在每个状态帧里重复下发，载荷明显放大；
  * 而「无筛选条件 → 整个目录」在客户端算出来的结果与目录完全一致，没有信息差。
@@ -27,6 +28,16 @@ export type BrowseSource =
   | { kind: 'category'; category: Category }
   | { kind: 'all' }
   | { kind: 'ids'; ids: string[]; total?: number };
+
+/**
+ * 浏览视图（中栏覆盖层）的数据来源：**只有目录浏览两条**，没有 `ids`。
+ *
+ * 职责边界（2026-09-26 收口）：搜索结果的展开归**中栏就地「加载更多」**（不换视图、
+ * 对话可见）；浏览视图只负责「无对话时的目录浏览」——点 chip 看品类、看整个目录。
+ * 用 `Exclude` 而不是另写一份联合：两个来源的形状与 `BrowseSource` 逐字一致，
+ * 只有消费侧的子集关系，新增来源时也不会漏。
+ */
+export type BrowseViewSource = Exclude<BrowseSource, { kind: 'ids' }>;
 
 /**
  * 纯函数：按来源从**已加载的目录**里挑出商品（不碰网络、不 import）。

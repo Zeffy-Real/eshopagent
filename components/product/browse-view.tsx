@@ -4,20 +4,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DatabaseZap, LayoutGrid, PackageOpen, X } from 'lucide-react';
 import { EmptyState } from '@/components/common/empty-state';
 import { ProductGrid } from '@/components/product/product-grid';
-import { SortControl, sortProducts } from '@/components/product/sort-control';
+import { SortControl } from '@/components/product/sort-control';
 import { useCatalogData } from '@/components/providers/catalog-data-provider';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SEARCH_RESULT_ID_LIMIT } from '@/lib/agent/events';
-import { loadBrowseProducts, type BrowseSource } from '@/lib/catalog/browse-products';
-import { browseWindow } from '@/lib/product-panel-state';
+import { loadBrowseProducts, type BrowseViewSource } from '@/lib/catalog/browse-products';
+import { browseWindow, EXPAND_PAGE_SIZE, sortProducts } from '@/lib/product-panel-state';
 import type { Product, SortKey } from '@/lib/types';
 import { useUiStore } from '@/store/use-ui-store';
 
 /**
- * 中栏浏览视图（覆盖层）——**同一个组件，三种数据来源**（见 `BrowseSource`）：
- * 品类 chip 的全量、整个目录、对话命中的 id 列表。
+ * 中栏浏览视图（覆盖层）——**同一个组件，两种数据来源**（见 `BrowseViewSource`）：
+ * 品类 chip 的全量、整个目录（无筛选条件的大集合）。
  *
  * 三条设计边界：
  * 1. **零 LLM 依赖**：数据走客户端目录的按需 chunk（`lib/catalog/client-products.ts`），
@@ -27,14 +26,14 @@ import { useUiStore } from '@/store/use-ui-store';
  *
  * 退出方式两个：头部关闭按钮与 ESC。窄屏下它是这一栏的全宽覆盖层，
  * 不改变 Tab + 抽屉的结构。
+ *
+ * 职责边界（2026-09-26 收口）：**搜索结果的展开归中栏就地「加载更多」**（不换视图、
+ * 对话可见），所以这里不再有 `ids` 分支 —— 浏览视图 = 无对话时的目录浏览（点 chip / 看全量）。
  */
-
-/** 每次「加载更多」新增的件数：一屏左右（网格最多 4 列） */
-const BROWSE_PAGE = 24;
 
 /** 头部口径：标题 + 副标题（件数以加载结果为准，加载中回落到服务端注入的计数） */
 function headingOf(
-  source: BrowseSource,
+  source: BrowseViewSource,
   total: number,
   shownCount: number,
   remaining: number,
@@ -44,17 +43,6 @@ function headingOf(
     return {
       title: `${source.category} · 全部商品`,
       subtitle: `目录里该品类共 ${total} 件 · ${progress}`,
-    };
-  }
-  if (source.kind === 'ids') {
-    // 命中数超过单次下发上限时如实注明：视图里只有前 N 件，不假装是全部
-    const total = source.total ?? source.ids.length;
-    const truncated = total > source.ids.length;
-    return {
-      title: `本轮命中 ${total} 件`,
-      subtitle: truncated
-        ? `按本轮检索的命中结果展示 · 显示前 ${source.ids.length} 件（单次上限 ${SEARCH_RESULT_ID_LIMIT} 件）`
-        : `按本轮检索的命中结果展示 · ${progress}`,
     };
   }
   return { title: '全部商品', subtitle: `目录共 ${total} 件 · ${progress}` };
@@ -69,7 +57,7 @@ export function BrowseView() {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [sort, setSort] = useState<SortKey>('relevance');
-  const [visible, setVisible] = useState(BROWSE_PAGE);
+  const [visible, setVisible] = useState(EXPAND_PAGE_SIZE);
 
   // 数据加载：来源变化（或重试）时重载。`products === null` 即加载中。
   useEffect(() => {
@@ -77,7 +65,7 @@ export function BrowseView() {
     let cancelled = false;
     setProducts(null);
     setFailed(false);
-    setVisible(BROWSE_PAGE);
+    setVisible(EXPAND_PAGE_SIZE);
     void loadBrowseProducts(source).then((list) => {
       if (cancelled) return;
       if (list === null) setFailed(true);
@@ -107,11 +95,7 @@ export function BrowseView() {
   if (!source) return null;
 
   const expected =
-    source.kind === 'ids'
-      ? source.ids.length
-      : source.kind === 'category'
-        ? categoryCounts[source.category]
-        : meta.count;
+    source.kind === 'category' ? categoryCounts[source.category] : meta.count;
   const total = products?.length ?? expected;
   const { title, subtitle } = failed
     ? { title: '目录数据加载失败', subtitle: '按需加载的目录没有取到，可以重试' }
@@ -184,7 +168,7 @@ export function BrowseView() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => setVisible((n) => n + BROWSE_PAGE)}
+                    onClick={() => setVisible((n) => n + EXPAND_PAGE_SIZE)}
                   >
                     加载更多（已显示 {shown.length}/{total}）
                   </Button>

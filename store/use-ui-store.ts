@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import type { BrowseSource } from '@/lib/catalog/browse-products';
+import type { BrowseViewSource } from '@/lib/catalog/browse-products';
 
 export type MobileTab = 'chat' | 'products';
 
@@ -26,11 +26,13 @@ interface UiState {
   /**
    * 中栏浏览视图（覆盖层）的数据来源；`null` = 未打开。
    *
-   * 纯 UI 态：数据由客户端目录 chunk 现算（品类 / 全量）或按 id 查找（检索命中），
-   * **不经对话、不碰 SSE、零 LLM 依赖** —— 无 Key 时它同样完整可用。
+   * 纯 UI 态：数据由客户端目录 chunk 现算（品类 / 全量），**不经对话、不碰 SSE、
+   * 零 LLM 依赖** —— 无 Key 时它同样完整可用。
+   * 只收目录浏览两个来源（`BrowseViewSource`）：搜索结果的展开归中栏就地「加载更多」，
+   * 不再换视图（2026-09-26 收口）。
    */
-  browseSource: BrowseSource | null;
-  openBrowse: (source: BrowseSource) => void;
+  browseSource: BrowseViewSource | null;
+  openBrowse: (source: BrowseViewSource) => void;
   closeBrowse: () => void;
   /** 详情弹窗当前展示的商品 id */
   detailProductId: string | null;

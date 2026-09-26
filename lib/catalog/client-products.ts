@@ -14,8 +14,9 @@ import type { Product } from '@/lib/types';
  *      解析顺序 = 面板当前渲染的列表（已是叠加过实时覆盖的对象）→ 会话内已解析过的内联卡商品。
  *      这条顺序保证「从哪张卡片点开的，弹窗就显示那张卡片的商品」——实时覆盖过的价格与
  *      「实时 · HH:mm」标注因此不会在弹窗里丢失。
- *   3. **浏览视图**：走 `lib/catalog/browse-products.ts`（独立模块 = 独立按需 chunk，
- *      不在首屏里），支持品类 / 全量 / 对话命中的 id 列表三种来源。
+ *   3. **浏览视图与中栏就地展开**：走 `lib/catalog/browse-products.ts`（独立模块 = 独立
+ *      按需 chunk，不在首屏里），支持品类 / 全量 / 命中 id 列表三种来源 —— 品类与全量
+ *      供浏览视图（点 chip / 看全量），id 列表供中栏的「加载更多」（有筛选条件的轮次）。
  */
 
 export type ProductLookup = (id: string) => Product | undefined;
